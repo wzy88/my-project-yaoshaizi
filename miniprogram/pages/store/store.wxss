@@ -1,0 +1,326 @@
+.store-page {
+  position: relative;
+  min-height: 100vh;
+  padding: calc(24rpx + env(safe-area-inset-top)) 20rpx calc(214rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #1c1326;
+}
+
+.bg-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bg-main {
+  background:
+    radial-gradient(circle at 50% -12%, rgba(120, 40, 160, 0.28), rgba(120, 40, 160, 0) 44%),
+    radial-gradient(circle at 100% 100%, rgba(35, 181, 111, 0.12), rgba(35, 181, 111, 0) 34%),
+    linear-gradient(180deg, #241633 0%, #170d22 100%);
+}
+
+.bg-grain {
+  opacity: 0.18;
+  background-image:
+    radial-gradient(circle at 50rpx 50rpx, rgba(66, 32, 94, 0.9) 0, rgba(66, 32, 94, 0.9) 4rpx, transparent 5rpx),
+    radial-gradient(circle at 0 0, rgba(66, 32, 94, 0.82) 0, rgba(66, 32, 94, 0.82) 4rpx, transparent 5rpx);
+  background-size: 100rpx 100rpx;
+}
+
+.status-row,
+.wallet-card,
+.category-row,
+.hero-card,
+.grid-list {
+  position: relative;
+  z-index: 2;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.status-time {
+  color: #e8f5e9;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.status-mark {
+  width: 46rpx;
+  height: 46rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22rpx;
+}
+
+.status-sub {
+  color: #a8e6cf;
+  font-size: 21rpx;
+}
+
+.wallet-card,
+.category-row,
+.hero-card,
+.item-card {
+  border-radius: 30rpx;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12rpx 28rpx rgba(0, 0, 0, 0.18);
+}
+
+.wallet-card {
+  margin-top: 18rpx;
+  padding: 20rpx 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wallet-left {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.coin-icon {
+  font-size: 38rpx;
+}
+
+.wallet-value {
+  display: block;
+  color: #23b56f;
+  font-size: 42rpx;
+  font-weight: 900;
+}
+
+.wallet-label {
+  display: block;
+  margin-top: 2rpx;
+  color: rgba(232, 245, 233, 0.56);
+  font-size: 18rpx;
+}
+
+.wallet-btn {
+  margin: 0;
+  min-width: 122rpx;
+  height: 68rpx;
+  border-radius: 22rpx;
+  background: linear-gradient(135deg, #23b56f 0%, #14804c 100%);
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.category-row {
+  margin-top: 16rpx;
+  overflow: hidden;
+  display: flex;
+}
+
+.category-item {
+  flex: 1;
+  height: 78rpx;
+  line-height: 78rpx;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.category-item.active {
+  background: rgba(35, 181, 111, 0.14);
+  color: #23b56f;
+}
+
+.hero-card {
+  margin-top: 16rpx;
+  height: 280rpx;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(35, 181, 111, 0.18), rgba(35, 181, 111, 0) 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.hero-badge {
+  position: absolute;
+  right: 16rpx;
+  top: 16rpx;
+  height: 42rpx;
+  padding: 0 14rpx;
+  line-height: 42rpx;
+  border-radius: 16rpx;
+  background: rgba(35, 181, 111, 0.15);
+  color: #23b56f;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.hero-cup {
+  width: 108rpx;
+  height: 130rpx;
+  margin: 52rpx auto 0;
+  border-radius: 16rpx 16rpx 22rpx 22rpx;
+  background: linear-gradient(180deg, #2dc67a 0%, #16864e 56%, #0d5a33 100%);
+  border: 2rpx solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 14rpx 26rpx rgba(0, 0, 0, 0.28);
+}
+
+.hero-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 18rpx;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10rpx;
+}
+
+.dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.dot.active {
+  background: #23b56f;
+}
+
+.grid-list {
+  margin-top: 16rpx;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
+}
+
+.item-card {
+  overflow: hidden;
+}
+
+.item-top {
+  position: relative;
+  height: 176rpx;
+}
+
+.rarity-tag {
+  position: absolute;
+  top: 12rpx;
+  left: 12rpx;
+  height: 30rpx;
+  line-height: 30rpx;
+  padding: 0 12rpx;
+  border-radius: 10rpx;
+  font-size: 16rpx;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.item-preview {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 74rpx;
+  height: 92rpx;
+  border-radius: 16rpx 16rpx 20rpx 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 26rpx;
+  font-weight: 900;
+  box-shadow: 0 8rpx 18rpx rgba(0, 0, 0, 0.28);
+}
+
+.item-body {
+  padding: 14rpx 14rpx 16rpx;
+}
+
+.item-name {
+  display: block;
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.item-price {
+  display: block;
+  margin-top: 6rpx;
+  color: rgba(168, 230, 207, 0.78);
+  font-size: 20rpx;
+}
+
+.item-btn {
+  margin: 14rpx 0 0;
+  width: 100%;
+  height: 64rpx;
+  border-radius: 18rpx;
+  background: linear-gradient(135deg, #23b56f 0%, #14804c 100%);
+  color: #ffffff;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.item-btn.owned {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.46);
+}
+
+.rarity-common {
+  background: linear-gradient(180deg, rgba(35, 181, 111, 0.16), rgba(35, 181, 111, 0.04));
+}
+
+.rarity-rare {
+  background: linear-gradient(180deg, rgba(67, 97, 238, 0.18), rgba(67, 97, 238, 0.06));
+}
+
+.rarity-epic {
+  background: linear-gradient(180deg, rgba(138, 43, 226, 0.2), rgba(138, 43, 226, 0.08));
+}
+
+.rarity-legendary {
+  background: linear-gradient(180deg, rgba(255, 159, 28, 0.24), rgba(255, 159, 28, 0.08));
+}
+
+.preview-gold {
+  background: linear-gradient(180deg, #29bf73 0%, #177b48 100%);
+}
+
+.preview-purple {
+  background: linear-gradient(180deg, #9358ff 0%, #5a2ca7 100%);
+}
+
+.preview-black {
+  background: linear-gradient(180deg, #485563 0%, #29323c 100%);
+}
+
+.preview-dragon {
+  background: linear-gradient(180deg, #ff6b35 0%, #a63d12 100%);
+}
+
+.preview-fire {
+  background: linear-gradient(180deg, #ff8c42 0%, #d62828 100%);
+}
+
+.preview-silver {
+  background: linear-gradient(180deg, #8ecae6 0%, #5c7c99 100%);
+}
+
+.wallet-btn:active,
+.category-item:active,
+.item-btn:active {
+  opacity: 0.92;
+}

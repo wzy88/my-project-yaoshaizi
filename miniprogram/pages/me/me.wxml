@@ -1,0 +1,130 @@
+<view class="page me-page">
+  <view class="bg-layer bg-main"></view>
+  <view class="bg-layer bg-pattern"></view>
+  <view class="bg-glow bg-glow--top"></view>
+  <view class="bg-glow bg-glow--bottom"></view>
+
+  <view class="status-row">
+    <text class="status-time">{{timeText}}</text>
+  </view>
+
+  <view class="profile-card">
+    <view class="avatar-shell">
+      <view class="avatar">
+        <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+        <text wx:else class="avatar-text">{{initial}}</text>
+      </view>
+      <view class="avatar-badge">✓</view>
+    </view>
+    <view class="profile-main">
+      <text class="profile-title">{{nickname || '玩家'}}</text>
+      <text class="profile-sub">头像固定使用微信头像，昵称可修改</text>
+    </view>
+  </view>
+
+  <view class="content-stack">
+    <view class="section">
+      <text class="section-title">基础信息</text>
+      <view class="card-block">
+        <view class="row row--editor">
+          <text class="row-label">昵称</text>
+          <input
+            class="nickname-input"
+            value="{{nickname}}"
+            bindinput="onNicknameChange"
+            placeholder="例如 阿伟"
+            placeholder-class="row-placeholder"
+          />
+          <text class="row-action">修改</text>
+        </view>
+      </view>
+      <text class="section-hint">说明：小程序无法静默读取微信资料，需要你手动授权同步。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">对局设置</text>
+      <view class="card-block">
+        <view class="row" bindtap="onToggleSfx">
+          <text class="row-label">游戏音效</text>
+          <view class="row-right">
+            <text class="row-value">{{sfxEnabled ? '开启' : '关闭'}}</text>
+            <text class="row-arrow">›</text>
+          </view>
+        </view>
+        <view class="row" bindtap="onToggleHaptic">
+          <text class="row-label">震动反馈</text>
+          <view class="row-right">
+            <text class="row-value">{{hapticEnabled ? '开启' : '关闭'}}</text>
+            <text class="row-arrow">›</text>
+          </view>
+        </view>
+        <view class="row">
+          <text class="row-label">麦克风权限</text>
+          <view class="row-right">
+            <text class="row-value">{{avatarUrl ? '已授权' : '未授权'}}</text>
+            <text class="row-arrow">›</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section">
+      <text class="section-title">关于与帮助</text>
+      <view class="card-block">
+        <view class="row" bindtap="goRules">
+          <text class="row-label">玩法规则</text>
+          <text class="row-arrow">›</text>
+        </view>
+        <view class="row" bindtap="openPrivacyPage">
+          <text class="row-label">隐私政策</text>
+          <text class="row-arrow">›</text>
+        </view>
+        <view class="row" bindtap="openTermsPage">
+          <text class="row-label">用户协议</text>
+          <text class="row-arrow">›</text>
+        </view>
+        <view class="row">
+          <text class="row-label">联系客服</text>
+          <text class="row-arrow">›</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section" wx:if="{{hasSession}}">
+      <text class="section-title">会话与数据</text>
+      <view class="card-block">
+        <view class="row" bindtap="goResume">
+          <text class="row-label">上次房间</text>
+          <text class="row-value row-value--accent">{{sessionRoomId}}</text>
+        </view>
+        <view class="row" bindtap="clearSession">
+          <text class="row-label">清空会话</text>
+          <text class="row-value row-value--danger">删除</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="section">
+      <text class="section-title">服务器设置</text>
+      <view class="card-block">
+        <view class="row row--multiline" bindtap="openWsConfig">
+          <view class="row-main">
+            <text class="row-label">当前地址</text>
+            <text class="row-sub">{{wsUrl || '点击设置服务器地址'}}</text>
+          </view>
+          <text class="row-arrow">›</text>
+        </view>
+        <view class="row" bindtap="openWsConfig">
+          <text class="row-label">服务器地址</text>
+          <text class="row-arrow">›</text>
+        </view>
+      </view>
+      <text class="section-hint">{{wsHintText}}</text>
+      <text class="section-hint">真机建议填 ngrok/cloudflared 的 `wss://域名/ws`；开发者工具本机可用 `ws://127.0.0.1:3000/ws`。</text>
+    </view>
+
+    <view class="logout-wrap">
+      <button class="logout-btn" bindtap="logoutProfile">退出登录</button>
+    </view>
+  </view>
+</view>

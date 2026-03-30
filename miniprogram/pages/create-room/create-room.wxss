@@ -1,0 +1,205 @@
+.create-page {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% -20%, rgba(120, 40, 160, 0.3), rgba(120, 40, 160, 0) 48%),
+    radial-gradient(circle at 100% 100%, rgba(35, 181, 111, 0.14), rgba(35, 181, 111, 0) 36%),
+    linear-gradient(180deg, #1d1328 0%, #150c20 100%);
+}
+
+.mask-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 40rpx 40rpx, rgba(66, 32, 94, 0.32) 0, rgba(66, 32, 94, 0.32) 4rpx, transparent 5rpx);
+  background-size: 96rpx 96rpx;
+  opacity: 0.45;
+}
+
+.panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 36rpx 36rpx 0 0;
+  background: linear-gradient(180deg, rgba(30, 22, 40, 0.98), rgba(20, 15, 30, 0.99));
+  border-top: 1rpx solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -18rpx 44rpx rgba(0, 0, 0, 0.5);
+  padding: 22rpx 22rpx calc(30rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.panel-handle {
+  width: 84rpx;
+  height: 8rpx;
+  border-radius: 4rpx;
+  margin: 0 auto 20rpx;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.panel-title__icon {
+  color: #ffffff;
+  font-size: 34rpx;
+  line-height: 1;
+}
+
+.panel-title__text {
+  color: #ffffff;
+  font-size: 38rpx;
+  font-weight: 900;
+  letter-spacing: 2rpx;
+}
+
+.toggle-card {
+  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10rpx 24rpx rgba(0, 0, 0, 0.18);
+}
+
+.block {
+  margin-top: 28rpx;
+}
+
+.block-title {
+  display: block;
+  margin-bottom: 12rpx;
+  color: #a8e6cf;
+  font-size: 20rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.chip {
+  width: 86rpx;
+  height: 82rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 30rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.chip.active {
+  border-color: #23b56f;
+  background: rgba(35, 181, 111, 0.15);
+  color: #23b56f;
+  box-shadow: 0 0 18rpx rgba(35, 181, 111, 0.2);
+}
+
+.toggle-card {
+  margin-top: 12rpx;
+  padding: 18rpx 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.toggle-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.toggle-title {
+  display: block;
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.toggle-sub {
+  display: block;
+  margin-top: 6rpx;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 20rpx;
+  line-height: 1.45;
+}
+
+.toggle-pill {
+  position: relative;
+  width: 86rpx;
+  height: 48rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.toggle-pill.is-on {
+  background: #23b56f;
+}
+
+.toggle-pill__thumb {
+  position: absolute;
+  left: 4rpx;
+  top: 4rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 20rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.toggle-pill.is-on .toggle-pill__thumb {
+  transform: translateX(38rpx);
+}
+
+.panel-note {
+  display: block;
+  margin-top: 18rpx;
+  color: rgba(168, 230, 207, 0.7);
+  font-size: 19rpx;
+  line-height: 1.5;
+}
+
+.create-btn,
+.cancel-btn {
+  width: 100%;
+  height: 100rpx;
+  margin-top: 18rpx;
+  border-radius: 50rpx;
+  font-size: 30rpx;
+  font-weight: 900;
+  letter-spacing: 2rpx;
+}
+
+.create-btn {
+  background: linear-gradient(135deg, #23b56f 0%, #1a965a 50%, #14804c 100%);
+  color: #ffffff;
+  box-shadow:
+    0 12rpx 30rpx rgba(20, 128, 76, 0.38),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.18);
+}
+
+.cancel-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.64);
+}
+
+.chip:active,
+.toggle-card:active,
+.create-btn:active,
+.cancel-btn:active {
+  opacity: 0.92;
+  transform: scale(0.985);
+}

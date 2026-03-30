@@ -1,0 +1,63 @@
+<view class="page rules-page">
+  <view class="ambient ambient-1"></view>
+  <view class="ambient ambient-2"></view>
+
+  <view class="card hero">
+    <text class="hero-title">摇骰子 · 规则速览</text>
+    <text class="hero-sub">MVP：仅质疑上一手（开上一手叫牌者）；房间最多 8 人；每局每人骰子数由房主在开局前设置。</text>
+  </view>
+
+  <view class="card section">
+    <text class="section-title">1. 基本流程</text>
+    <view class="bullets">
+      <text class="bullet">- 开局后按座位顺序行动（顺/逆由房主创建/排位时选择，开局后锁定）。</text>
+      <text class="bullet">- 摇骰：先进入「摇骰阶段」，所有对局玩家可反复摇（最多5次），并点击 OK 锁定；房主可强制开始叫牌（未OK/未摇者会被系统自动摇并锁定）。</text>
+      <text class="bullet">- 叫骰：报出「数量 + 点数」，例如 10个4。</text>
+      <text class="bullet">- 质疑（开牌）：轮到你时可质疑上一手（MVP 仅可开上一手）。</text>
+      <text class="bullet">- 结算：展示全局骰面，本局结束；输家下一局起始位。</text>
+    </view>
+  </view>
+
+  <view class="card section">
+    <text class="section-title">2. 叫骰规则</text>
+    <view class="bullets">
+      <text class="bullet">- 叫骰必须“变大”：数量增加，或数量不变但点数增加。</text>
+      <text class="bullet">- 例如：上家叫 3个4，下家可以叫 4个X 或 3个5/3个6。</text>
+      <text class="bullet">- 数量上限：≤ 房间人数 × 每人骰子数；当数量到上限时，仍可继续把点数往上叫直到 6；仅当达到「上限数量 + 6点」后，下家只能质疑。</text>
+    </view>
+  </view>
+
+  <view class="card section">
+    <text class="section-title">3. 通配 1</text>
+    <view class="bullets">
+      <text class="bullet">- 是否开启「1 可通配」由房主创建时选择，开局后不可修改。</text>
+      <text class="bullet">- 若有人叫了 1 点，则本局剩余流程中 1 仅算 1，不再通配任何点数。</text>
+    </view>
+  </view>
+
+  <view class="card section">
+    <text class="section-title">4. 质疑与输赢</text>
+    <view class="bullets">
+      <text class="bullet">- MVP：只支持开上一手（按钮常驻，未满足条件会置灰并提示原因）。</text>
+      <text class="bullet">- 比较方式：被开牌者喊出的数量 vs 全体骰面汇总能否凑够。</text>
+      <text class="bullet">- 若汇总数量 ≥ 叫牌数量，则“喊开的人输”；否则“被开的人输”。</text>
+    </view>
+  </view>
+
+  <view class="card section">
+    <text class="section-title">5. 特殊牌型（本房间家规）</text>
+    <view class="bullets">
+      <text class="bullet">- 顺子算0：若你的骰面为严格连续且不重复（如 1-2-3-4-5），则你对任何点数的贡献都计为 0。</text>
+      <text class="bullet">- 豹子加1：若你的骰面全相同（如全是 4），则该点数统计时额外 +1。</text>
+    </view>
+  </view>
+
+  <view class="card section">
+    <text class="section-title">6. 语音叫骰</text>
+    <view class="bullets">
+      <text class="bullet">- 按住语音键说话，松开发送语音。</text>
+      <text class="bullet">- 识别文本会自动解析成「X个Y」并填入叫骰面板；需你点击“确认叫骰”提交（避免误识别误操作）。</text>
+      <text class="bullet">- 支持常见口语/中文数字：如「十个四」「十二个六」「三六」（=3个6）。</text>
+    </view>
+  </view>
+</view>

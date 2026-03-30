@@ -1,0 +1,39 @@
+{
+  "pages": [
+    "pages/lobby/lobby",
+    "pages/store/store",
+    "pages/me/me",
+    "pages/rules/rules",
+    "pages/create-room/create-room",
+    "pages/room/room",
+    "pages/index/index",
+    "pages/legal/privacy/privacy",
+    "pages/legal/terms/terms"
+  ],
+  "window": {
+    "navigationBarTitleText": "摇骰子聚会助手",
+    "navigationBarBackgroundColor": "#1d1109",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#100d0c",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "custom": true,
+    "list": [
+      {
+        "pagePath": "pages/lobby/lobby",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/store/store",
+        "text": ""
+      },
+      {
+        "pagePath": "pages/me/me",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

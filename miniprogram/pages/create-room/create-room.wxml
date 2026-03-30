@@ -1,0 +1,68 @@
+<view class="page create-page">
+  <view class="mask-bg"></view>
+  <view class="panel">
+    <view class="panel-handle"></view>
+    <view class="panel-title">
+      <text class="panel-title__icon">🎲</text>
+      <text class="panel-title__text">创建房间</text>
+    </view>
+
+    <view class="block">
+      <text class="block-title">房间人数</text>
+      <view class="chip-row">
+        <block wx:for="{{playerCountOptions}}" wx:key="*this">
+          <view
+            class="chip {{playerCount === item ? 'active' : ''}}"
+            data-value="{{item}}"
+            bindtap="onSelectPlayerCount"
+          >{{item}}</view>
+        </block>
+      </view>
+    </view>
+
+    <view class="toggle-card" data-field="allowSpectator" bindtap="onToggleField">
+      <view class="toggle-copy">
+        <text class="toggle-title">允许旁观</text>
+        <text class="toggle-sub">非玩家可进入房间观战</text>
+      </view>
+      <view class="toggle-pill {{allowSpectator ? 'is-on' : ''}}">
+        <view class="toggle-pill__thumb"></view>
+      </view>
+    </view>
+
+    <view class="toggle-card" data-field="lockRoom" bindtap="onToggleField">
+      <view class="toggle-copy">
+        <text class="toggle-title">锁定房间</text>
+        <text class="toggle-sub">开局后禁止其他玩家继续加入</text>
+      </view>
+      <view class="toggle-pill {{lockRoom ? 'is-on' : ''}}">
+        <view class="toggle-pill__thumb"></view>
+      </view>
+    </view>
+
+    <view class="toggle-card" data-field="wildcardOneEnabled" bindtap="onToggleField">
+      <view class="toggle-copy">
+        <text class="toggle-title">通配 1</text>
+        <text class="toggle-sub">有人叫 1 之后通配效果失效</text>
+      </view>
+      <view class="toggle-pill {{wildcardOneEnabled ? 'is-on' : ''}}">
+        <view class="toggle-pill__thumb"></view>
+      </view>
+    </view>
+
+    <view class="toggle-card" wx:if="{{devtoolsMode}}" data-field="testMode" bindtap="onToggleField">
+      <view class="toggle-copy">
+        <text class="toggle-title">测试模式</text>
+        <text class="toggle-sub">仅开发工具环境显示</text>
+      </view>
+      <view class="toggle-pill {{testMode ? 'is-on' : ''}}">
+        <view class="toggle-pill__thumb"></view>
+      </view>
+    </view>
+
+    <text class="panel-note">默认每人 5 颗骰子，按当前规则创建后会直接进入房间。</text>
+
+    <button class="create-btn" bindtap="createAndEnter">创建并进入</button>
+    <button class="cancel-btn" bindtap="back">取消</button>
+  </view>
+</view>

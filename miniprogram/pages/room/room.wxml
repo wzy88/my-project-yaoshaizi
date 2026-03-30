@@ -1,0 +1,477 @@
+<view class="page room-screen room-phase-{{phase}}">
+  <view class="room-screen__aurora"></view>
+  <image class="room-screen__grain" src="/assets/figma-room-v2/4aa13b7c-1fb7-4d86-b2ae-da70ffc61b8f.svg" mode="aspectFill"></image>
+  <view class="room-screen__stars">
+    <view class="room-screen__star room-screen__star--1"></view>
+    <view class="room-screen__star room-screen__star--2"></view>
+    <view class="room-screen__star room-screen__star--3"></view>
+    <view class="room-screen__star room-screen__star--4"></view>
+    <view class="room-screen__star room-screen__star--5"></view>
+    <view class="room-screen__star room-screen__star--6"></view>
+    <view class="room-screen__star room-screen__star--7"></view>
+    <view class="room-screen__star room-screen__star--8"></view>
+  </view>
+
+  <view wx:if="{{showJoinPanel}}" class="room-entry-screen">
+    <view class="room-sheet room-sheet--join">
+      <view class="sheet-head">
+        <text class="sheet-title">创建 / 加入</text>
+      </view>
+      <view class="sheet-body">
+        <view class="join-field">
+          <text class="join-field__label">昵称</text>
+          <input class="join-input" value="{{nickname}}" placeholder="输入昵称" bindinput="onNicknameChange" />
+        </view>
+
+        <view class="join-field">
+          <text class="join-field__label">房间号</text>
+          <input class="join-input" value="{{joinRoomId}}" placeholder="输入房间号" bindinput="onJoinRoomIdChange" />
+        </view>
+
+        <view class="join-actions">
+          <view class="dock-btn dock-btn--gold" bindtap="joinRoom">
+            <text class="dock-btn__label">加入房间</text>
+          </view>
+          <view class="dock-btn dock-btn--ghost" bindtap="createRoom">
+            <text class="dock-btn__label">创建房间</text>
+          </view>
+        </view>
+
+        <view class="join-server-card">
+          <view class="join-server-card__head">
+            <text class="join-field__label">服务器地址</text>
+            <text class="join-server-card__action" bindtap="openWsConfig">修改</text>
+          </view>
+          <text class="join-server-card__value">{{wsUrl || '未设置'}}</text>
+          <text class="join-server-card__hint">{{pendingActionText || wsHintText}}</text>
+        </view>
+
+        <view class="join-advanced">
+          <view class="join-advanced__row">
+            <text class="join-advanced__label">出手方向</text>
+            <view class="segmented">
+              <view class="segmented__item {{createDirection === 'cw' ? 'is-active' : ''}}" data-dir="cw" bindtap="onSelectCreateDirection">顺时针</view>
+              <view class="segmented__item {{createDirection === 'ccw' ? 'is-active' : ''}}" data-dir="ccw" bindtap="onSelectCreateDirection">逆时针</view>
+            </view>
+          </view>
+
+          <view class="join-advanced__row">
+            <text class="join-advanced__label">每人骰子数</text>
+            <input class="join-input join-input--small" type="number" value="{{createDicePerPlayer}}" bindinput="onCreateDicePerPlayerChange" />
+          </view>
+
+          <view class="join-advanced__row">
+            <text class="join-advanced__label">起叫最小数量</text>
+            <input class="join-input join-input--small" type="number" value="{{createMinOpeningCount}}" bindinput="onCreateMinOpeningCountChange" />
+          </view>
+
+          <view class="join-advanced__row join-advanced__row--toggle">
+            <text class="join-advanced__label">通配1</text>
+            <switch checked="{{createWildcardOneEnabled}}" bindchange="onCreateWildcardChange" color="#d9a84f" />
+          </view>
+
+          <view class="join-advanced__row join-advanced__row--toggle">
+            <text class="join-advanced__label">测试模式</text>
+            <switch checked="{{createTestMode}}" bindchange="onCreateTestModeChange" color="#d9a84f" />
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:else class="room-shell">
+    <view class="room-topbar">
+      <view class="room-topbar__corner">
+        <view class="room-chrome-btn room-chrome-btn--menu" bindtap="toggleCornerPanel">
+          <image class="room-chrome-btn__icon" src="/assets/figma-room-v2/topbar-menu-icon.svg" mode="aspectFit"></image>
+        </view>
+      </view>
+
+      <view class="room-topbar__center">
+        <view class="room-topbar__room {{roomId ? 'is-copyable' : ''}}" bindtap="copyRoomId">
+          <text class="room-topbar__room-label">房号：</text>
+          <text class="room-topbar__room-value">{{roomId || '----'}}</text>
+        </view>
+      </view>
+
+      <view class="room-topbar__corner room-topbar__corner--right">
+        <view class="room-topbar__toggle" bindtap="onTapMore">
+          <view class="room-topbar__toggle-dots">
+            <view class="room-topbar__toggle-dot"></view>
+            <view class="room-topbar__toggle-dot"></view>
+            <view class="room-topbar__toggle-dot"></view>
+          </view>
+          <view class="room-topbar__toggle-divider"></view>
+          <view class="room-topbar__toggle-switch">
+            <image class="room-topbar__toggle-icon" src="/assets/figma-room-v2/topbar-switch-icon.svg" mode="aspectFit"></image>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="room-playfield">
+      <view class="room-stage">
+        <view class="room-stage__arena">
+          <view class="room-stage__table">
+            <view class="room-stage__halo"></view>
+            <view class="room-stage__table-frame"></view>
+            <view class="room-stage__table-felt"></view>
+            <view class="room-stage__table-line"></view>
+
+            <view class="room-stage__watermark">
+              <text class="room-stage__watermark-cn">吹牛</text>
+              <text class="room-stage__watermark-en">LIAR'S DICE</text>
+            </view>
+          </view>
+
+          <block wx:for="{{ghostSeats}}" wx:key="visualSlotIndex">
+            <view class="ghost-avatar ghost-avatar--{{item.slotClass || 'slot'}}" style="{{item.avatarStyle}}">
+              <view class="ghost-avatar__glow"></view>
+              <image class="ghost-avatar__img" src="{{item.avatarAsset}}" mode="aspectFit"></image>
+            </view>
+            <view class="ghost-cup ghost-cup--{{item.slotClass || 'slot'}}" style="{{item.cupStyle}}">
+              <view class="figma-cup">
+                <view class="figma-cup__shadow"></view>
+                <view class="figma-cup__rim"></view>
+                <view class="figma-cup__body"></view>
+                <view class="figma-cup__shine"></view>
+              </view>
+            </view>
+          </block>
+
+          <block wx:for="{{playersDecorated}}" wx:key="id">
+            <view wx:if="{{!item.isSelf}}"
+              class="seat seat--{{item.seatSlotClass}} {{item.selected ? 'is-selected' : ''}} {{item.id === currentPlayerId ? 'is-turn' : ''}}"
+              style="{{item.seatStyle}}"
+              data-id="{{item.id}}"
+              bindtap="onTapSeat"
+            >
+              <text wx:if="{{item.id === currentPlayerId}}" class="seat__turn-tag">当前</text>
+              <view class="seat__avatar-shell">
+                <view class="seat__avatar-stage"></view>
+                <image wx:if="{{item.displayAvatar}}"
+                  class="seat__avatar {{item.avatarFitClass}}"
+                  src="{{item.displayAvatar}}"
+                  mode="{{item.avatarMode}}"
+                  data-id="{{item.id}}"
+                  binderror="onSeatAvatarError"
+                ></image>
+                <view wx:else class="seat__avatar seat__avatar--text">{{item.avatarText}}</view>
+              </view>
+              <view class="seat__name-row">
+                <text class="seat__name">{{item.nicknameShort}}</text>
+              </view>
+              <view class="seat__meta-chip {{item.badgeClass}}">
+                <view class="seat__meta-dot"></view>
+                <text class="seat__meta-text">{{item.scoreText}}</text>
+              </view>
+            </view>
+          </block>
+
+          <block wx:for="{{playersDecorated}}" wx:key="id">
+            <view wx:if="{{!item.isSelf && item.showCup}}" class="seat-stage-cup seat-stage-cup--{{item.seatSlotClass}} {{item.cupToneClass}}" style="{{item.cupStageStyle}}">
+              <view class="figma-cup">
+                <view class="figma-cup__shadow"></view>
+                <view class="figma-cup__rim"></view>
+                <view class="figma-cup__body"></view>
+                <view class="figma-cup__shine"></view>
+              </view>
+            </view>
+          </block>
+
+          <block wx:for="{{playersDecorated}}" wx:key="id">
+            <view wx:if="{{item.callText && !item.isSelf}}" class="seat__bubble seat__bubble--{{item.bubbleSlotClass}} {{item.bubbleClass}}" style="{{item.bubbleStyle}}">
+              <text class="seat__bubble-count">{{item.callCount}}</text>
+              <text class="seat__bubble-unit">个</text>
+              <image wx:if="{{item.callPointAsset}}" class="seat__bubble-die" src="{{item.callPointAsset}}" mode="aspectFit"></image>
+            </view>
+          </block>
+        </view>
+
+        <view wx:if="{{phase === 'rolling' && !selfIsWaiting && !selfHasDice}}" class="shake-guide">
+          <text class="shake-guide__text">摇一摇开始本局</text>
+        </view>
+
+        <view wx:if="{{!callPanelVisible}}" class="room-shell__bottom-fade">
+          <view class="room-fab {{canPrimaryAction ? '' : 'is-disabled'}}" bindtap="onHudPrimaryAction">
+            <image class="room-fab__icon-image" src="/assets/figma-room-v2/die-cube-gold.svg" mode="aspectFit"></image>
+            <text wx:if="{{phase === 'rolling' && canPrimaryAction && !selfHasDice}}" class="room-fab__label">摇一摇</text>
+            <text wx:else class="room-fab__label">{{primaryActionText}}</text>
+          </view>
+          <text wx:if="{{selfCallHint}}" class="room-self-call-hint room-self-call-hint--floating">{{selfCallHint}}</text>
+        </view>
+
+        <view class="room-self">
+          <text wx:if="{{currentPlayerId === playerId}}" class="room-self__turn">轮到你</text>
+          <view class="room-self__dice-cup {{selfHasDice || myDiceRolling ? 'has-dice' : ''}} {{myDiceRolling ? 'is-rolling' : ''}} {{myDiceJustRevealed ? 'is-revealed' : ''}}">
+            <view class="room-self__dice-shadow"></view>
+            <view class="room-self__dice-pile">
+              <view class="room-self__dice-stack {{myDiceRolling ? 'is-rolling' : ''}}">
+                <block wx:for="{{roomSelfDiceFaces}}" wx:key="index">
+                  <image class="room-self__die room-self__die--{{index}}" src="{{item.asset}}" mode="aspectFit"></image>
+                </block>
+              </view>
+            </view>
+            <view class="room-self__dice-glass">
+              <view class="room-self__dice-rim"></view>
+              <view class="room-self__dice-gloss"></view>
+            </view>
+          </view>
+          <view class="room-self__identity">
+            <view class="room-self__avatar-shell">
+              <image wx:if="{{selfAvatarUrl}}" class="room-self__avatar" src="{{selfAvatarUrl}}" mode="aspectFill" binderror="onSelfAvatarError"></image>
+              <view wx:else class="room-self__avatar room-self__avatar--text">{{selfInitial || '玩'}}</view>
+            </view>
+            <text class="room-self__name">{{nickname || '玩家'}}（本人）</text>
+            <view class="room-self__meta">
+              <view class="room-self__meta-dot"></view>
+              <text class="room-self__meta-text">{{selfScoreText}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{callPanelVisible}}" class="call-phase-overlay" bindtap="closeCallPanel">
+      <view class="call-phase-panel" catchtap="noop">
+        <view wx:if="{{callSelectorMode !== 'point'}}" class="call-phase-panel__counts">
+          <block wx:for="{{callCountOptions}}" wx:key="value">
+            <view
+              class="call-phase-panel__count {{item.value === callCount ? 'is-active' : ''}} {{item.isTail ? 'is-tail' : ''}} {{callForcedOpen ? 'is-disabled' : ''}}"
+              data-value="{{item.value}}"
+              bindtap="onSelectCallCountOption"
+            >
+              <view class="call-phase-panel__count-sheen"></view>
+              <text class="call-phase-panel__count-text">{{item.label}}</text>
+              <view class="call-phase-panel__count-line"></view>
+            </view>
+          </block>
+        </view>
+
+        <view wx:if="{{callSelectorMode === 'point'}}" class="call-phase-panel__points">
+          <block wx:for="{{callPointOptionItems}}" wx:key="value">
+            <view
+              class="call-phase-panel__point-option {{item.value === callPoint ? 'is-active' : ''}} {{callForcedOpen ? 'is-disabled' : ''}}"
+              data-value="{{item.value}}"
+              bindtap="onSelectCallPointOption"
+            >
+              <view class="call-phase-panel__point-option-sheen"></view>
+              <image class="call-phase-panel__point-option-die" src="{{item.asset}}" mode="aspectFit"></image>
+            </view>
+          </block>
+        </view>
+
+        <view class="call-phase-panel__actions">
+          <view class="call-phase-panel__value-box" data-mode="count" bindtap="toggleCallSelectorMode">
+            <text class="call-phase-panel__value-text">{{callCount}}</text>
+          </view>
+          <text class="call-phase-panel__unit">个</text>
+          <view class="call-phase-panel__point-box {{callForcedOpen ? 'is-disabled' : ''}}" data-mode="point" bindtap="toggleCallSelectorMode">
+            <block wx:for="{{callPointOptionItems}}" wx:key="value">
+              <image wx:if="{{item.value === callPoint}}" class="call-phase-panel__point-die" src="{{item.asset}}" mode="aspectFit"></image>
+            </block>
+          </view>
+          <view class="call-phase-panel__btn call-phase-panel__btn--ghost {{canOpenAction ? '' : 'is-disabled'}}" bindtap="openDice">
+            <text class="call-phase-panel__btn-text call-phase-panel__btn-text--ghost">开牌</text>
+          </view>
+          <view class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen ? 'is-disabled' : ''}}" bindtap="makeCallWithInput">
+            <text class="call-phase-panel__btn-text">叫点</text>
+          </view>
+        </view>
+        <text wx:if="{{selfCallHint}}" class="room-self-call-hint room-self-call-hint--inline">{{selfCallHint}}</text>
+      </view>
+    </view>
+
+      <view wx:if="{{historyVisible || voiceVisible || chatVisible}}" class="room-drawer-overlay">
+        <view class="room-social__tabs">
+          <view class="room-social__tab {{historyVisible ? 'is-active' : ''}}" bindtap="toggleHistory">战绩</view>
+          <view class="room-social__tab {{voiceVisible ? 'is-active' : ''}}" bindtap="toggleVoiceList">语音</view>
+          <view class="room-social__tab {{chatVisible ? 'is-active' : ''}}" bindtap="toggleChatList">聊天</view>
+        </view>
+
+        <scroll-view wx:if="{{historyVisible}}" class="room-social__scroll" scroll-y="true">
+          <block wx:if="{{historyItems.length}}">
+            <block wx:for="{{historyItems}}" wx:key="round">
+              <view class="drawer-card">
+                <text class="drawer-card__title">第{{item.round}}局</text>
+                <text class="drawer-card__body">{{item.resultText}}</text>
+              </view>
+            </block>
+            <view wx:if="{{historyNextBeforeRound}}" class="drawer-more" bindtap="loadMoreHistory">加载更多</view>
+          </block>
+          <view wx:else class="drawer-empty">暂无战绩</view>
+        </scroll-view>
+
+        <scroll-view wx:elif="{{voiceVisible}}" class="room-social__scroll" scroll-y="true">
+          <block wx:if="{{voiceItems.length}}">
+            <block wx:for="{{voiceItems}}" wx:key="fileId">
+              <view class="drawer-card drawer-card--voice" data-id="{{item.fileId}}" bindtap="onTapVoiceItem">
+                <view class="drawer-card__row">
+                  <text class="drawer-card__title">{{item.nicknameShort}}</text>
+                  <text class="drawer-card__meta">{{item.timeText}} · {{item.durationText}}</text>
+                </view>
+                <text class="drawer-card__body drawer-card__body--light">{{playingVoiceId === item.fileId ? playingVoiceTip : voiceTipText}}</text>
+              </view>
+            </block>
+          </block>
+          <view wx:else class="drawer-empty">暂无语音</view>
+        </scroll-view>
+
+        <view wx:elif="{{chatVisible}}" class="room-social__chat">
+          <scroll-view class="room-social__scroll room-social__scroll--chat" scroll-y="true">
+            <block wx:if="{{chatItems.length}}">
+              <block wx:for="{{chatItems}}" wx:key="id">
+                <view class="drawer-card drawer-card--chat {{item.isSelf ? 'is-self' : ''}}">
+                  <view class="drawer-card__row">
+                    <text class="drawer-card__title">{{item.nicknameShort}}</text>
+                    <text class="drawer-card__meta">{{item.timeText}}</text>
+                  </view>
+                  <text class="drawer-card__body">{{item.text}}</text>
+                </view>
+              </block>
+            </block>
+            <view wx:else class="drawer-empty">暂无聊天</view>
+          </scroll-view>
+          <view class="room-social__composer">
+            <input class="room-social__input" value="{{chatDraft}}" placeholder="说点什么..." bindinput="onChatDraftChange" />
+            <view class="room-social__send" bindtap="sendChat">
+              <text class="room-social__send-text">发送</text>
+            </view>
+          </view>
+        </view>
+
+        <view wx:else class="room-social__empty">
+          <view class="drawer-empty">选择一个频道</view>
+        </view>
+      </view>
+  </view>
+
+  <view wx:if="{{cornerPanelVisible}}" class="room-mask" bindtap="closeCornerPanel">
+    <view class="room-sheet room-sheet--corner" catchtap="noop">
+      <view class="sheet-head">
+        <text class="sheet-title">更多</text>
+        <text class="sheet-close" bindtap="closeCornerPanel">关闭</text>
+      </view>
+      <view class="sheet-body sheet-body--empty"></view>
+    </view>
+  </view>
+
+  <view wx:if="{{settlementVisible}}" class="room-mask">
+    <view class="room-sheet room-sheet--settlement">
+      <view class="sheet-head">
+        <text class="sheet-title">本局结算</text>
+        <text class="sheet-close" bindtap="onSettlementContinue">继续</text>
+      </view>
+      <view class="sheet-body">
+        <view class="settlement-summary">
+          <text>{{settlementSummaryText}}</text>
+        </view>
+        <view class="settlement-list">
+          <block wx:for="{{settlementRows}}" wx:key="playerId">
+            <view class="settlement-row settlement-row--{{item.kind}}">
+              <view class="settlement-row__tag settlement-row__tag--{{item.kind}}">
+                <text>{{item.tagText || ' '}}</text>
+              </view>
+              <view class="settlement-row__left">
+                <view class="settlement-avatar">
+                  <image wx:if="{{item.avatarUrl}}" class="settlement-avatar__img" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+                  <view wx:else class="settlement-avatar__text">{{item.avatarText}}</view>
+                </view>
+                <view class="settlement-text">
+                  <text class="settlement-name">{{item.name}}</text>
+                  <text class="settlement-score settlement-score--{{item.scoreClass}}">✶ {{item.deltaText}}</text>
+                </view>
+              </view>
+              <view class="settlement-dice-list">
+                <block wx:if="{{item.diceItems && item.diceItems.length}}">
+                  <block wx:for="{{item.diceItems}}" wx:key="index">
+                    <image class="settlement-die" src="{{item.asset}}" mode="aspectFit"></image>
+                  </block>
+                </block>
+                <text wx:else class="settlement-dice settlement-dice--empty">—</text>
+              </view>
+            </view>
+          </block>
+        </view>
+        <view class="settlement-matrix">
+          <view class="settlement-matrix__row">
+            <text class="settlement-matrix__label">叫骰</text>
+            <view class="settlement-matrix__value">
+              <text>{{settlementDeclaredText}}</text>
+              <image wx:if="{{stageCallPointAsset}}" class="settlement-matrix__die" src="{{stageCallPointAsset}}" mode="aspectFit"></image>
+            </view>
+          </view>
+          <view class="settlement-matrix__row">
+            <text class="settlement-matrix__label">场上</text>
+            <view class="settlement-matrix__value">
+              <text>{{settlementActualText}}</text>
+              <image wx:if="{{stageCallPointAsset}}" class="settlement-matrix__die" src="{{stageCallPointAsset}}" mode="aspectFit"></image>
+            </view>
+          </view>
+        </view>
+        <view class="sheet-actions">
+          <view class="dock-btn dock-btn--subtle" bindtap="onSettlementContinue">
+            <text class="dock-btn__label">返回</text>
+          </view>
+          <view class="dock-btn dock-btn--gold" bindtap="onSettlementContinue">
+            <text class="dock-btn__label">继续({{settlementContinueSec || 0}}s)</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{seatingVisible}}" class="room-mask">
+    <view class="room-sheet room-sheet--seating">
+      <view class="sheet-head">
+        <text class="sheet-title">房主排位</text>
+        <text class="sheet-close" bindtap="closeSeatingPanel">关闭</text>
+      </view>
+      <view class="sheet-body">
+        <view class="seat-info">
+          <text>{{seatingSelectedText}}</text>
+          <text class="seat-info__hint">先选中一名玩家，再点目标座位完成移动或交换</text>
+        </view>
+
+        <view class="seat-direction">
+          <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'cw' ? 'is-active' : ''}}" data-dir="cw" bindtap="onSeatingSelectDirection">顺时针</view>
+          <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'ccw' ? 'is-active' : ''}}" data-dir="ccw" bindtap="onSeatingSelectDirection">逆时针</view>
+          <view class="seat-direction__item seat-direction__item--ghost" bindtap="clearSeatingSelection">清空</view>
+        </view>
+
+        <view class="seat-grid">
+          <block wx:for="{{seatRows}}" wx:key="seatIndex">
+            <view class="seat-grid__item {{item.selected ? 'is-selected' : ''}} {{item.occupied ? 'is-occupied' : ''}} {{item.hintClass}}" data-seat="{{item.seatIndex}}" bindtap="onTapSeatRow">
+              <view class="seat-grid__row">
+                <text class="seat-grid__num">{{item.seatIndex}}号</text>
+                <text class="seat-grid__label">{{item.label}}</text>
+              </view>
+              <text class="seat-grid__action">{{item.actionText}}</text>
+            </view>
+          </block>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{showLegalModal}}" class="room-mask">
+    <view class="room-sheet room-sheet--legal">
+      <view class="sheet-head">
+        <text class="sheet-title">隐私与协议</text>
+      </view>
+      <view class="sheet-body">
+        <view class="legal-copy">
+          <text>• 语音识别仅在叫牌时使用。</text>
+          <text>• 房间信息只用于对局同步。</text>
+          <text>• 点击同意后继续进入游戏。</text>
+        </view>
+        <view class="sheet-actions">
+          <view class="dock-btn dock-btn--gold" bindtap="acceptLegal">
+            <text class="dock-btn__label">同意并继续</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+</view>

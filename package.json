@@ -1,0 +1,19 @@
+{
+  "name": "dice-party-miniapp",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run -w @dice/shared build && npm run -w @dice/server build",
+    "dev:server": "npm run -w @dice/server dev",
+    "typecheck": "npm run -w @dice/shared build && npm run -w @dice/server typecheck",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "test:smoke": "DICE_WS_SMOKE=1 npm test"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  }
+}

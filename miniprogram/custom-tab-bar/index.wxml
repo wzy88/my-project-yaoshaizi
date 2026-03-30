@@ -1,0 +1,27 @@
+<view class="tab-shell">
+  <view class="tab-inner">
+    <view class="tab-item {{selected === 0 ? 'active' : ''}}" data-index="0" data-path="/pages/lobby/lobby" bindtap="onSwitchTab">
+      <view class="tab-icon tab-icon--home">
+        <view class="icon-home__roof"></view>
+        <view class="icon-home__body"></view>
+      </view>
+      <text class="tab-label">{{tabs[0].text}}</text>
+    </view>
+
+    <view class="tab-center-wrap">
+      <view class="tab-center {{selected === 1 ? 'active' : ''}}" bindtap="onCenterTap">
+        <view class="tab-center-ball">
+          <image class="tab-center-ball__die" src="/assets/figma-room-v2/9b8ee1a1-733d-4cea-bae9-76357c6c7fc8.svg" mode="aspectFit"></image>
+        </view>
+      </view>
+    </view>
+
+    <view class="tab-item {{selected === 2 ? 'active' : ''}}" data-index="2" data-path="/pages/me/me" bindtap="onSwitchTab">
+      <view class="tab-icon tab-icon--me">
+        <view class="icon-me__head"></view>
+        <view class="icon-me__body"></view>
+      </view>
+      <text class="tab-label">{{tabs[2].text}}</text>
+    </view>
+  </view>
+</view>

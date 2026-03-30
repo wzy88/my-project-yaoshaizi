@@ -1,0 +1,26 @@
+page {
+  background: #0f0c0b;
+  color: #f6edd9;
+  min-height: 100%;
+  font-size: 27rpx;
+  line-height: 1.45;
+  font-family: "PingFang SC", "SF Pro SC", "Helvetica Neue", sans-serif;
+}
+
+button::after {
+  border: none;
+}
+
+button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+input {
+  letter-spacing: 0.5rpx;
+}

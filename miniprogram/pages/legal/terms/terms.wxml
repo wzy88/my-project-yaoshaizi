@@ -1,0 +1,31 @@
+<scroll-view class="legal-page" scroll-y>
+  <view class="legal-wrap">
+    <text class="legal-h1">摇骰子聚会助手用户协议</text>
+    <text class="legal-meta">版本：1.0.0</text>
+    <text class="legal-meta">更新日期：2026-03-04</text>
+
+    <text class="legal-h2">1. 协议适用范围</text>
+    <text class="legal-p">本协议适用于你使用“摇骰子聚会助手”小程序提供的全部功能与服务。</text>
+
+    <text class="legal-h2">2. 账户与使用</text>
+    <text class="legal-p">你应妥善保管账户信息，不得冒用他人身份。你需对账户下发生的行为负责。</text>
+
+    <text class="legal-h2">3. 行为规范</text>
+    <text class="legal-p">你不得发布违法违规信息，不得进行赌博、欺诈、恶意刷量、攻击服务等行为。若发现违规，我们有权采取限制措施。</text>
+
+    <text class="legal-h2">4. 服务说明</text>
+    <text class="legal-p">本产品定位为休闲娱乐工具，不提供现金下注、兑付或任何形式的真实货币交易。</text>
+
+    <text class="legal-h2">5. 知识产权</text>
+    <text class="legal-p">产品界面、代码、文案、图标等内容受法律保护。未经授权，不得复制或用于商业传播。</text>
+
+    <text class="legal-h2">6. 免责声明</text>
+    <text class="legal-p">因网络波动、系统维护或不可抗力导致的中断，我们将尽力恢复，但不承担超出法律规定范围的责任。</text>
+
+    <text class="legal-h2">7. 协议变更</text>
+    <text class="legal-p">协议更新后将通过页面公告或弹窗提示。继续使用即视为接受更新内容。</text>
+
+    <text class="legal-h2">8. 联系方式</text>
+    <text class="legal-p">如对协议有疑问，请通过产品内反馈入口联系运营团队。</text>
+  </view>
+</scroll-view>
