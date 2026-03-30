@@ -66,6 +66,10 @@ HOST=127.0.0.1 PORT=3003 npm run dev:server
 
 见：[手机真机联调-WSS隧道指南.md](/Users/wzy/Desktop/CodeX-20260303/摇骰子/手机真机联调-WSS隧道指南.md)
 
+## Git 工作流
+
+见：[docs/git-workflow.md](/Users/wzy/Desktop/CodeX-20260303/摇骰子/docs/git-workflow.md)
+
 ## 下一步建议
 
 - 按 `RoomStateDTO` 增加断线重连 token 与重进房间能力
