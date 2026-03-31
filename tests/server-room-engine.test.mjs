@@ -52,6 +52,17 @@ test("room engine: roll capped at 5; lock prevents further roll", () => {
   assert.throws(() => engine.rollForPlayer("P_OWNER"), (err) => err && err.code === ErrorCode.FORBIDDEN);
 });
 
+test("room engine: public room state exposes roll count this round", () => {
+  const engine = createEngine();
+  engine.startGame("P_OWNER");
+
+  engine.rollForPlayer("P_OWNER");
+  engine.rollForPlayer("P_OWNER");
+
+  const owner = engine.getState().players.find((player) => player.id === "P_OWNER");
+  assert.equal(owner && owner.rollCountThisRound, 2);
+});
+
 test("room engine: finishRolling auto-rolls and enters calling", () => {
   const engine = createEngine();
   engine.startGame("P_OWNER");

@@ -1,3 +1,5 @@
+const { HOME_HERO_DICE_ASSETS } = require("../../utils/dice-assets");
+
 function buildTimeText() {
   const date = new Date();
   const hh = String(date.getHours()).padStart(2, "0");
@@ -7,7 +9,8 @@ function buildTimeText() {
 
 Page({
   data: {
-    timeText: "09:41"
+    timeText: "09:41",
+    heroDiceAssets: HOME_HERO_DICE_ASSETS
   },
 
   onShow() {

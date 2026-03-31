@@ -5,6 +5,7 @@ import path from "node:path";
 
 const roomWxmlPath = path.join(process.cwd(), "miniprogram/pages/room/room.wxml");
 const roomJsPath = path.join(process.cwd(), "miniprogram/pages/room/room.js");
+const roomWxssPath = path.join(process.cwd(), "miniprogram/pages/room/room.wxss");
 
 test("room call panel switches between count and point selectors", () => {
   const roomWxml = fs.readFileSync(roomWxmlPath, "utf8");
@@ -23,6 +24,7 @@ test("room call panel switches between count and point selectors", () => {
 test("room call panel opens manually during calling and supports overlay close", () => {
   const roomWxml = fs.readFileSync(roomWxmlPath, "utf8");
   const roomJs = fs.readFileSync(roomJsPath, "utf8");
+  const roomWxss = fs.readFileSync(roomWxssPath, "utf8");
 
   assert.match(roomWxml, /<view wx:if="\{\{callPanelVisible\}\}" class="call-phase-overlay"( style="\{\{callPhaseOverlayStyle\}\}")? bindtap="closeCallPanel">/);
   assert.match(roomWxml, /<view class="call-phase-panel" catchtap="noop">/);
@@ -30,4 +32,14 @@ test("room call panel opens manually during calling and supports overlay close",
   assert.doesNotMatch(roomJs, /const callPanelVisible = isMyCallingTurn;/);
   assert.match(roomJs, /primaryActionText = callForcedOpen \? "开牌" : "叫牌";/);
   assert.match(roomJs, /if \(!forcedOpen\) \{\s*this\.openCallPanel\(\);\s*return;\s*\}/);
+  assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*top:\s*0/);
+  assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*display:\s*flex/);
+  assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*align-items:\s*flex-end/);
+});
+
+test("room call panel stays content-sized instead of reserving an empty lower half", () => {
+  const roomWxss = fs.readFileSync(roomWxssPath, "utf8");
+
+  assert.doesNotMatch(roomWxss, /\.call-phase-panel\s*\{[\s\S]*min-height:\s*560rpx/);
+  assert.match(roomWxss, /\.call-phase-panel\s*\{[\s\S]*padding:\s*24rpx 24rpx 28rpx/);
 });

@@ -16,9 +16,9 @@
 
   <view class="hero-card">
     <view class="logo-row">
-      <image class="dice dice--left" src="/assets/figma-room-v2/9b8ee1a1-733d-4cea-bae9-76357c6c7fc8.svg" mode="aspectFit"></image>
-      <image class="dice dice--center" src="/assets/figma-room-v2/e7672a33-634f-4afd-b16a-b409ec77521b.svg" mode="aspectFit"></image>
-      <image class="dice dice--right" src="/assets/figma-room-v2/87c0efa4-6afb-4f01-aa86-041b0f6969d7.svg" mode="aspectFit"></image>
+      <image class="dice dice--left" src="{{heroDiceAssets[0]}}" mode="aspectFit"></image>
+      <image class="dice dice--center" src="{{heroDiceAssets[1]}}" mode="aspectFit"></image>
+      <image class="dice dice--right" src="{{heroDiceAssets[2]}}" mode="aspectFit"></image>
     </view>
 
     <text class="title">摇骰子</text>

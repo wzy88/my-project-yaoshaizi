@@ -306,19 +306,19 @@
             <text class="settlement-matrix__label">叫骰</text>
             <view class="settlement-matrix__value">
               <text>{{settlementDeclaredText}}</text>
-              <image wx:if="{{stageCallPointAsset}}" class="settlement-matrix__die" src="{{stageCallPointAsset}}" mode="aspectFit"></image>
+              <image wx:if="{{settlementPointAsset}}" class="settlement-matrix__die" src="{{settlementPointAsset}}" mode="aspectFit"></image>
             </view>
           </view>
           <view class="settlement-matrix__row">
             <text class="settlement-matrix__label">场上</text>
             <view class="settlement-matrix__value">
               <text>{{settlementActualText}}</text>
-              <image wx:if="{{stageCallPointAsset}}" class="settlement-matrix__die" src="{{stageCallPointAsset}}" mode="aspectFit"></image>
+              <image wx:if="{{settlementPointAsset}}" class="settlement-matrix__die" src="{{settlementPointAsset}}" mode="aspectFit"></image>
             </view>
           </view>
         </view>
-        <view class="sheet-actions">
-          <view class="dock-btn dock-btn--gold" bindtap="onSettlementContinue">
+        <view wx:if="{{settlementCanContinue}}" class="sheet-actions">
+          <view class="dock-btn dock-btn--settlement" bindtap="onSettlementContinue">
             <text class="dock-btn__label">继续({{settlementContinueSec || 0}}s)</text>
           </view>
         </view>

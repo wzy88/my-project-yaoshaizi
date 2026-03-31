@@ -463,7 +463,85 @@ test("room page: room state decorates the shell once room data is ready", () => 
   }
 });
 
-test("room page: only the loser sees the settlement dialog", () => {
+test("room page: hitting the 5-roll cap makes further roll attempts a silent no-op", () => {
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    let hapticCalls = 0;
+    let sfxCalls = 0;
+    let rollingCalls = 0;
+    const sent = [];
+
+    page.haptic = () => {
+      hapticCalls += 1;
+    };
+    page.playSfx = () => {
+      sfxCalls += 1;
+    };
+    page.showMyDiceDrawerRolling = () => {
+      rollingCalls += 1;
+    };
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+
+    page.data.playerId = "player-a";
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "123456",
+        phase: "rolling",
+        round: 1,
+        currentPlayerId: "player-a",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false
+        },
+        players: [
+          {
+            id: "player-a",
+            nickname: "手机玩家",
+            avatar: "",
+            isOwner: true,
+            onlineStatus: "online",
+            turnStatus: "active",
+            seatIndex: 1,
+            diceCupStatus: "open",
+            rollLocked: false,
+            rollCountThisRound: 5
+          }
+        ],
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 2,
+        serverTs: Date.now()
+      }
+    }));
+
+    page.rollDice();
+
+    assert.equal(page.data.selfRollCountThisRound, 5);
+    assert.equal(hapticCalls, 0);
+    assert.equal(sfxCalls, 0);
+    assert.equal(rollingCalls, 0);
+    assert.deepEqual(sent, []);
+    assert.deepEqual(toasts, []);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: all players see the settlement dialog and only the loser can continue", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -508,11 +586,15 @@ test("room page: only the loser sees the settlement dialog", () => {
 
     page.data.playerId = "winner";
     page.showSettlementPanel(openResult, roundSummary);
-    assert.equal(page.data.settlementVisible, false);
+    assert.equal(page.data.settlementVisible, true);
+    assert.equal(page.data.settlementCanContinue, false);
+    assert.equal(page.data.settlementDeclaredText, "10个");
+    assert.equal(page.data.settlementActualText, "5个");
 
     page.data.playerId = "loser";
     page.showSettlementPanel(openResult, roundSummary);
     assert.equal(page.data.settlementVisible, true);
+    assert.equal(page.data.settlementCanContinue, true);
     assert.equal(page.data.settlementRows.length, 2);
   } finally {
     cleanup();

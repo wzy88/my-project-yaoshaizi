@@ -1,4 +1,5 @@
 const { LEGAL_ACCEPT_KEY, SESSION_KEY, NICKNAME_KEY } = require("../../utils/constants");
+const { LOBBY_FLOAT_DICE_ASSETS, LOBBY_CREATE_DIE_ASSET } = require("../../utils/dice-assets");
 
 function safeDecodeComponent(raw) {
   const value = String(raw || "");
@@ -21,6 +22,8 @@ function buildTimeText() {
 Page({
   data: {
     timeText: "10:21",
+    floatDiceAssets: LOBBY_FLOAT_DICE_ASSETS,
+    createButtonDieAsset: LOBBY_CREATE_DIE_ASSET,
     nickname: "",
     joinRoomId: "",
     legalAccepted: false,

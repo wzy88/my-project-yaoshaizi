@@ -4,8 +4,8 @@
   <view class="bg-glow bg-glow--top"></view>
   <view class="bg-glow bg-glow--bottom"></view>
 
-  <image class="float-die float-die--a" src="/assets/figma-room-v2/9b8ee1a1-733d-4cea-bae9-76357c6c7fc8.svg" mode="aspectFit"></image>
-  <image class="float-die float-die--b" src="/assets/figma-room-v2/e7672a33-634f-4afd-b16a-b409ec77521b.svg" mode="aspectFit"></image>
+  <image class="float-die float-die--a" src="{{floatDiceAssets[0]}}" mode="aspectFit"></image>
+  <image class="float-die float-die--b" src="{{floatDiceAssets[1]}}" mode="aspectFit"></image>
 
   <view class="status-row">
     <text class="status-time">{{timeText}}</text>
@@ -77,7 +77,7 @@
 
   <view class="bottom-action">
     <button class="create-btn" bindtap="goCreateRoom">
-      <image class="create-btn__die" src="/assets/figma-room-v2/9b8ee1a1-733d-4cea-bae9-76357c6c7fc8.svg" mode="aspectFit"></image>
+      <image class="create-btn__die" src="{{createButtonDieAsset}}" mode="aspectFit"></image>
       <text class="create-btn__text">创建新局</text>
     </button>
   </view>

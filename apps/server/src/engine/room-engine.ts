@@ -176,7 +176,6 @@ export class RoomEngine {
         privateDice: _privateDice,
         hasRolled: _hasRolled,
         hasBidThisRound: _hasBidThisRound,
-        rollCountThisRound: _rollCountThisRound,
         pendingRemoval: _pendingRemoval,
         ...publicState
       }) => publicState);

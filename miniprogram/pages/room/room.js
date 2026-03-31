@@ -1,5 +1,6 @@
 const app = getApp();
 const { LEGAL_ACCEPT_KEY, WS_URL_KEY, SESSION_KEY, NICKNAME_KEY, AVATAR_URL_KEY, SFX_ENABLED_KEY, HAPTIC_ENABLED_KEY } = require("../../utils/constants");
+const { DEFAULT_3D_DIE_ASSET, SELF_DICE_PLACEHOLDER, getDieAsset } = require("../../utils/dice-assets");
 const { isDevtoolsPlatform, getNavigationSafeArea } = require("../../utils/system-info");
 const ROOM_ASSETS = {
   avatarA: "/assets/figma-room-v2/39b17e1f-9114-410f-85d5-2e5a189fbf74.svg",
@@ -10,34 +11,16 @@ const ROOM_ASSETS = {
   avatarF: "/assets/figma-room-v2/bf7e06ef-5ad9-474e-b2b3-6bbd604fb91f.svg"
 };
 
-const FIGMA_DIE_ASSETS = {
-  1: "/assets/figma-room-v2/die-cube-1.svg",
-  2: "/assets/figma-room-v2/die-cube-2.svg",
-  3: "/assets/figma-room-v2/die-cube-gold.svg",
-  4: "/assets/figma-room-v2/die-cube-4.svg",
-  5: "/assets/figma-room-v2/die-cube-5.svg",
-  6: "/assets/figma-room-v2/die-cube-6.svg"
-};
-
-const FIGMA_DIE_3D_ASSET = FIGMA_DIE_ASSETS[3];
-
-const FIGMA_SELF_DICE_PLACEHOLDER = [2, 4, 5, 2, 6];
-
-function getFigmaDieAsset(point) {
-  const key = Number(point);
-  return FIGMA_DIE_ASSETS[key] || "";
-}
-
-function buildSelfDiceFallback(count = FIGMA_SELF_DICE_PLACEHOLDER.length) {
+function buildSelfDiceFallback(count = SELF_DICE_PLACEHOLDER.length) {
   const size = Number(count);
-  const expected = Number.isInteger(size) && size > 0 ? size : FIGMA_SELF_DICE_PLACEHOLDER.length;
-  return Array.from({ length: expected }, (_, index) => FIGMA_SELF_DICE_PLACEHOLDER[index % FIGMA_SELF_DICE_PLACEHOLDER.length]);
+  const expected = Number.isInteger(size) && size > 0 ? size : SELF_DICE_PLACEHOLDER.length;
+  return Array.from({ length: expected }, (_, index) => SELF_DICE_PLACEHOLDER[index % SELF_DICE_PLACEHOLDER.length]);
 }
 
 function buildSelfDiceDisplayItems() {
   return Array.from({ length: 5 }, (_, index) => ({
     value: 0,
-    asset: FIGMA_DIE_3D_ASSET,
+    asset: DEFAULT_3D_DIE_ASSET,
     stackClass: `stack-${index % 5}`
   }));
 }
@@ -45,7 +28,7 @@ function buildSelfDiceDisplayItems() {
 function buildDiceFaceItems(values) {
   return (Array.isArray(values) ? values : []).map((value, index) => ({
     value: Number(value) || 0,
-    asset: getFigmaDieAsset(value),
+    asset: getDieAsset(value),
     stackClass: `stack-${index % 5}`
   }));
 }
@@ -55,7 +38,7 @@ function buildSettlementDiceItems(values, highlightValue = 0) {
     const num = Number(value) || 0;
     return {
       value: num,
-      asset: getFigmaDieAsset(num),
+      asset: getDieAsset(num),
       highlighted: num === Number(highlightValue || 0),
       index
     };
@@ -90,8 +73,13 @@ function getSeatAvatarPresentation(avatarSrc, fallbackIndex) {
 }
 
 const FIGMA_SCORE_FALLBACKS = [12500, 9800, 14200, 21000, 8700, 15400, 10500, 28000];
+const MAX_ROLLS_PER_ROUND = 5;
 
 const DICE_FACE_SYMBOLS = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+
+function hasSelfRollsRemaining(data) {
+  return (Number(data && data.selfRollCountThisRound) || 0) < MAX_ROLLS_PER_ROUND;
+}
 
 function resolveSeatCupToneClass(player) {
   const status = player && player.diceCupStatus;
@@ -224,8 +212,9 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
 
   return {
     summaryText: `【${getPlayerName(openerId)}】 开 【${getPlayerName(targetId)}】`,
-    declaredText: `${declaredCount}个 ${declaredFace}`,
-    actualText: `${actualCount}个 ${declaredFace}`,
+    declaredText: `${declaredCount}个`,
+    actualText: `${actualCount}个`,
+    pointAsset: getDieAsset(declaredPoint),
     rows,
     loserId
   };
@@ -680,7 +669,7 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
       isLatestCall,
       callCount,
       callPoint,
-      callPointAsset: getFigmaDieAsset(callPoint),
+      callPointAsset: getDieAsset(callPoint),
       scoreText,
       canSelect: player.id !== selfPlayerId,
       selected: selectedSet.has(player.id)
@@ -1187,11 +1176,12 @@ Page({
     playersRaw: [],
     playersDecorated: [],
     waitingPlayersRaw: [],
-	    selfIsWaiting: false,
-	    selfIsOwner: false,
-	    selfHasDice: false,
-	    selfHasCalled: false,
-	    selfRollLocked: false,
+    selfIsWaiting: false,
+    selfIsOwner: false,
+    selfHasDice: false,
+    selfHasCalled: false,
+    selfRollLocked: false,
+    selfRollCountThisRound: 0,
     playerCount: 0,
     selectedTargetIds: [],
     ghostSeats: [],
@@ -1223,12 +1213,14 @@ Page({
     settlementSummaryText: "",
     settlementDeclaredText: "",
     settlementActualText: "",
+    settlementPointAsset: "",
     settlementRows: [],
+    settlementCanContinue: false,
     settlementContinueSec: 0,
-	    lastCallKey: "",
-	    callTimeline: [],
-	    turnCountdownSec: 0,
-	    myDiceVisible: false,
+    lastCallKey: "",
+    callTimeline: [],
+    turnCountdownSec: 0,
+    myDiceVisible: false,
     myDicePeekVisible: false,
     myDiceRolling: false,
     myDiceJustRevealed: false,
@@ -1260,10 +1252,10 @@ Page({
     hideSocialUi: false,
     voiceItemsRaw: [],
     voiceItems: [],
-	    playingVoiceId: "",
-	    playingVoiceTip: "点击语音可播放",
-	    sfxEnabled: true,
-	    hapticEnabled: true,
+    playingVoiceId: "",
+    playingVoiceTip: "点击语音可播放",
+    sfxEnabled: true,
+    hapticEnabled: true,
     clockText: formatClock(Date.now()),
     featuredPlayerName: "",
     featuredPlayerAvatar: "",
@@ -1738,6 +1730,7 @@ Page({
         && !this.data.selfIsWaiting
         && this.data.phase === "rolling"
         && !this.data.selfRollLocked
+        && hasSelfRollsRemaining(this.data)
         && !this.data.recording
         && !this.data.myDiceRolling;
       if (!canShakeRoll) {
@@ -2435,8 +2428,25 @@ Page({
   },
 
   rollDice() {
+    if (
+      this.data.phase !== "rolling"
+      || this.data.selfIsWaiting
+      || this.data.selfRollLocked
+      || !hasSelfRollsRemaining(this.data)
+      || this.data.recording
+      || this.data.myDiceRolling
+    ) {
+      return;
+    }
+
     this.haptic("light");
     this.playSfx("roll");
+    this.setData({
+      selfRollCountThisRound: Math.min(
+        MAX_ROLLS_PER_ROUND,
+        (Number(this.data.selfRollCountThisRound) || 0) + 1
+      )
+    });
     this.showMyDiceDrawerRolling();
     this.sendEvent("dice:roll", {});
   },
@@ -2638,18 +2648,21 @@ Page({
     }
 
     const selfId = String(this.data.playerId || "");
-    if (!model.loserId || selfId !== String(model.loserId)) {
-      this.hideSettlementPanel();
-      return;
+    const settlementCanContinue = Boolean(model.loserId) && selfId === String(model.loserId);
+    if (settlementCanContinue) {
+      this.startSettlementCountdown(2);
+    } else {
+      this.clearSettlementCountdown();
     }
-
-    this.startSettlementCountdown(2);
     this.setData({
       settlementVisible: true,
       settlementSummaryText: model.summaryText,
       settlementDeclaredText: model.declaredText,
       settlementActualText: model.actualText,
-      settlementRows: model.rows
+      settlementPointAsset: model.pointAsset,
+      settlementRows: model.rows,
+      settlementCanContinue,
+      settlementContinueSec: settlementCanContinue ? this.data.settlementContinueSec : 0
     });
   },
 
@@ -2662,7 +2675,9 @@ Page({
       settlementSummaryText: "",
       settlementDeclaredText: "",
       settlementActualText: "",
+      settlementPointAsset: "",
       settlementRows: [],
+      settlementCanContinue: false,
       settlementContinueSec: 0
     });
   },
@@ -2685,7 +2700,9 @@ Page({
       settlementSummaryText: "",
       settlementDeclaredText: "",
       settlementActualText: "",
+      settlementPointAsset: "",
       settlementRows: [],
+      settlementCanContinue: false,
       settlementContinueSec: 0,
       privateDice: [],
       privateDiceFaces: [],
@@ -2693,6 +2710,7 @@ Page({
       roomSelfDiceFaces: buildSelfDiceDisplayItems(),
       selfHasDice: false,
       selfHasCalled: false,
+      selfRollCountThisRound: 0,
       myDiceVisible: false,
       myDicePeekVisible: false,
       myDiceRolling: false,
@@ -3646,6 +3664,7 @@ Page({
         const selfIsOwner = Boolean(self && self.isOwner);
         const selfHasCalled = Boolean(self && self.currentCall);
         const selfRollLocked = Boolean(self && self.rollLocked);
+        const selfRollCountThisRound = Number(self && self.rollCountThisRound) || 0;
         const selfAvatarUrl = (self && self.avatar) ? self.avatar : (this.data.avatarUrl || "");
         const selfScoreText = selfDecorated
           ? String(selfDecorated.scoreText || "")
@@ -3947,6 +3966,7 @@ Page({
           selfHasCalled,
           selfHasDice: hasDice,
           selfRollLocked,
+          selfRollCountThisRound,
           selfAvatarUrl,
           selfScoreText,
           playerCount,
@@ -3977,7 +3997,7 @@ Page({
           stageCallTicker,
           stageCallCount,
           stageCallPoint,
-          stageCallPointAsset: getFigmaDieAsset(stageCallPoint),
+          stageCallPointAsset: getDieAsset(stageCallPoint),
           stageCallBy,
           stageCallBump: stageCallBump ? true : this.data.stageCallBump,
           stageShowProgress,
@@ -3986,7 +4006,9 @@ Page({
           settlementSummaryText: settlementVisible ? this.data.settlementSummaryText : "",
           settlementDeclaredText: settlementVisible ? this.data.settlementDeclaredText : "",
           settlementActualText: settlementVisible ? this.data.settlementActualText : "",
+          settlementPointAsset: settlementVisible ? this.data.settlementPointAsset : "",
           settlementRows: settlementVisible ? this.data.settlementRows : [],
+          settlementCanContinue: settlementVisible ? this.data.settlementCanContinue : false,
           settlementContinueSec: settlementVisible ? this.data.settlementContinueSec : 0,
           privateDice: (selfIsWaiting || roundChanged) ? [] : this.data.privateDice,
           privateDiceText: (selfIsWaiting || roundChanged) ? "-" : this.data.privateDiceText,
@@ -4587,6 +4609,8 @@ Page({
       selfIsOwner: false,
       selfHasDice: false,
       selfHasCalled: false,
+      selfRollLocked: false,
+      selfRollCountThisRound: 0,
       playerCount: 0,
       selectedTargetIds: [],
       privateDice: [],
@@ -4616,7 +4640,9 @@ Page({
       settlementSummaryText: "",
       settlementDeclaredText: "",
       settlementActualText: "",
+      settlementPointAsset: "",
       settlementRows: [],
+      settlementCanContinue: false,
       settlementContinueSec: 0,
       lastCallKey: "",
       callTimeline: [],
@@ -4727,7 +4753,9 @@ Page({
       settlementSummaryText: "",
       settlementDeclaredText: "",
       settlementActualText: "",
+      settlementPointAsset: "",
       settlementRows: [],
+      settlementCanContinue: false,
       settlementContinueSec: 0,
       callCount: "3",
       callPoint: "6",
@@ -4752,6 +4780,8 @@ Page({
       myDiceDisplayFaces: buildDiceFaceItems(buildSelfDiceFallback(5)),
       roomSelfDiceFaces: buildSelfDiceDisplayItems(),
       myDiceSummaryText: "—",
+      selfRollLocked: false,
+      selfRollCountThisRound: 0,
     });
   },
 

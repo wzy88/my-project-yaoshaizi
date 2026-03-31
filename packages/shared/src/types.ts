@@ -32,6 +32,7 @@ export interface PlayerState {
   seatIndex: number;
   diceCupStatus: DiceCupStatus;
   rollLocked: boolean;
+  rollCountThisRound: number;
   currentCall?: DiceCall;
 }
 

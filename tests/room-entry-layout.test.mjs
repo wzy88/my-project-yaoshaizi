@@ -103,6 +103,22 @@ test("settlement dialog keeps only the bottom continue action", () => {
   const source = fs.readFileSync(roomWxmlPath, "utf8");
   assert.doesNotMatch(source, /sheet-close"\s+bindtap="onSettlementContinue">继续/);
   assert.doesNotMatch(source, />返回</);
+  assert.match(source, /wx:if="\{\{settlementCanContinue\}\}" class="sheet-actions"/);
+});
+
+test("room self dice render above the glass layer for crisp visibility", () => {
+  const source = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(source, /\.room-self__dice-pile\s*\{[\s\S]*z-index:\s*4/);
+  assert.match(source, /\.room-self__dice-stack\s*\{[\s\S]*z-index:\s*4/);
+  assert.match(source, /\.room-self__dice-glass\s*\{[\s\S]*z-index:\s*1/);
+});
+
+test("room self glass stays subtle so the dice do not look foggy", () => {
+  const source = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(source, /\.room-self__dice-glass\s*\{[\s\S]*rgba\(255,\s*255,\s*255,\s*0\.09\)/);
+  assert.match(source, /\.room-self__dice-glass\s*\{[\s\S]*rgba\(0,\s*0,\s*0,\s*0\.1\)/);
+  assert.match(source, /\.room-self__dice-cup\.has-dice\s+\.room-self__dice-glass\s*\{[\s\S]*rgba\(255,\s*255,\s*255,\s*0\.12\)/);
+  assert.match(source, /\.room-self__dice-cup\.has-dice\s+\.room-self__dice-glass\s*\{[\s\S]*rgba\(0,\s*0,\s*0,\s*0\.26\)/);
 });
 
 test("owner start button copy no longer includes the minimum-player hint", () => {
