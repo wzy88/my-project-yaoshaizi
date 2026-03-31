@@ -24,7 +24,7 @@ test("room call panel opens manually during calling and supports overlay close",
   const roomWxml = fs.readFileSync(roomWxmlPath, "utf8");
   const roomJs = fs.readFileSync(roomJsPath, "utf8");
 
-  assert.match(roomWxml, /<view wx:if="\{\{callPanelVisible\}\}" class="call-phase-overlay" bindtap="closeCallPanel">/);
+  assert.match(roomWxml, /<view wx:if="\{\{callPanelVisible\}\}" class="call-phase-overlay"( style="\{\{callPhaseOverlayStyle\}\}")? bindtap="closeCallPanel">/);
   assert.match(roomWxml, /<view class="call-phase-panel" catchtap="noop">/);
   assert.match(roomJs, /const callPanelVisible = isMyCallingTurn \? Boolean\(this\.data\.callPanelVisible\) : false;/);
   assert.doesNotMatch(roomJs, /const callPanelVisible = isMyCallingTurn;/);

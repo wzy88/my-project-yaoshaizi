@@ -1,6 +1,6 @@
 const app = getApp();
 const { LEGAL_ACCEPT_KEY, WS_URL_KEY, SESSION_KEY, NICKNAME_KEY, AVATAR_URL_KEY, SFX_ENABLED_KEY, HAPTIC_ENABLED_KEY } = require("../../utils/constants");
-const { resolveSeatCupToneClass } = require("../../utils/room-view");
+const { isDevtoolsPlatform, getNavigationSafeArea } = require("../../utils/system-info");
 const ROOM_ASSETS = {
   avatarA: "/assets/figma-room-v2/39b17e1f-9114-410f-85d5-2e5a189fbf74.svg",
   avatarB: "/assets/figma-room-v2/7ca66ac8-3c55-4b22-ae77-b2bf38f68295.svg",
@@ -11,15 +11,15 @@ const ROOM_ASSETS = {
 };
 
 const FIGMA_DIE_ASSETS = {
-  1: "/assets/figma-room-v2/87c0efa4-6afb-4f01-aa86-041b0f6969d7.svg",
-  2: "/assets/figma-room-v2/e7672a33-634f-4afd-b16a-b409ec77521b.svg",
-  3: "/assets/figma-room-v2/die-face-3-compact.svg",
-  4: "/assets/figma-room-v2/a9fe600f-ca19-456b-8634-97fbbf275ddb.svg",
-  5: "/assets/figma-room-v2/9b8ee1a1-733d-4cea-bae9-76357c6c7fc8.svg",
-  6: "/assets/figma-room-v2/9bf57bd7-be8a-4d22-ace0-a345efa7effb.svg"
+  1: "/assets/figma-room-v2/die-cube-1.svg",
+  2: "/assets/figma-room-v2/die-cube-2.svg",
+  3: "/assets/figma-room-v2/die-cube-gold.svg",
+  4: "/assets/figma-room-v2/die-cube-4.svg",
+  5: "/assets/figma-room-v2/die-cube-5.svg",
+  6: "/assets/figma-room-v2/die-cube-6.svg"
 };
 
-const FIGMA_DIE_3D_ASSET = "/assets/figma-room-v2/die-cube-gold.svg";
+const FIGMA_DIE_3D_ASSET = FIGMA_DIE_ASSETS[3];
 
 const FIGMA_SELF_DICE_PLACEHOLDER = [2, 4, 5, 2, 6];
 
@@ -92,6 +92,11 @@ function getSeatAvatarPresentation(avatarSrc, fallbackIndex) {
 const FIGMA_SCORE_FALLBACKS = [12500, 9800, 14200, 21000, 8700, 15400, 10500, 28000];
 
 const DICE_FACE_SYMBOLS = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+
+function resolveSeatCupToneClass(player) {
+  const status = player && player.diceCupStatus;
+  return status === "open" ? "is-jade" : "is-slot";
+}
 
 function buildActionId() {
   return `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
@@ -221,7 +226,8 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     summaryText: `【${getPlayerName(openerId)}】 开 【${getPlayerName(targetId)}】`,
     declaredText: `${declaredCount}个 ${declaredFace}`,
     actualText: `${actualCount}个 ${declaredFace}`,
-    rows
+    rows,
+    loserId
   };
 }
 
@@ -235,6 +241,19 @@ function phaseToText(phase) {
   };
 
   return map[phase] || "准备阶段";
+}
+
+function normalizeRoomId(roomId) {
+  const digits = String(roomId || "").trim();
+  return /^\d{6}$/.test(digits) ? digits : "";
+}
+
+function formatRoomIdDisplay(roomId) {
+  const digits = normalizeRoomId(roomId);
+  if (!digits) {
+    return "------";
+  }
+  return digits;
 }
 
 function getSeatRadius(playerCount) {
@@ -277,14 +296,14 @@ function getSeatGeometry(seatIndex, seatCount = 8) {
 
 function getStitchSeatLayout(playerCount) {
   const figmaShellSlots = [
-    { x: 187.5, y: 182, bx: 242, by: 188, cupX: 187.5, cupY: 232.5, cupAlign: "bottom", slotClass: "slot-top" },
-    { x: 32, y: 324, bx: 79, by: 274, cupX: 99, cupY: 324.5, cupAlign: "right", slotClass: "slot-upper-left" },
-    { x: 343, y: 326, bx: 297, by: 274, cupX: 278, cupY: 322.5, cupAlign: "left", slotClass: "slot-upper-right" },
-    { x: 31, y: 460, bx: 79, by: 420, cupX: 101, cupY: 430.5, cupAlign: "right", slotClass: "slot-mid-left" },
-    { x: 344, y: 460, bx: 296, by: 420, cupX: 274, cupY: 430.5, cupAlign: "left", slotClass: "slot-mid-right" },
-    { x: 31, y: 596, bx: 79, by: 554, cupX: 101, cupY: 566, cupAlign: "right", slotClass: "slot-lower-left" },
-    { x: 344, y: 596, bx: 296, by: 554, cupX: 274, cupY: 566, cupAlign: "left", slotClass: "slot-lower-right" },
-    { x: 187.5, y: 792, bx: 187.5, by: 724, cupX: 187.5, cupY: 724, cupAlign: "top", slotClass: "slot-bottom" }
+    { x: 187.5, y: 168, bx: 240, by: 180, cupX: 187.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" },
+    { x: 42, y: 290, bx: 84, by: 250, cupX: 100, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" },
+    { x: 333, y: 290, bx: 291, by: 250, cupX: 275, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" },
+    { x: 30, y: 420, bx: 78, by: 380, cupX: 96, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" },
+    { x: 345, y: 420, bx: 297, by: 380, cupX: 279, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" },
+    { x: 44, y: 556, bx: 92, by: 516, cupX: 110, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" },
+    { x: 331, y: 556, bx: 283, by: 516, cupX: 265, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" },
+    { x: 187.5, y: 804, bx: 187.5, by: 736, cupX: 187.5, cupY: 734, cupAlign: "top", slotClass: "slot-bottom" }
   ];
 
   const layouts = {
@@ -552,6 +571,31 @@ function designPxToRpx(value) {
   const num = Number(value);
   if (!Number.isFinite(num)) return "0rpx";
   return `${(num * 2).toFixed(2)}rpx`;
+}
+
+function px(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "0px";
+  return `${Math.max(0, Math.round(num))}px`;
+}
+
+function buildRoomSafeAreaStyles() {
+  const nav = getNavigationSafeArea();
+  const topInset = Math.max(0, Number(nav.topInset) || 0);
+  const bottomInset = Math.max(0, Number(nav.bottomInset) || 0);
+  const topbarButtonSize = 68;
+  const roomLabelHeight = 24;
+  const menuTop = Math.max(topInset + 8, Number(nav.menuTop) || 0);
+  const roomLabelTopOffset = Math.round((topbarButtonSize - roomLabelHeight) / 4);
+
+  return {
+    roomShellStyle: `padding-top:${px(Math.max(16, topInset + 8))};`,
+    roomTopbarCornerStyle: `margin-top:${px(menuTop)};`,
+    roomTopbarCenterStyle: `top:${px(Math.max(menuTop + roomLabelTopOffset, topInset + 18))};`,
+    roomBottomFadeStyle: `top:auto;bottom:${px(Math.max(bottomInset + 16, 16))};`,
+    roomSelfStyle: `bottom:${px(Math.max(72, bottomInset + 72))};`,
+    callPhaseOverlayStyle: `padding-bottom:${px(bottomInset + 16)};`
+  };
 }
 
 function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall, direction = "cw") {
@@ -1056,15 +1100,6 @@ function isLoopbackWsUrl(wsUrl) {
   return /^wss?:\/\/(127\.0\.0\.1|localhost|\[?::1\]?)(:\d+)?(\/|$)/i.test(String(wsUrl || "").trim());
 }
 
-function isDevtoolsPlatform() {
-  try {
-    const info = wx.getSystemInfoSync();
-    return info && info.platform === "devtools";
-  } catch (error) {
-    return false;
-  }
-}
-
 function ensureRecordPermission() {
   return new Promise((resolve) => {
     wx.getSetting({
@@ -1131,6 +1166,7 @@ Page({
     createTestMode: false,
     devtoolsMode: false,
     roomId: "",
+    displayRoomId: "------",
     playerId: "",
     resumeToken: "",
     phase: "ready",
@@ -1211,7 +1247,6 @@ Page({
     callForcedOpen: false,
     callSelectorMode: "",
     callPanelExpanded: false,
-    showJoinPanel: true,
     historyVisible: false,
     historyItems: [],
     historyNextBeforeRound: null,
@@ -1233,9 +1268,14 @@ Page({
     featuredPlayerName: "",
     featuredPlayerAvatar: "",
     featuredPlayerInitial: "玩",
+    roomShellStyle: "",
+    roomTopbarCornerStyle: "",
+    roomTopbarCenterStyle: "",
+    roomBottomFadeStyle: "",
+    roomSelfStyle: "",
+    callPhaseOverlayStyle: "",
     callPanelVisible: false,
     canOpenAction: false,
-    cornerPanelVisible: false,
     seatingVisible: false,
     seatingSelectedSeatIndex: 0,
     seatingSelectedText: "未选择",
@@ -1289,7 +1329,10 @@ Page({
 	    this.socketSeq = 0;
 	    this.activeSocketId = 0;
 	    this.devtoolsMode = isDevtoolsPlatform();
-	    this.setData({ devtoolsMode: this.devtoolsMode });
+	    this.setData({
+      devtoolsMode: this.devtoolsMode,
+      ...buildRoomSafeAreaStyles()
+    });
     this.debugClientEvent("lifecycle:onLoad", {
       options,
       routeStack: this.getRouteStack()
@@ -1541,10 +1584,10 @@ Page({
     if (cached && cached.roomId && cached.playerId && cached.resumeToken) {
       this.setData({
         roomId: cached.roomId,
+        displayRoomId: formatRoomIdDisplay(cached.roomId),
         joinRoomId: cached.roomId,
         playerId: cached.playerId,
-        resumeToken: cached.resumeToken,
-        showJoinPanel: true
+        resumeToken: cached.resumeToken
       });
       this.pushLog("[session] loaded");
     }
@@ -1573,7 +1616,6 @@ Page({
       const testMode = String(options.testMode || "0") === "1";
 
       this.setData({
-        showJoinPanel: true,
         createDirection: direction,
         createWildcardOneEnabled: wildcardOneEnabled,
         createDicePerPlayer: dicePerPlayer,
@@ -1590,7 +1632,6 @@ Page({
     } else if (mode === "join") {
       const roomId = safeDecodeComponent(options.roomId).trim();
       this.setData({
-        showJoinPanel: true,
         joinRoomId: roomId
       });
       if (roomId) {
@@ -1616,7 +1657,9 @@ Page({
     const avatarUrl = String(wx.getStorageSync(AVATAR_URL_KEY) || "").trim();
 
     const nextNickname = nickname || this.data.nickname;
-    const updates = {};
+    const updates = {
+      ...buildRoomSafeAreaStyles()
+    };
     if (nextNickname && nextNickname !== this.data.nickname) {
       updates.nickname = nextNickname;
       updates.selfInitial = String(nextNickname || "玩家").slice(0, 1);
@@ -1967,7 +2010,6 @@ Page({
     const errorText = "手机真机不可访问 127.0.0.1";
 
     this.setData({
-      showJoinPanel: hasPendingEntry ? true : this.data.showJoinPanel,
       connected: false,
       connecting: false,
       networkStatusText: "请修改地址",
@@ -1983,11 +2025,24 @@ Page({
   },
 
   queuePendingRoomAction(action) {
+    if (!action || !action.kind) {
+      return false;
+    }
+
+    if (action.kind === "join") {
+      const roomId = normalizeRoomId(action.roomId);
+      if (!roomId) {
+        return false;
+      }
+      action = { ...action, roomId };
+    }
+
     this.pendingRoomAction = action;
     const text = action.kind === "create"
       ? "连接成功后将自动创建房间"
       : `连接成功后将自动加入房间 ${action.roomId}`;
     this.setData({ pendingActionText: text });
+    return true;
   },
 
   clearPendingRoomAction() {
@@ -2014,9 +2069,13 @@ Page({
       return true;
     }
 
-    if (action.kind === "join" && action.roomId) {
+    if (action.kind === "join") {
+      const roomId = normalizeRoomId(action.roomId);
+      if (!roomId) {
+        return false;
+      }
       this.sendEvent("room:join", {
-        roomId: action.roomId,
+        roomId,
         nickname: this.data.nickname || "玩家",
         avatar: this.data.avatarUrl || ""
       });
@@ -2270,18 +2329,31 @@ Page({
   },
 
   joinRoom() {
-    if (!this.data.joinRoomId) {
+    const rawRoomId = String(this.data.joinRoomId || "").trim();
+    const roomId = normalizeRoomId(rawRoomId);
+
+    if (!rawRoomId) {
       wx.showToast({ title: "请输入房间号", icon: "none" });
+      return;
+    }
+
+    if (!roomId) {
+      wx.showToast({ title: "房间不存在或房间号有误", icon: "none", duration: 5000 });
+      return;
+    }
+
+    if (!/^\d{6}$/.test(roomId)) {
+      wx.showToast({ title: "房间不存在或房间号有误", icon: "none", duration: 5000 });
       return;
     }
 
     if (!this.data.connected) {
       this.queuePendingRoomAction({
         kind: "join",
-        roomId: this.data.joinRoomId
+        roomId
       });
       this.debugClientEvent("room:join_queued", {
-        roomId: this.data.joinRoomId,
+        roomId,
         playerId: this.data.playerId
       });
       this.connectSocket();
@@ -2291,11 +2363,11 @@ Page({
 
     this.clearPendingRoomAction();
     this.debugClientEvent("room:join_send", {
-      roomId: this.data.joinRoomId,
+      roomId,
       playerId: this.data.playerId
     });
     this.sendEvent("room:join", {
-      roomId: this.data.joinRoomId,
+      roomId,
       nickname: this.data.nickname || "玩家",
       avatar: this.data.avatarUrl || ""
     });
@@ -2562,6 +2634,12 @@ Page({
       selfPlayerId: this.data.playerId
     });
     if (!model) {
+      return;
+    }
+
+    const selfId = String(this.data.playerId || "");
+    if (!model.loserId || selfId !== String(model.loserId)) {
+      this.hideSettlementPanel();
       return;
     }
 
@@ -3209,21 +3287,6 @@ Page({
     });
   },
 
-  toggleCornerPanel() {
-    this.setData({
-      cornerPanelVisible: !this.data.cornerPanelVisible
-    });
-  },
-
-  closeCornerPanel() {
-    if (!this.data.cornerPanelVisible) {
-      return;
-    }
-    this.setData({
-      cornerPanelVisible: false
-    });
-  },
-
   copyRoomId() {
     const roomId = String(this.data.roomId || "").trim();
     if (!roomId) {
@@ -3672,9 +3735,7 @@ Page({
         }
 
         const canStart = Boolean(selfIsOwner && phase === "ready" && playerCount >= 2);
-        const startButtonText = selfIsOwner
-          ? (playerCount >= 2 ? "开始" : "开始(需2人)")
-          : "等待房主";
+        const startButtonText = selfIsOwner ? "开始" : "等待房主";
 
         const isMyTurn = payload.currentPlayerId === this.data.playerId;
         const stageShowProgress = phase === "opening";
@@ -3860,6 +3921,7 @@ Page({
 
         this.setData({
           roomId,
+          displayRoomId: formatRoomIdDisplay(roomId),
           joinRoomId: roomId,
           phase: payload.phase || "ready",
           phaseText: phaseToText(payload.phase),
@@ -3894,7 +3956,6 @@ Page({
           voiceItems: this.decorateVoiceItems(this.data.voiceItemsRaw, playersRaw),
           chatItems: this.decorateChatItems(this.data.chatItemsRaw, playersRaw, this.data.playerId),
           selectedTargetIds: validTargets,
-          showJoinPanel: false,
           featuredPlayerName,
           featuredPlayerAvatar,
           featuredPlayerInitial,
@@ -3994,14 +4055,14 @@ Page({
         if (payload.roomId || payload.playerId || payload.resumeToken) {
           const nextData = {
             roomId: payload.roomId || this.data.roomId,
+            displayRoomId: formatRoomIdDisplay(payload.roomId || this.data.roomId),
             playerId: payload.playerId || this.data.playerId,
             resumeToken: payload.resumeToken || this.data.resumeToken,
             joinRoomId: payload.roomId || this.data.joinRoomId
           };
 
           this.setData({
-            ...nextData,
-            showJoinPanel: !nextData.roomId
+            ...nextData
           });
           this.persistSession(nextData);
         }
@@ -4500,6 +4561,7 @@ Page({
 
     this.setData({
       roomId: "",
+      displayRoomId: "------",
       playerId: "",
       resumeToken: "",
       phase: "ready",
@@ -4566,7 +4628,6 @@ Page({
       myDiceDisplayFaces: buildDiceFaceItems(buildSelfDiceFallback(5)),
       roomSelfDiceFaces: buildSelfDiceDisplayItems(),
       myDiceSummaryText: "—",
-      showJoinPanel: true,
       historyItems: [],
       historyNextBeforeRound: null,
       historyVisible: false,
@@ -4586,7 +4647,6 @@ Page({
       callPanelExpanded: false,
       callPanelVisible: false,
       canOpenAction: false,
-      cornerPanelVisible: false,
       seatingVisible: false,
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "未选择",
@@ -4636,10 +4696,10 @@ Page({
 
     this.setData({
       roomId: "",
+      displayRoomId: "------",
       playerId: "",
       resumeToken: "",
       joinRoomId: "",
-      showJoinPanel: true,
       openButtonText: "开牌",
       openHintText: "",
       startButtonText: "开始",
@@ -4677,7 +4737,6 @@ Page({
       callPanelExpanded: false,
       callPanelVisible: false,
       canOpenAction: false,
-      cornerPanelVisible: false,
       seatingVisible: false,
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "未选择",

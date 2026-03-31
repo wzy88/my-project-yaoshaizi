@@ -12,99 +12,18 @@
     <view class="room-screen__star room-screen__star--8"></view>
   </view>
 
-  <view wx:if="{{showJoinPanel}}" class="room-entry-screen">
-    <view class="room-sheet room-sheet--join">
-      <view class="sheet-head">
-        <text class="sheet-title">创建 / 加入</text>
-      </view>
-      <view class="sheet-body">
-        <view class="join-field">
-          <text class="join-field__label">昵称</text>
-          <input class="join-input" value="{{nickname}}" placeholder="输入昵称" bindinput="onNicknameChange" />
-        </view>
-
-        <view class="join-field">
-          <text class="join-field__label">房间号</text>
-          <input class="join-input" value="{{joinRoomId}}" placeholder="输入房间号" bindinput="onJoinRoomIdChange" />
-        </view>
-
-        <view class="join-actions">
-          <view class="dock-btn dock-btn--gold" bindtap="joinRoom">
-            <text class="dock-btn__label">加入房间</text>
-          </view>
-          <view class="dock-btn dock-btn--ghost" bindtap="createRoom">
-            <text class="dock-btn__label">创建房间</text>
-          </view>
-        </view>
-
-        <view class="join-server-card">
-          <view class="join-server-card__head">
-            <text class="join-field__label">服务器地址</text>
-            <text class="join-server-card__action" bindtap="openWsConfig">修改</text>
-          </view>
-          <text class="join-server-card__value">{{wsUrl || '未设置'}}</text>
-          <text class="join-server-card__hint">{{pendingActionText || wsHintText}}</text>
-        </view>
-
-        <view class="join-advanced">
-          <view class="join-advanced__row">
-            <text class="join-advanced__label">出手方向</text>
-            <view class="segmented">
-              <view class="segmented__item {{createDirection === 'cw' ? 'is-active' : ''}}" data-dir="cw" bindtap="onSelectCreateDirection">顺时针</view>
-              <view class="segmented__item {{createDirection === 'ccw' ? 'is-active' : ''}}" data-dir="ccw" bindtap="onSelectCreateDirection">逆时针</view>
-            </view>
-          </view>
-
-          <view class="join-advanced__row">
-            <text class="join-advanced__label">每人骰子数</text>
-            <input class="join-input join-input--small" type="number" value="{{createDicePerPlayer}}" bindinput="onCreateDicePerPlayerChange" />
-          </view>
-
-          <view class="join-advanced__row">
-            <text class="join-advanced__label">起叫最小数量</text>
-            <input class="join-input join-input--small" type="number" value="{{createMinOpeningCount}}" bindinput="onCreateMinOpeningCountChange" />
-          </view>
-
-          <view class="join-advanced__row join-advanced__row--toggle">
-            <text class="join-advanced__label">通配1</text>
-            <switch checked="{{createWildcardOneEnabled}}" bindchange="onCreateWildcardChange" color="#d9a84f" />
-          </view>
-
-          <view class="join-advanced__row join-advanced__row--toggle">
-            <text class="join-advanced__label">测试模式</text>
-            <switch checked="{{createTestMode}}" bindchange="onCreateTestModeChange" color="#d9a84f" />
-          </view>
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <view wx:else class="room-shell">
+  <view class="room-shell" style="{{roomShellStyle}}">
     <view class="room-topbar">
-      <view class="room-topbar__corner">
-        <view class="room-chrome-btn room-chrome-btn--menu" bindtap="toggleCornerPanel">
+      <view class="room-topbar__corner" style="{{roomTopbarCornerStyle}}">
+        <view class="room-chrome-btn room-chrome-btn--menu" bindtap="onTapMore">
           <image class="room-chrome-btn__icon" src="/assets/figma-room-v2/topbar-menu-icon.svg" mode="aspectFit"></image>
         </view>
       </view>
 
-      <view class="room-topbar__center">
+      <view class="room-topbar__center" style="{{roomTopbarCenterStyle}}">
         <view class="room-topbar__room {{roomId ? 'is-copyable' : ''}}" bindtap="copyRoomId">
-          <text class="room-topbar__room-label">房号：</text>
-          <text class="room-topbar__room-value">{{roomId || '----'}}</text>
-        </view>
-      </view>
-
-      <view class="room-topbar__corner room-topbar__corner--right">
-        <view class="room-topbar__toggle" bindtap="onTapMore">
-          <view class="room-topbar__toggle-dots">
-            <view class="room-topbar__toggle-dot"></view>
-            <view class="room-topbar__toggle-dot"></view>
-            <view class="room-topbar__toggle-dot"></view>
-          </view>
-          <view class="room-topbar__toggle-divider"></view>
-          <view class="room-topbar__toggle-switch">
-            <image class="room-topbar__toggle-icon" src="/assets/figma-room-v2/topbar-switch-icon.svg" mode="aspectFit"></image>
-          </view>
+          <text class="room-topbar__room-label">房间号:</text>
+          <text class="room-topbar__room-value">{{displayRoomId || roomId || '----'}}</text>
         </view>
       </view>
     </view>
@@ -192,7 +111,7 @@
           <text class="shake-guide__text">摇一摇开始本局</text>
         </view>
 
-        <view wx:if="{{!callPanelVisible}}" class="room-shell__bottom-fade">
+        <view wx:if="{{!callPanelVisible}}" class="room-shell__bottom-fade" style="{{roomBottomFadeStyle}}">
           <view class="room-fab {{canPrimaryAction ? '' : 'is-disabled'}}" bindtap="onHudPrimaryAction">
             <image class="room-fab__icon-image" src="/assets/figma-room-v2/die-cube-gold.svg" mode="aspectFit"></image>
             <text wx:if="{{phase === 'rolling' && canPrimaryAction && !selfHasDice}}" class="room-fab__label">摇一摇</text>
@@ -201,10 +120,9 @@
           <text wx:if="{{selfCallHint}}" class="room-self-call-hint room-self-call-hint--floating">{{selfCallHint}}</text>
         </view>
 
-        <view class="room-self">
+        <view class="room-self" style="{{roomSelfStyle}}">
           <text wx:if="{{currentPlayerId === playerId}}" class="room-self__turn">轮到你</text>
           <view class="room-self__dice-cup {{selfHasDice || myDiceRolling ? 'has-dice' : ''}} {{myDiceRolling ? 'is-rolling' : ''}} {{myDiceJustRevealed ? 'is-revealed' : ''}}">
-            <view class="room-self__dice-shadow"></view>
             <view class="room-self__dice-pile">
               <view class="room-self__dice-stack {{myDiceRolling ? 'is-rolling' : ''}}">
                 <block wx:for="{{roomSelfDiceFaces}}" wx:key="index">
@@ -232,7 +150,7 @@
       </view>
     </view>
 
-    <view wx:if="{{callPanelVisible}}" class="call-phase-overlay" bindtap="closeCallPanel">
+    <view wx:if="{{callPanelVisible}}" class="call-phase-overlay" style="{{callPhaseOverlayStyle}}" bindtap="closeCallPanel">
       <view class="call-phase-panel" catchtap="noop">
         <view wx:if="{{callSelectorMode !== 'point'}}" class="call-phase-panel__counts">
           <block wx:for="{{callCountOptions}}" wx:key="value">
@@ -346,21 +264,11 @@
       </view>
   </view>
 
-  <view wx:if="{{cornerPanelVisible}}" class="room-mask" bindtap="closeCornerPanel">
-    <view class="room-sheet room-sheet--corner" catchtap="noop">
-      <view class="sheet-head">
-        <text class="sheet-title">更多</text>
-        <text class="sheet-close" bindtap="closeCornerPanel">关闭</text>
-      </view>
-      <view class="sheet-body sheet-body--empty"></view>
-    </view>
-  </view>
-
   <view wx:if="{{settlementVisible}}" class="room-mask">
     <view class="room-sheet room-sheet--settlement">
       <view class="sheet-head">
         <text class="sheet-title">本局结算</text>
-        <text class="sheet-close" bindtap="onSettlementContinue">继续</text>
+        <view class="sheet-close sheet-close--placeholder"></view>
       </view>
       <view class="sheet-body">
         <view class="settlement-summary">
@@ -410,9 +318,6 @@
           </view>
         </view>
         <view class="sheet-actions">
-          <view class="dock-btn dock-btn--subtle" bindtap="onSettlementContinue">
-            <text class="dock-btn__label">返回</text>
-          </view>
           <view class="dock-btn dock-btn--gold" bindtap="onSettlementContinue">
             <text class="dock-btn__label">继续({{settlementContinueSec || 0}}s)</text>
           </view>

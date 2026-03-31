@@ -1,6 +1,6 @@
 {
   "libVersion": "3.14.3",
-  "projectname": "miniprogram-%E6%91%87%E9%AA%B0%E5%AD%90",
+  "projectname": "miniprogram",
   "condition": {},
   "setting": {
     "urlCheck": false,
@@ -16,7 +16,7 @@
     "showES6CompileOption": false,
     "compileHotReLoad": true,
     "checkInvalidKey": true,
-    "ignoreDevUnusedFiles": true,
+    "ignoreDevUnusedFiles": false,
     "bigPackageSizeSupport": false
   }
 }

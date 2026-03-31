@@ -7,6 +7,7 @@ const {
   SFX_ENABLED_KEY,
   HAPTIC_ENABLED_KEY
 } = require("../../utils/constants");
+const { isDevtoolsPlatform } = require("../../utils/system-info");
 
 function safeDecodeComponent(raw) {
   const value = String(raw || "");
@@ -39,15 +40,6 @@ function buildTimeText() {
   const hh = String(date.getHours()).padStart(2, "0");
   const mm = String(date.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
-}
-
-function isDevtoolsPlatform() {
-  try {
-    const info = wx.getSystemInfoSync();
-    return Boolean(info && info.platform === "devtools");
-  } catch {
-    return false;
-  }
 }
 
 Page({

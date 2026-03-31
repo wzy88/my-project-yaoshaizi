@@ -1,4 +1,5 @@
 const { NICKNAME_KEY } = require("../../utils/constants");
+const { isDevtoolsPlatform } = require("../../utils/system-info");
 
 function safeDecodeComponent(raw) {
   const value = String(raw || "");
@@ -8,15 +9,6 @@ function safeDecodeComponent(raw) {
     return decodeURIComponent(value);
   } catch (error) {
     return value;
-  }
-}
-
-function isDevtoolsPlatform() {
-  try {
-    const info = wx.getSystemInfoSync();
-    return info && info.platform === "devtools";
-  } catch (error) {
-    return false;
   }
 }
 

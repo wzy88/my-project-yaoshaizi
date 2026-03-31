@@ -1,4 +1,5 @@
 const { WS_URL_KEY } = require("./utils/constants");
+const { isDevtoolsPlatform } = require("./utils/system-info");
 
 App({
   globalData: {
@@ -16,8 +17,7 @@ App({
     }
 
     try {
-      const info = wx.getSystemInfoSync();
-      this.globalData.isDevtoolsMode = Boolean(info && info.platform === "devtools");
+      this.globalData.isDevtoolsMode = isDevtoolsPlatform();
     } catch {
       this.globalData.isDevtoolsMode = false;
     }
