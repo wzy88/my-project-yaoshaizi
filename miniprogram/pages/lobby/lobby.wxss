@@ -89,10 +89,9 @@
 .status-right {
   display: flex;
   align-items: center;
-  gap: 10rpx;
+  justify-content: flex-end;
 }
 
-.status-pill,
 .status-signal {
   height: 52rpx;
   border-radius: 26rpx;
@@ -101,14 +100,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.status-pill {
-  min-width: 70rpx;
-  padding: 0 18rpx;
-  color: #e8f5e9;
-  font-size: 20rpx;
-  font-weight: 700;
 }
 
 .status-signal {

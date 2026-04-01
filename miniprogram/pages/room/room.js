@@ -286,12 +286,12 @@ function getSeatGeometry(seatIndex, seatCount = 8) {
 function getStitchSeatLayout(playerCount) {
   const figmaShellSlots = [
     { x: 187.5, y: 168, bx: 240, by: 180, cupX: 187.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" },
-    { x: 42, y: 290, bx: 84, by: 250, cupX: 100, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" },
-    { x: 333, y: 290, bx: 291, by: 250, cupX: 275, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" },
-    { x: 30, y: 420, bx: 78, by: 380, cupX: 96, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" },
-    { x: 345, y: 420, bx: 297, by: 380, cupX: 279, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" },
-    { x: 44, y: 556, bx: 92, by: 516, cupX: 110, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" },
-    { x: 331, y: 556, bx: 283, by: 516, cupX: 265, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" },
+    { x: 42, y: 290, bx: 84, by: 250, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" },
+    { x: 333, y: 290, bx: 291, by: 250, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" },
+    { x: 30, y: 420, bx: 78, by: 380, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" },
+    { x: 345, y: 420, bx: 297, by: 380, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" },
+    { x: 44, y: 556, bx: 92, by: 516, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" },
+    { x: 331, y: 556, bx: 283, by: 516, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" },
     { x: 187.5, y: 804, bx: 187.5, by: 736, cupX: 187.5, cupY: 734, cupAlign: "top", slotClass: "slot-bottom" }
   ];
 
@@ -393,7 +393,10 @@ function buildGhostSeats(playersDecorated, playerCount) {
 }
 
 function buildCallPointOptionItems(options) {
-  return buildDiceFaceItems(options);
+  return (Array.isArray(options) ? options : []).map((value) => ({
+    value: String(value),
+    asset: getDieAsset(value)
+  }));
 }
 
 function clampToRange(value, min, max) {
@@ -575,7 +578,7 @@ function buildRoomSafeAreaStyles() {
   const topbarButtonSize = 68;
   const roomLabelHeight = 24;
   const menuTop = Math.max(topInset + 8, Number(nav.menuTop) || 0);
-  const roomLabelTopOffset = Math.round((topbarButtonSize - roomLabelHeight) / 4);
+  const roomLabelTopOffset = Math.round((topbarButtonSize - roomLabelHeight) / 6);
 
   return {
     roomShellStyle: `padding-top:${px(Math.max(16, topInset + 8))};`,
@@ -583,7 +586,7 @@ function buildRoomSafeAreaStyles() {
     roomTopbarCenterStyle: `top:${px(Math.max(menuTop + roomLabelTopOffset, topInset + 18))};`,
     roomBottomFadeStyle: `top:auto;bottom:${px(Math.max(bottomInset + 16, 16))};`,
     roomSelfStyle: `bottom:${px(Math.max(72, bottomInset + 72))};`,
-    callPhaseOverlayStyle: `padding-bottom:${px(bottomInset + 16)};`
+    callPhaseOverlayStyle: ""
   };
 }
 
@@ -692,10 +695,10 @@ function buildSeatRows(playersRaw, maxSeats = 8, selectedSeatIndex = 0) {
     const occupant = seatMap.get(seatIndex);
     const occupantName = occupant ? (safeDecodeComponent(occupant.nickname).trim() || "玩家") : "";
     const label = occupant
-      ? `${occupantName.slice(0, 6)}（${String(occupant.id || "").slice(0, 6)}）`
+      ? occupantName.slice(0, 6)
       : "空";
 
-    let actionText = "点此选中";
+    let actionText = "";
     let hintClass = "";
     const selected = Boolean(selectedSeat && seatIndex === selectedSeat);
 
@@ -705,16 +708,16 @@ function buildSeatRows(playersRaw, maxSeats = 8, selectedSeatIndex = 0) {
     } else if (selectedSeat) {
       const occupied = Boolean(occupant && occupant.id);
       if (!selectedOccupied && occupied) {
-        actionText = "点此移入";
+        actionText = "移入";
         hintClass = "hint-move-in";
       } else if (selectedOccupied && !occupied) {
-        actionText = "点此移出";
+        actionText = "移出";
         hintClass = "hint-move-out";
       } else if (selectedOccupied && occupied) {
-        actionText = "点此交换";
+        actionText = "交换";
         hintClass = "hint-swap";
       } else {
-        actionText = "点此选中";
+        actionText = "";
         hintClass = "";
       }
     }
@@ -3930,7 +3933,7 @@ Page({
         }
 
         const seatingSelectedSeatIndex = Number(this.data.seatingSelectedSeatIndex || 0);
-        const seatRows = buildSeatRows(playersRaw, 7, seatingSelectedSeatIndex);
+        const seatRows = buildSeatRows(playersRaw, 8, seatingSelectedSeatIndex);
         const selectedRow = seatingSelectedSeatIndex ? seatRows.find((r) => r.seatIndex === seatingSelectedSeatIndex) : null;
         const seatingSelectedText = seatingSelectedSeatIndex
           ? (selectedRow && selectedRow.occupied

@@ -858,6 +858,12 @@
   box-shadow: 0 24rpx 60rpx rgba(0, 0, 0, 0.52), inset 0 1rpx 0 rgba(255, 255, 255, 0.08);
 }
 
+.room-sheet--seating {
+  background: linear-gradient(180deg, rgba(45, 39, 59, 0.96) 0%, rgba(29, 24, 40, 0.96) 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24rpx 60rpx rgba(0, 0, 0, 0.52), inset 0 1rpx 0 rgba(255, 255, 255, 0.08);
+}
+
 .sheet-head {
   display: flex;
   align-items: center;
@@ -1178,12 +1184,12 @@
 .seat-direction {
   display: flex;
   gap: 10rpx;
-  margin: 20rpx 0;
+  margin: 18rpx 0 16rpx;
 }
 
 .seat-direction__item {
   flex: 1;
-  min-height: 72rpx;
+  min-height: 68rpx;
   border-radius: 14rpx;
   display: flex;
   align-items: center;
@@ -1203,20 +1209,22 @@
 }
 
 .seat-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14rpx;
 }
 
 .seat-grid__item {
-  padding: 16rpx 18rpx;
+  min-height: 148rpx;
+  padding: 18rpx 18rpx 16rpx;
   border-radius: 16rpx;
   background: rgba(11, 9, 24, 0.7);
   border: 1rpx solid rgba(255, 255, 255, 0.08);
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: space-between;
-  gap: 16rpx;
+  gap: 14rpx;
+  box-sizing: border-box;
 }
 
 .seat-grid__item.is-selected,
@@ -1231,10 +1239,12 @@
   border-color: rgba(90, 208, 255, 0.34);
 }
 
-.seat-grid__row {
+.seat-grid__head {
   display: flex;
-  flex-direction: column;
-  gap: 6rpx;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12rpx;
+  width: 100%;
 }
 
 /* Figma room v3 overrides */
@@ -2001,13 +2011,24 @@
 }
 
 .seat-grid__label {
-  font-size: 20rpx;
+  font-size: 26rpx;
+  line-height: 1.25;
+  font-weight: 700;
   color: rgba(206, 214, 238, 0.72);
+  word-break: break-all;
 }
 
 .seat-grid__action {
-  font-size: 20rpx;
+  flex: 0 0 auto;
+  min-width: 72rpx;
+  padding: 6rpx 12rpx;
+  border-radius: 999rpx;
+  font-size: 18rpx;
+  line-height: 1.1;
+  text-align: center;
   color: #f0cb53;
+  background: rgba(240, 203, 83, 0.12);
+  border: 1rpx solid rgba(240, 203, 83, 0.2);
 }
 
 /* Room polish from imported design bundle */
@@ -4787,7 +4808,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: 54rpx;
+  top: 46rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5600,19 +5621,19 @@
   display: flex;
   align-items: flex-end;
   z-index: 96;
-  padding: 0 16rpx env(safe-area-inset-bottom);
+  padding: 0 16rpx 0;
   box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(16, 20, 28, 0) 0%, rgba(16, 20, 28, 0.18) 34%, rgba(16, 20, 28, 0.82) 100%);
+  background: linear-gradient(180deg, rgba(16, 20, 28, 0) 0%, rgba(16, 20, 28, 0.14) 30%, rgba(16, 20, 28, 0.84) 56%, rgba(15, 19, 27, 0.96) 76%, rgba(15, 19, 27, 0.98) 100%);
 }
 
 .call-phase-panel {
   width: 100%;
-  padding: 24rpx 24rpx 28rpx;
+  padding: 24rpx 24rpx calc(92rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   border-top: 1.23rpx solid rgba(65, 72, 70, 0.35);
   border-top-left-radius: 36rpx;
   border-top-right-radius: 36rpx;
-  background: rgba(16, 20, 28, 0.96);
+  background: linear-gradient(180deg, rgba(18, 23, 31, 0.98) 0%, rgba(15, 19, 27, 0.98) 100%);
   box-shadow: 0 -20rpx 80rpx rgba(0, 0, 0, 0.55);
   animation: call-phase-panel-rise 240ms ease-out;
 }
@@ -5704,11 +5725,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
 .call-phase-panel__point-option.is-active {
   border-color: #e9c349;
-  box-shadow: 0 0 36rpx rgba(233, 195, 73, 0.18);
+  background: linear-gradient(180deg, rgba(233, 195, 73, 0.22) 0%, rgba(191, 155, 35, 0.14) 100%);
+  box-shadow: 0 0 36rpx rgba(233, 195, 73, 0.26);
+  transform: translateY(-4rpx);
 }
 
 .call-phase-panel__point-option.is-disabled {
@@ -5730,6 +5754,10 @@
   z-index: 1;
   width: 52rpx;
   height: 52rpx;
+}
+
+.call-phase-panel__point-option.is-active .call-phase-panel__point-option-die {
+  filter: drop-shadow(0 4rpx 10rpx rgba(233, 195, 73, 0.28));
 }
 
 .call-phase-panel__actions {

@@ -42,10 +42,11 @@ test("room shell rebalances the playfield to leave a slim bottom gap and a talle
   assert.match(source, /\.room-stage__table\s*\{[\s\S]*height:\s*1448rpx/);
 });
 
-test("room shell drops the menu button onto the room-id line with a slightly tighter size", () => {
+test("room shell keeps the room id on the same top line while nudging it slightly upward", () => {
   const source = fs.readFileSync(roomWxssPath, "utf8");
   assert.match(source, /\.room-topbar__corner\s*\{[\s\S]*margin-top:\s*48rpx/);
   assert.match(source, /\.room-topbar__corner\s*\{[\s\S]*flex:\s*0 0 84rpx/);
+  assert.match(source, /\.room-topbar__center\s*\{[\s\S]*?position:\s*absolute[\s\S]*?top:\s*46rpx/);
   assert.match(source, /\.room-chrome-btn\s*\{[\s\S]*width:\s*68rpx/);
   assert.match(source, /\.room-chrome-btn\s*\{[\s\S]*height:\s*68rpx/);
 });
@@ -58,6 +59,7 @@ test("room shell wires dynamic safe-area styles for top and bottom chrome", () =
   assert.match(source, /buildRoomSafeAreaStyles/);
   assert.match(source, /const topbarButtonSize = 68;/);
   assert.match(source, /const roomLabelHeight = 24;/);
+  assert.match(source, /const roomLabelTopOffset = Math\.round\(\(topbarButtonSize - roomLabelHeight\) \/ 6\);/);
   assert.match(source, /bottomInset \+ 72/);
   assert.match(wxml, /class="room-shell" style="\{\{roomShellStyle\}\}"/);
   assert.match(wxml, /class="room-topbar__corner" style="\{\{roomTopbarCornerStyle\}\}"/);
@@ -85,12 +87,12 @@ test("room shell uses a more even seven-seat outer ring layout", () => {
   const scriptPath = path.join(process.cwd(), "miniprogram/pages/room/room.js");
   const source = fs.readFileSync(scriptPath, "utf8");
   assert.match(source, /\{ x: 187\.5, y: 168, bx: 240, by: 180, cupX: 187\.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" \}/);
-  assert.match(source, /\{ x: 42, y: 290, bx: 84, by: 250, cupX: 100, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" \}/);
-  assert.match(source, /\{ x: 333, y: 290, bx: 291, by: 250, cupX: 275, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" \}/);
-  assert.match(source, /\{ x: 30, y: 420, bx: 78, by: 380, cupX: 96, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" \}/);
-  assert.match(source, /\{ x: 345, y: 420, bx: 297, by: 380, cupX: 279, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" \}/);
-  assert.match(source, /\{ x: 44, y: 556, bx: 92, by: 516, cupX: 110, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" \}/);
-  assert.match(source, /\{ x: 331, y: 556, bx: 283, by: 516, cupX: 265, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" \}/);
+  assert.match(source, /\{ x: 42, y: 290, bx: 84, by: 250, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" \}/);
+  assert.match(source, /\{ x: 333, y: 290, bx: 291, by: 250, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" \}/);
+  assert.match(source, /\{ x: 30, y: 420, bx: 78, by: 380, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" \}/);
+  assert.match(source, /\{ x: 345, y: 420, bx: 297, by: 380, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" \}/);
+  assert.match(source, /\{ x: 44, y: 556, bx: 92, by: 516, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" \}/);
+  assert.match(source, /\{ x: 331, y: 556, bx: 283, by: 516, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" \}/);
 });
 
 test("room page does not rely on external room-view helper at runtime", () => {
@@ -104,6 +106,28 @@ test("settlement dialog keeps only the bottom continue action", () => {
   assert.doesNotMatch(source, /sheet-close"\s+bindtap="onSettlementContinue">继续/);
   assert.doesNotMatch(source, />返回</);
   assert.match(source, /wx:if="\{\{settlementCanContinue\}\}" class="sheet-actions"/);
+});
+
+test("seating dialog reuses the settlement sheet skin", () => {
+  const source = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(source, /\.room-sheet--seating\s*\{/);
+  assert.match(
+    source,
+    /\.room-sheet--seating\s*\{[\s\S]*background:\s*linear-gradient\(180deg,\s*rgba\(45,\s*39,\s*59,\s*0\.96\)\s*0%,\s*rgba\(29,\s*24,\s*40,\s*0\.96\)\s*100%\)/
+  );
+});
+
+test("seating dialog uses a compact 2-column seat card grid", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxml, /class="seat-grid__head"/);
+  assert.match(wxml, /wx:if="\{\{item\.actionText\}\}" class="seat-grid__action"/);
+  assert.doesNotMatch(wxml, /class="seat-grid__row"/);
+  assert.match(wxss, /\.seat-grid\s*\{[\s\S]*display:\s*grid/);
+  assert.match(wxss, /\.seat-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(wxss, /\.seat-grid__item\s*\{[\s\S]*min-height:\s*148rpx/);
+  assert.match(wxss, /\.seat-grid__item\s*\{[\s\S]*flex-direction:\s*column/);
+  assert.match(wxss, /\.seat-grid__head\s*\{[\s\S]*justify-content:\s*space-between/);
 });
 
 test("room self dice render above the glass layer for crisp visibility", () => {

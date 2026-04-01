@@ -463,6 +463,419 @@ test("room page: room state decorates the shell once room data is ready", () => 
   }
 });
 
+test("room page: seating panel keeps all 8 seats after room state refresh", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.data.playerId = "owner-a";
+    page.setData({
+      phase: "ready",
+      round: 0,
+      selfIsOwner: true,
+      playersRaw: [
+        {
+          id: "owner-a",
+          nickname: "房主",
+          avatar: "",
+          isOwner: true,
+          onlineStatus: "online",
+          turnStatus: "active",
+          seatIndex: 1,
+          diceCupStatus: "closed",
+          rollLocked: false
+        },
+        {
+          id: "guest-b",
+          nickname: "八号位玩家",
+          avatar: "",
+          isOwner: false,
+          onlineStatus: "online",
+          turnStatus: "idle",
+          seatIndex: 8,
+          diceCupStatus: "closed",
+          rollLocked: false
+        }
+      ]
+    });
+
+    page.openSeatingPanel({
+      id: "guest-b",
+      nickname: "八号位玩家",
+      seatIndex: 8
+    });
+
+    assert.equal(page.data.seatingVisible, true);
+    assert.equal(page.data.seatRows.length, 8);
+    assert.equal(page.data.seatingSelectedSeatIndex, 8);
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "123456",
+        phase: "ready",
+        round: 0,
+        currentPlayerId: "owner-a",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false
+        },
+        players: [
+          {
+            id: "owner-a",
+            nickname: "房主",
+            avatar: "",
+            isOwner: true,
+            onlineStatus: "online",
+            turnStatus: "active",
+            seatIndex: 1,
+            diceCupStatus: "closed",
+            rollLocked: false
+          },
+          {
+            id: "guest-b",
+            nickname: "八号位玩家",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 8,
+            diceCupStatus: "closed",
+            rollLocked: false
+          }
+        ],
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 2,
+        serverTs: Date.now()
+      }
+    }));
+
+    assert.equal(page.data.seatRows.length, 8);
+    assert.equal(page.data.seatingSelectedSeatIndex, 8);
+    assert.match(page.data.seatingSelectedText, /^8号/);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: seating panel moves the selected player into an empty seat", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sent = [];
+    let hapticCalls = 0;
+    let sfxCalls = 0;
+
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.haptic = () => {
+      hapticCalls += 1;
+    };
+    page.playSfx = () => {
+      sfxCalls += 1;
+    };
+
+    page.data.playerId = "owner-a";
+    page.setData({
+      phase: "ready",
+      round: 0,
+      selfIsOwner: true,
+      playersRaw: [
+        {
+          id: "owner-a",
+          nickname: "房主",
+          avatar: "",
+          isOwner: true,
+          onlineStatus: "online",
+          turnStatus: "active",
+          seatIndex: 1,
+          diceCupStatus: "closed",
+          rollLocked: false
+        },
+        {
+          id: "guest-b",
+          nickname: "二号位玩家",
+          avatar: "",
+          isOwner: false,
+          onlineStatus: "online",
+          turnStatus: "idle",
+          seatIndex: 2,
+          diceCupStatus: "closed",
+          rollLocked: false
+        }
+      ]
+    });
+
+    page.openSeatingPanel({
+      id: "guest-b",
+      nickname: "二号位玩家",
+      seatIndex: 2
+    });
+
+    page.onTapSeatRow({
+      currentTarget: {
+        dataset: {
+          seat: 5
+        }
+      }
+    });
+
+    assert.deepEqual(sent, [
+      {
+        event: "room:seat:set",
+        payload: { playerId: "guest-b", seatIndex: 5 }
+      }
+    ]);
+    assert.equal(page.data.seatingSelectedSeatIndex, 0);
+    assert.equal(page.data.seatingSelectedText, "未选择");
+    assert.equal(hapticCalls, 1);
+    assert.equal(sfxCalls, 1);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: seating panel label shows only the nickname without the raw player id", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.data.playerId = "owner-a";
+    page.setData({
+      phase: "ready",
+      round: 0,
+      selfIsOwner: true,
+      playersRaw: [
+        {
+          id: "owner-a",
+          nickname: "房主",
+          avatar: "",
+          isOwner: true,
+          onlineStatus: "online",
+          turnStatus: "active",
+          seatIndex: 1,
+          diceCupStatus: "closed",
+          rollLocked: false
+        },
+        {
+          id: "e26995abcdef",
+          nickname: "玩家昵称",
+          avatar: "",
+          isOwner: false,
+          onlineStatus: "online",
+          turnStatus: "idle",
+          seatIndex: 2,
+          diceCupStatus: "closed",
+          rollLocked: false
+        }
+      ]
+    });
+
+    page.openSeatingPanel({
+      id: "e26995abcdef",
+      nickname: "玩家昵称",
+      seatIndex: 2
+    });
+
+    const row = page.data.seatRows.find((item) => item.seatIndex === 2);
+    assert.equal(row.label, "玩家昵称");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: seating panel swaps two occupied seats", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sent = [];
+    let hapticCalls = 0;
+    let sfxCalls = 0;
+
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.haptic = () => {
+      hapticCalls += 1;
+    };
+    page.playSfx = () => {
+      sfxCalls += 1;
+    };
+
+    page.data.playerId = "owner-a";
+    page.setData({
+      phase: "ready",
+      round: 0,
+      selfIsOwner: true,
+      playersRaw: [
+        {
+          id: "owner-a",
+          nickname: "房主",
+          avatar: "",
+          isOwner: true,
+          onlineStatus: "online",
+          turnStatus: "active",
+          seatIndex: 1,
+          diceCupStatus: "closed",
+          rollLocked: false
+        },
+        {
+          id: "guest-b",
+          nickname: "二号位玩家",
+          avatar: "",
+          isOwner: false,
+          onlineStatus: "online",
+          turnStatus: "idle",
+          seatIndex: 2,
+          diceCupStatus: "closed",
+          rollLocked: false
+        },
+        {
+          id: "guest-c",
+          nickname: "六号位玩家",
+          avatar: "",
+          isOwner: false,
+          onlineStatus: "online",
+          turnStatus: "idle",
+          seatIndex: 6,
+          diceCupStatus: "closed",
+          rollLocked: false
+        }
+      ]
+    });
+
+    page.openSeatingPanel({
+      id: "guest-b",
+      nickname: "二号位玩家",
+      seatIndex: 2
+    });
+
+    page.onTapSeatRow({
+      currentTarget: {
+        dataset: {
+          seat: 6
+        }
+      }
+    });
+
+    assert.deepEqual(sent, [
+      {
+        event: "room:seat:swap",
+        payload: { playerIdA: "guest-b", playerIdB: "guest-c" }
+      }
+    ]);
+    assert.equal(page.data.seatingSelectedSeatIndex, 0);
+    assert.equal(page.data.seatingSelectedText, "未选择");
+    assert.equal(hapticCalls, 1);
+    assert.equal(sfxCalls, 1);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: owner ready menu exposes seating setup and opens the seating panel", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    let capturedItems = null;
+    let opened = 0;
+
+    page.setData({
+      selfIsOwner: true,
+      phase: "ready",
+      round: 0
+    });
+    page.showActionSheetSafe = ({ itemList, success }) => {
+      capturedItems = itemList;
+      success({ tapIndex: 0 });
+    };
+    page.openSeatingPanel = () => {
+      opened += 1;
+    };
+
+    page.onTapMore();
+
+    assert.deepEqual(capturedItems, ["排位设置", "设置", "离开房间"]);
+    assert.equal(opened, 1);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: non-owner menu skips seating setup", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    let capturedItems = null;
+    let toolsOpened = 0;
+    let seatingOpened = 0;
+
+    page.setData({
+      selfIsOwner: false,
+      phase: "ready",
+      round: 0
+    });
+    page.showActionSheetSafe = ({ itemList, success }) => {
+      capturedItems = itemList;
+      success({ tapIndex: 0 });
+    };
+    page.openToolsMenu = () => {
+      toolsOpened += 1;
+    };
+    page.openSeatingPanel = () => {
+      seatingOpened += 1;
+    };
+
+    page.onTapMore();
+
+    assert.deepEqual(capturedItems, ["设置", "离开房间"]);
+    assert.equal(toolsOpened, 1);
+    assert.equal(seatingOpened, 0);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: hitting the 5-roll cap makes further roll attempts a silent no-op", () => {
   const { page, toasts, cleanup } = instantiateRoomPage({
     storage: {

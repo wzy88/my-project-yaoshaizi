@@ -347,11 +347,11 @@
         <view class="seat-grid">
           <block wx:for="{{seatRows}}" wx:key="seatIndex">
             <view class="seat-grid__item {{item.selected ? 'is-selected' : ''}} {{item.occupied ? 'is-occupied' : ''}} {{item.hintClass}}" data-seat="{{item.seatIndex}}" bindtap="onTapSeatRow">
-              <view class="seat-grid__row">
+              <view class="seat-grid__head">
                 <text class="seat-grid__num">{{item.seatIndex}}号</text>
-                <text class="seat-grid__label">{{item.label}}</text>
+                <text wx:if="{{item.actionText}}" class="seat-grid__action">{{item.actionText}}</text>
               </view>
-              <text class="seat-grid__action">{{item.actionText}}</text>
+              <text class="seat-grid__label">{{item.label}}</text>
             </view>
           </block>
         </view>

@@ -10,7 +10,6 @@
   <view class="status-row">
     <text class="status-time">{{timeText}}</text>
     <view class="status-right">
-      <view class="status-pill">···</view>
       <view class="status-signal">
         <view class="status-signal__dot"></view>
       </view>

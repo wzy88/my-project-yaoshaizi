@@ -16,9 +16,14 @@ test("room call panel switches between count and point selectors", () => {
   assert.match(roomWxml, /class="call-phase-panel__value-box" data-mode="count" bindtap="toggleCallSelectorMode"/);
   assert.match(roomWxml, /class="call-phase-panel__point-box \{\{callForcedOpen \? 'is-disabled' : ''\}\}" data-mode="point" bindtap="toggleCallSelectorMode"/);
   assert.match(roomWxml, /bindtap="onSelectCallPointOption"/);
+  assert.match(roomWxml, /item\.value === callPoint/);
   assert.doesNotMatch(roomWxml, /bindtap="onTapCallPointPicker"/);
   assert.doesNotMatch(roomJs, /showActionSheetSafe\(\{\s*itemList:\s*\["1点", "2点", "3点", "4点", "5点", "6点"\]/);
   assert.match(roomJs, /callSelectorMode: isMyCallingTurn \? \(this\.data\.callSelectorMode \|\| "count"\) : ""/);
+  assert.match(
+    roomJs,
+    /function buildCallPointOptionItems\(options\)\s*\{\s*return \(Array\.isArray\(options\) \? options : \[\]\)\.map\(\(value\) => \(\{\s*value:\s*String\(value\),[\s\S]*asset:\s*getDieAsset\(value\)/
+  );
 });
 
 test("room call panel opens manually during calling and supports overlay close", () => {
@@ -41,5 +46,7 @@ test("room call panel stays content-sized instead of reserving an empty lower ha
   const roomWxss = fs.readFileSync(roomWxssPath, "utf8");
 
   assert.doesNotMatch(roomWxss, /\.call-phase-panel\s*\{[\s\S]*min-height:\s*560rpx/);
-  assert.match(roomWxss, /\.call-phase-panel\s*\{[\s\S]*padding:\s*24rpx 24rpx 28rpx/);
+  assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*padding:\s*0 16rpx 0/);
+  assert.match(roomWxss, /\.call-phase-panel\s*\{[\s\S]*padding:\s*24rpx 24rpx calc\(92rpx \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*rgba\(15, 19, 27, 0\.98\) 100%/);
 });
