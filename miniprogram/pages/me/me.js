@@ -1,12 +1,23 @@
 const app = getApp();
 const {
   WS_URL_KEY,
+  CLOUD_ENV_ID_KEY,
+  CLOUD_SERVICE_KEY,
+  CLOUD_WS_PATH_KEY,
   SESSION_KEY,
   NICKNAME_KEY,
   AVATAR_URL_KEY,
   SFX_ENABLED_KEY,
   HAPTIC_ENABLED_KEY
 } = require("../../utils/constants");
+const {
+  DEFAULT_CONTAINER_WS_PATH,
+  normalizeContainerConfig,
+  hasContainerService,
+  buildContainerSummary,
+  canUseCloudSocketApi,
+  initMiniProgramCloud
+} = require("../../utils/cloud-container");
 const { isDevtoolsPlatform } = require("../../utils/system-info");
 
 function safeDecodeComponent(raw) {
@@ -20,9 +31,23 @@ function safeDecodeComponent(raw) {
   }
 }
 
-function buildWsHint(wsUrl, lastWsError = "") {
+function buildWsHint(options, lastWsError = "") {
+  const params = options && typeof options === "object"
+    ? options
+    : { wsUrl: options };
+  const wsUrl = params.wsUrl;
+  const containerConfig = normalizeContainerConfig(params.containerConfig);
   const url = String(wsUrl || "").trim();
   const err = String(lastWsError || "");
+  if (hasContainerService(containerConfig)) {
+    const summary = buildContainerSummary(containerConfig);
+    if (!canUseCloudSocketApi()) {
+      return "当前微信版本不支持云托管连接，请升级微信或开发者工具";
+    }
+    if (err.includes("1006")) return "云托管握手失败，请确认服务名和路径是否正确";
+    if (err.includes("connectContainer")) return `云托管连接失败：${err}`;
+    return `当前优先走微信云托管：${summary}`;
+  }
   if (!url) return "请先填写服务器地址";
   if (!/^wss?:\/\//i.test(url)) return "地址格式不正确，请使用 ws:// 或 wss://";
   const matched = url.match(/^wss?:\/\/([^/:?#]+)/i);
@@ -46,6 +71,10 @@ Page({
   data: {
     timeText: "10:21",
     wsUrl: app.globalData.wsUrl,
+    containerEnvId: app.globalData.containerConfig ? app.globalData.containerConfig.envId : "",
+    containerService: app.globalData.containerConfig ? app.globalData.containerConfig.service : "",
+    containerWsPath: app.globalData.containerConfig ? app.globalData.containerConfig.wsPath : DEFAULT_CONTAINER_WS_PATH,
+    connectionSummaryText: buildContainerSummary(app.globalData.containerConfig || {}),
     wsHintText: "",
     lastWsError: "",
     nickname: "",
@@ -66,6 +95,19 @@ Page({
       app.globalData.wsUrl = trimmed;
     }
 
+    const containerConfig = normalizeContainerConfig({
+      envId: wx.getStorageSync(CLOUD_ENV_ID_KEY),
+      service: wx.getStorageSync(CLOUD_SERVICE_KEY),
+      wsPath: wx.getStorageSync(CLOUD_WS_PATH_KEY)
+    });
+    this.setData({
+      containerEnvId: containerConfig.envId,
+      containerService: containerConfig.service,
+      containerWsPath: containerConfig.wsPath,
+      connectionSummaryText: buildContainerSummary(containerConfig)
+    });
+    app.globalData.containerConfig = containerConfig;
+
     const nickname = safeDecodeComponent(wx.getStorageSync(NICKNAME_KEY)).trim();
     let finalNickname = nickname;
     if (!finalNickname) {
@@ -85,7 +127,10 @@ Page({
       sfxEnabled,
       hapticEnabled,
       devtoolsMode: Boolean(app.globalData.isDevtoolsMode || isDevtoolsPlatform()),
-      wsHintText: buildWsHint(this.data.wsUrl, ""),
+      wsHintText: buildWsHint({
+        wsUrl: this.data.wsUrl,
+        containerConfig
+      }, ""),
     });
 
     const session = wx.getStorageSync(SESSION_KEY);
@@ -176,24 +221,68 @@ Page({
 
   openWsConfig() {
     wx.showModal({
-      title: "设置服务器地址",
+      title: "云托管服务名",
       editable: true,
-      placeholderText: "ws://192.168.1.23:3000/ws",
-      content: this.data.wsUrl || "",
-      success: (res) => {
-        if (!res.confirm) return;
-        const nextUrl = String(res.content || "").trim();
-        if (!/^wss?:\/\/.+/i.test(nextUrl)) {
-          wx.showToast({ title: "地址格式错误", icon: "none" });
+      placeholderText: "例如 express-rw1k",
+      content: this.data.containerService || "",
+      success: (serviceRes) => {
+        if (!serviceRes.confirm) return;
+
+        const nextService = String(serviceRes.content || "").trim();
+        if (!nextService) {
+          wx.showToast({ title: "服务名不能为空", icon: "none" });
           return;
         }
-        this.setData({
-          wsUrl: nextUrl,
-          wsHintText: buildWsHint(nextUrl, ""),
-          lastWsError: ""
+
+        wx.showModal({
+          title: "云托管环境ID",
+          editable: true,
+          placeholderText: "可留空，默认当前绑定环境",
+          content: this.data.containerEnvId || "",
+          success: (envRes) => {
+            if (!envRes.confirm) return;
+
+            const nextEnvId = String(envRes.content || "").trim();
+            wx.showModal({
+              title: "WebSocket 路径",
+              editable: true,
+              placeholderText: "/ws",
+              content: this.data.containerWsPath || DEFAULT_CONTAINER_WS_PATH,
+              success: (pathRes) => {
+                if (!pathRes.confirm) return;
+
+                const nextConfig = normalizeContainerConfig({
+                  envId: nextEnvId,
+                  service: nextService,
+                  wsPath: pathRes.content
+                });
+                const initResult = initMiniProgramCloud(nextConfig);
+
+                this.setData({
+                  containerEnvId: nextConfig.envId,
+                  containerService: nextConfig.service,
+                  containerWsPath: nextConfig.wsPath,
+                  connectionSummaryText: buildContainerSummary(nextConfig),
+                  wsHintText: buildWsHint({
+                    wsUrl: this.data.wsUrl,
+                    containerConfig: nextConfig
+                  }, ""),
+                  lastWsError: ""
+                });
+
+                app.globalData.containerConfig = nextConfig;
+                wx.setStorageSync(CLOUD_ENV_ID_KEY, nextConfig.envId);
+                wx.setStorageSync(CLOUD_SERVICE_KEY, nextConfig.service);
+                wx.setStorageSync(CLOUD_WS_PATH_KEY, nextConfig.wsPath);
+
+                wx.showToast({
+                  title: initResult.ok ? "云托管配置已保存" : "已保存，初始化待真机验证",
+                  icon: "none"
+                });
+              }
+            });
+          }
         });
-        app.globalData.wsUrl = nextUrl;
-        wx.setStorageSync(WS_URL_KEY, nextUrl);
       }
     });
   },

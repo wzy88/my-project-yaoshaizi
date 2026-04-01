@@ -1,9 +1,19 @@
-const { WS_URL_KEY } = require("./utils/constants");
+const {
+  WS_URL_KEY,
+  CLOUD_ENV_ID_KEY,
+  CLOUD_SERVICE_KEY,
+  CLOUD_WS_PATH_KEY
+} = require("./utils/constants");
+const {
+  normalizeContainerConfig,
+  initMiniProgramCloud
+} = require("./utils/cloud-container");
 const { isDevtoolsPlatform } = require("./utils/system-info");
 
 App({
   globalData: {
     wsUrl: "ws://127.0.0.1:3000/ws",
+    containerConfig: normalizeContainerConfig({}),
     isDevtoolsMode: false
   },
   onLaunch() {
@@ -12,13 +22,24 @@ App({
       if (cached && typeof cached === "string") {
         this.globalData.wsUrl = cached.trim();
       }
-    } catch {
+    } catch (error) {
       // ignore storage read failure
     }
 
     try {
+      this.globalData.containerConfig = normalizeContainerConfig({
+        envId: wx.getStorageSync(CLOUD_ENV_ID_KEY),
+        service: wx.getStorageSync(CLOUD_SERVICE_KEY),
+        wsPath: wx.getStorageSync(CLOUD_WS_PATH_KEY)
+      });
+      initMiniProgramCloud(this.globalData.containerConfig);
+    } catch (error) {
+      this.globalData.containerConfig = normalizeContainerConfig({});
+    }
+
+    try {
       this.globalData.isDevtoolsMode = isDevtoolsPlatform();
-    } catch {
+    } catch (error) {
       this.globalData.isDevtoolsMode = false;
     }
   }

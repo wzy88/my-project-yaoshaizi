@@ -6,6 +6,9 @@ const require = createRequire(import.meta.url);
 const roomModulePath = require.resolve("../miniprogram/pages/room/room.js");
 const {
   LEGAL_ACCEPT_KEY,
+  CLOUD_ENV_ID_KEY,
+  CLOUD_SERVICE_KEY,
+  CLOUD_WS_PATH_KEY,
   NICKNAME_KEY,
   WS_URL_KEY
 } = require("../miniprogram/utils/constants.js");
@@ -74,6 +77,7 @@ function instantiateRoomPage({
     openSetting() {},
     getSetting() {},
     navigateTo() {},
+    cloud: apiAvailability.cloud || null,
     connectSocket() {
       throw new Error("connectSocket should be stubbed in the test instance");
     }
@@ -218,6 +222,65 @@ test("room page: invalid automatic join ids do not queue a pending join", () => 
     assert.equal(page.data.joinRoomId, "12ab34");
     assert.equal(page.data.pendingActionText, "");
     assert.equal(page.pendingRoomAction, null);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: cloud container config bypasses loopback ws validation on mobile join", () => {
+  const cloudCalls = [];
+  const socketTask = {
+    onOpen() {},
+    onClose() {},
+    onError() {},
+    onMessage() {},
+    send() {},
+    close() {}
+  };
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [WS_URL_KEY]: "ws://127.0.0.1:3000/ws",
+      [CLOUD_ENV_ID_KEY]: "dice-test-123",
+      [CLOUD_SERVICE_KEY]: "express-rw1k",
+      [CLOUD_WS_PATH_KEY]: "/ws"
+    },
+    apiAvailability: {
+      cloud: {
+        init(options) {
+          cloudCalls.push({ type: "init", options });
+        },
+        connectContainer(options) {
+          cloudCalls.push({ type: "connect", options });
+          return Promise.resolve({ socketTask });
+        }
+      }
+    }
+  });
+
+  try {
+    page.debugClientEvent = () => {};
+    page.onLoad({ mode: "join", roomId: "123456" });
+
+    assert.equal(cloudCalls.length >= 2, true);
+    assert.deepEqual(cloudCalls[0], {
+      type: "init",
+      options: {
+        env: "dice-test-123",
+        traceUser: true
+      }
+    });
+    assert.deepEqual(cloudCalls[1], {
+      type: "connect",
+      options: {
+        service: "express-rw1k",
+        path: "/ws"
+      }
+    });
+    assert.equal(page.data.networkStatusText, "连接中");
+    assert.equal(page.data.pendingActionText, "连接成功后将自动加入房间 123456");
+    assert.equal(toasts.includes("请先改成局域网IP或wss地址"), false);
   } finally {
     cleanup();
   }

@@ -201,6 +201,9 @@ export class RoomService {
       case "voice:fetch":
         await this.handleVoiceFetch(ws, message.payload, message.actionId);
         break;
+      case "system:heartbeat":
+        this.handleHeartbeat(ws, message.payload, message.actionId);
+        break;
       case "voice:transcript":
         {
           const { room, session } = this.getRoomAndSession(ws);
@@ -786,6 +789,22 @@ export class RoomService {
     });
 
     this.send(ws, "voice:fetched", voice);
+  }
+
+  private handleHeartbeat(
+    ws: WebSocket,
+    payload: ClientEventMap["system:heartbeat"],
+    actionId?: string
+  ): void {
+    const ts = Number(payload && payload.ts);
+    if (!Number.isFinite(ts) || ts <= 0) {
+      throw new GameError(ErrorCode.BAD_REQUEST, "心跳时间戳无效");
+    }
+
+    this.sendAck(ws, {
+      actionId,
+      ok: true
+    });
   }
 
   private handleRoundRestart(ws: WebSocket, actionId?: string): void {

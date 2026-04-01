@@ -1,6 +1,25 @@
 const app = getApp();
-const { LEGAL_ACCEPT_KEY, WS_URL_KEY, SESSION_KEY, NICKNAME_KEY, AVATAR_URL_KEY, SFX_ENABLED_KEY, HAPTIC_ENABLED_KEY } = require("../../utils/constants");
+const {
+  LEGAL_ACCEPT_KEY,
+  WS_URL_KEY,
+  CLOUD_ENV_ID_KEY,
+  CLOUD_SERVICE_KEY,
+  CLOUD_WS_PATH_KEY,
+  SESSION_KEY,
+  NICKNAME_KEY,
+  AVATAR_URL_KEY,
+  SFX_ENABLED_KEY,
+  HAPTIC_ENABLED_KEY
+} = require("../../utils/constants");
 const { DEFAULT_3D_DIE_ASSET, SELF_DICE_PLACEHOLDER, getDieAsset } = require("../../utils/dice-assets");
+const {
+  DEFAULT_CONTAINER_WS_PATH,
+  normalizeContainerConfig,
+  hasContainerService,
+  buildContainerSummary,
+  canUseCloudSocketApi,
+  initMiniProgramCloud
+} = require("../../utils/cloud-container");
 const { isDevtoolsPlatform, getNavigationSafeArea } = require("../../utils/system-info");
 const ROOM_ASSETS = {
   avatarA: "/assets/figma-room-v2/39b17e1f-9114-410f-85d5-2e5a189fbf74.svg",
@@ -1056,11 +1075,33 @@ function formatClock(ts) {
   return `${hh}:${mm}`;
 }
 
-function buildWsHint(wsUrl, lastWsError = "") {
-  const url = String(wsUrl || "").trim();
+function buildWsHint(options, lastWsError = "") {
+  const params = options && typeof options === "object"
+    ? options
+    : { wsUrl: options };
+  const url = String(params.wsUrl || "").trim();
+  const containerConfig = normalizeContainerConfig(params.containerConfig);
   const err = String(lastWsError || "");
+
+  if (hasContainerService(containerConfig)) {
+    const summary = buildContainerSummary(containerConfig);
+    if (!canUseCloudSocketApi()) {
+      return "当前微信基础库不支持云托管连接，请升级微信或开发者工具后重试";
+    }
+    if (err.includes("1006")) {
+      return "云托管握手失败：请确认服务名、路径和环境绑定是否正确";
+    }
+    if (err.includes("connectContainer")) {
+      return `云托管连接失败：${err}`;
+    }
+    if (err.includes("ROOM_NOT_FOUND")) {
+      return "房间不存在：请确认双方进入的是同一个云托管服务";
+    }
+    return `当前通过微信云托管连接：${summary}`;
+  }
+
   if (!url) {
-    return "请先填写服务器地址";
+    return "请先配置云托管服务名，或填写调试地址";
   }
 
   const matched = url.match(/^wss?:\/\/([^/:?#]+)/i);
@@ -1139,6 +1180,10 @@ function ensureRecordPermission() {
 Page({
   data: {
     wsUrl: app.globalData.wsUrl,
+    containerEnvId: app.globalData.containerConfig ? app.globalData.containerConfig.envId : "",
+    containerService: app.globalData.containerConfig ? app.globalData.containerConfig.service : "",
+    containerWsPath: app.globalData.containerConfig ? app.globalData.containerConfig.wsPath : DEFAULT_CONTAINER_WS_PATH,
+    connectionSummaryText: buildContainerSummary(app.globalData.containerConfig || {}),
     wsHintText: "",
     connected: false,
     connecting: false,
@@ -1593,6 +1638,19 @@ Page({
       app.globalData.wsUrl = cachedWsUrl.trim();
     }
 
+    const containerConfig = normalizeContainerConfig({
+      envId: wx.getStorageSync(CLOUD_ENV_ID_KEY),
+      service: wx.getStorageSync(CLOUD_SERVICE_KEY),
+      wsPath: wx.getStorageSync(CLOUD_WS_PATH_KEY)
+    });
+    this.setData({
+      containerEnvId: containerConfig.envId,
+      containerService: containerConfig.service,
+      containerWsPath: containerConfig.wsPath,
+      connectionSummaryText: buildContainerSummary(containerConfig)
+    });
+    app.globalData.containerConfig = containerConfig;
+
     const legalConsent = wx.getStorageSync(LEGAL_ACCEPT_KEY);
     const legalAccepted = Boolean(legalConsent && legalConsent.accepted === true);
 
@@ -1837,6 +1895,7 @@ Page({
       clearInterval(this.clockTimer);
       this.clockTimer = null;
     }
+    this.stopHeartbeat();
     this.clearRoomSelfRollingTimer();
 
     if (this.socketTask) {
@@ -1991,13 +2050,29 @@ Page({
     });
   },
 
+  getContainerConfig() {
+    return normalizeContainerConfig({
+      envId: this.data.containerEnvId,
+      service: this.data.containerService,
+      wsPath: this.data.containerWsPath
+    });
+  },
+
   refreshWsHint(errorText = this.data.lastWsError) {
     this.setData({
-      wsHintText: buildWsHint(this.data.wsUrl, errorText)
+      wsHintText: buildWsHint({
+        wsUrl: this.data.wsUrl,
+        containerConfig: this.getContainerConfig()
+      }, errorText),
+      connectionSummaryText: buildContainerSummary(this.getContainerConfig())
     });
   },
 
   handleBlockedAutoConnect() {
+    if (hasContainerService(this.getContainerConfig())) {
+      return false;
+    }
+
     if (this.devtoolsMode || !isLoopbackWsUrl(this.data.wsUrl)) {
       return false;
     }
@@ -2121,6 +2196,102 @@ Page({
       return;
     }
 
+    const containerConfig = this.getContainerConfig();
+    if (hasContainerService(containerConfig)) {
+      if (!canUseCloudSocketApi()) {
+        const errorText = "connectContainer 不可用";
+        this.setData({
+          connected: false,
+          connecting: false,
+          networkStatusText: "无法连接",
+          lastWsError: errorText
+        });
+        this.refreshWsHint(errorText);
+        wx.showToast({ title: "请升级微信后重试", icon: "none" });
+        return;
+      }
+
+      const initResult = initMiniProgramCloud(containerConfig);
+      if (!initResult.ok) {
+        const errorText = initResult.reason || "云能力初始化失败";
+        this.setData({
+          connected: false,
+          connecting: false,
+          networkStatusText: "无法连接",
+          lastWsError: errorText
+        });
+        this.refreshWsHint(errorText);
+        wx.showToast({ title: "云能力初始化失败", icon: "none" });
+        return;
+      }
+
+      this.setData({ connecting: true, networkStatusText: "连接中" });
+      const socketId = (this.socketSeq || 0) + 1;
+      this.socketSeq = socketId;
+      this.activeSocketId = socketId;
+      this.debugClientEvent("ws:connect_attempt", {
+        socketId,
+        connectionMode: "cloud",
+        service: containerConfig.service,
+        wsPath: containerConfig.wsPath,
+        roomId: this.data.roomId,
+        playerId: this.data.playerId,
+        pendingAction: this.pendingRoomAction ? this.pendingRoomAction.kind : "",
+        manualClose: this.manualClose
+      });
+
+      wx.cloud.connectContainer({
+        service: containerConfig.service,
+        path: containerConfig.wsPath
+      }).then((res) => {
+        const socketTask = res && res.socketTask ? res.socketTask : res;
+        if (this.activeSocketId !== socketId) {
+          if (socketTask && typeof socketTask.close === "function") {
+            try {
+              socketTask.close({});
+            } catch (error) {
+              // ignore stale close failure
+            }
+          }
+          return;
+        }
+        if (!socketTask || typeof socketTask.onOpen !== "function") {
+          throw new Error("connectContainer 未返回可用的 socketTask");
+        }
+        this.attachSocketTask(socketTask, socketId, {
+          connectionMode: "cloud",
+          service: containerConfig.service,
+          wsPath: containerConfig.wsPath
+        });
+      }).catch((error) => {
+        if (this.activeSocketId !== socketId) {
+          return;
+        }
+        const errMsg = error && error.message ? String(error.message) : "connectContainer failed";
+        this.socketTask = null;
+        this.stopHeartbeat();
+        this.setData({
+          connected: false,
+          connecting: false,
+          networkStatusText: "网络异常",
+          lastWsError: errMsg
+        });
+        this.refreshWsHint(errMsg);
+        this.pushLog(`[ws] error ${errMsg}`);
+        wx.showToast({ title: "连接失败，请看错误", icon: "none" });
+
+        if (this.skipAutoReconnectOnce) {
+          this.skipAutoReconnectOnce = false;
+          return;
+        }
+
+        if (!this.manualClose) {
+          this.scheduleReconnect();
+        }
+      });
+      return;
+    }
+
     if (!/^wss?:\/\/.+/i.test(this.data.wsUrl)) {
       wx.showToast({ title: "服务器地址无效", icon: "none" });
       this.refreshWsHint("地址无效");
@@ -2149,17 +2320,24 @@ Page({
         "ngrok-skip-browser-warning": "1"
       }
     });
-
-    this.socketTask = socketTask;
     this.activeSocketId = socketId;
     this.debugClientEvent("ws:connect_attempt", {
       socketId,
+      connectionMode: "direct",
       wsUrl: this.data.wsUrl,
       roomId: this.data.roomId,
       playerId: this.data.playerId,
       pendingAction: this.pendingRoomAction ? this.pendingRoomAction.kind : "",
       manualClose: this.manualClose
     });
+    this.attachSocketTask(socketTask, socketId, {
+      connectionMode: "direct",
+      wsUrl: this.data.wsUrl
+    });
+  },
+
+  attachSocketTask(socketTask, socketId, connectionMeta = {}) {
+    this.socketTask = socketTask;
 
     socketTask.onOpen(() => {
       if (this.socketTask !== socketTask || this.activeSocketId !== socketId) {
@@ -2167,6 +2345,7 @@ Page({
         return;
       }
 
+      this.startHeartbeat();
       this.setData({
         connected: true,
         connecting: false,
@@ -2179,7 +2358,8 @@ Page({
         socketId,
         roomId: this.data.roomId,
         playerId: this.data.playerId,
-        pendingAction: this.pendingRoomAction ? this.pendingRoomAction.kind : ""
+        pendingAction: this.pendingRoomAction ? this.pendingRoomAction.kind : "",
+        connectionMode: connectionMeta.connectionMode || "direct"
       });
 
       if (this.flushPendingRoomAction()) {
@@ -2203,6 +2383,7 @@ Page({
       const code = event && typeof event.code !== "undefined" ? event.code : "NA";
       const reason = event && event.reason ? event.reason : "";
       this.socketTask = null;
+      this.stopHeartbeat();
 
       this.setData({
         connected: false,
@@ -2219,7 +2400,8 @@ Page({
         roomId: this.data.roomId,
         playerId: this.data.playerId,
         manualClose: this.manualClose,
-        skipAutoReconnectOnce: this.skipAutoReconnectOnce
+        skipAutoReconnectOnce: this.skipAutoReconnectOnce,
+        connectionMode: connectionMeta.connectionMode || "direct"
       });
 
       if (this.skipAutoReconnectOnce) {
@@ -2240,6 +2422,7 @@ Page({
 
       const errMsg = err && err.errMsg ? err.errMsg : "connect error";
       this.socketTask = null;
+      this.stopHeartbeat();
       this.setData({
         connected: false,
         connecting: false,
@@ -2254,7 +2437,8 @@ Page({
         roomId: this.data.roomId,
         playerId: this.data.playerId,
         manualClose: this.manualClose,
-        skipAutoReconnectOnce: this.skipAutoReconnectOnce
+        skipAutoReconnectOnce: this.skipAutoReconnectOnce,
+        connectionMode: connectionMeta.connectionMode || "direct"
       });
       wx.showToast({ title: "连接失败，请看错误", icon: "none" });
 
@@ -2271,6 +2455,39 @@ Page({
     socketTask.onMessage((event) => {
       this.handleServerPacket(event.data);
     });
+  },
+
+  startHeartbeat() {
+    this.stopHeartbeat();
+    this.heartbeatTimer = setInterval(() => {
+      this.sendHeartbeat();
+    }, 25000);
+  },
+
+  stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  },
+
+  sendHeartbeat() {
+    if (!this.socketTask || !this.data.connected) {
+      return;
+    }
+
+    try {
+      this.socketTask.send({
+        data: JSON.stringify({
+          event: "system:heartbeat",
+          payload: {
+            ts: Date.now()
+          }
+        })
+      });
+    } catch (error) {
+      // ignore heartbeat send failure
+    }
   },
 
   scheduleReconnect() {
@@ -2416,6 +2633,7 @@ Page({
       } catch (error) {
         // ignore
       }
+      this.stopHeartbeat();
       this.socketTask = null;
     }
 
@@ -4847,6 +5065,7 @@ Page({
     this.skipAutoReconnectOnce = true;
     this.manualClose = true;
     this.socketTask.close({});
+    this.stopHeartbeat();
     this.socketTask = null;
 
     this.setData({

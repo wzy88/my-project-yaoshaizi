@@ -175,6 +175,9 @@ export interface ClientEventMap {
   "voice:fetch": {
     fileId: string;
   };
+  "system:heartbeat": {
+    ts: number;
+  };
   "test:setSeed": { seed: number };
   "test:setNextDice": { playerId?: string; dice: number[] };
 }

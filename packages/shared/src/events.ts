@@ -24,6 +24,7 @@ export const CLIENT_EVENTS: ClientEventName[] = [
   "voice:upload",
   "voice:list",
   "voice:fetch",
+  "system:heartbeat",
   "test:setSeed",
   "test:setNextDice"
 ];

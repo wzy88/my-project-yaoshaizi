@@ -1,6 +1,9 @@
 module.exports = {
   LEGAL_ACCEPT_KEY: "diceLegalConsentV1",
   WS_URL_KEY: "diceWsUrlV1",
+  CLOUD_ENV_ID_KEY: "diceCloudEnvIdV1",
+  CLOUD_SERVICE_KEY: "diceCloudServiceV1",
+  CLOUD_WS_PATH_KEY: "diceCloudWsPathV1",
   SESSION_KEY: "diceSession",
   NICKNAME_KEY: "diceNicknameV1",
   AVATAR_URL_KEY: "diceAvatarUrlV1",
