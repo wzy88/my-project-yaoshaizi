@@ -2051,10 +2051,24 @@ Page({
   },
 
   getContainerConfig() {
-    return normalizeContainerConfig({
+    const localConfig = normalizeContainerConfig({
       envId: this.data.containerEnvId,
       service: this.data.containerService,
       wsPath: this.data.containerWsPath
+    });
+    if (localConfig.service) {
+      return localConfig;
+    }
+
+    const appConfig = normalizeContainerConfig(app && app.globalData ? app.globalData.containerConfig : null);
+    if (appConfig.service) {
+      return appConfig;
+    }
+
+    return normalizeContainerConfig({
+      envId: wx.getStorageSync(CLOUD_ENV_ID_KEY),
+      service: wx.getStorageSync(CLOUD_SERVICE_KEY),
+      wsPath: wx.getStorageSync(CLOUD_WS_PATH_KEY)
     });
   },
 

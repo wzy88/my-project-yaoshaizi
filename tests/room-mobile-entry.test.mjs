@@ -17,6 +17,7 @@ function instantiateRoomPage({
   platform = "android",
   storage = {},
   appWsUrl = "ws://127.0.0.1:3000/ws",
+  appContainerConfig = null,
   apiAvailability = {}
 } = {}) {
   const originalPage = globalThis.Page;
@@ -33,7 +34,8 @@ function instantiateRoomPage({
   globalThis.getApp = () => ({
     globalData: {
       wsUrl: appWsUrl,
-      isDevtoolsMode: platform === "devtools"
+      isDevtoolsMode: platform === "devtools",
+      containerConfig: appContainerConfig
     }
   });
   globalThis.getCurrentPages = () => [];
@@ -287,6 +289,69 @@ test("room page: cloud container config bypasses loopback ws validation on mobil
     assert.equal(page.data.networkStatusText, "连接中");
     assert.equal(page.data.pendingActionText, "连接成功后将自动加入房间 123456");
     assert.equal(toasts.includes("请先改成局域网IP或wss地址"), false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: cloud container config falls back to app global data when page data is empty", () => {
+  const cloudCalls = [];
+  const socketTask = {
+    onOpen() {},
+    onClose() {},
+    onError() {},
+    onMessage() {},
+    send() {},
+    close() {}
+  };
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://127.0.0.1:3000/ws",
+    appContainerConfig: {
+      envId: "dice-test-123",
+      service: "express-rw1k",
+      wsPath: "/ws"
+    },
+    apiAvailability: {
+      cloud: {
+        init(options) {
+          cloudCalls.push({ type: "init", options });
+        },
+        connectContainer(options) {
+          cloudCalls.push({ type: "connect", options });
+          return Promise.resolve({ socketTask });
+        }
+      }
+    }
+  });
+
+  try {
+    page.debugClientEvent = () => {};
+    page.data.containerEnvId = "";
+    page.data.containerService = "";
+    page.data.containerWsPath = "";
+    page.data.wsUrl = "ws://127.0.0.1:3000/ws";
+
+    page.connectSocket();
+
+    assert.equal(cloudCalls.length >= 2, true);
+    assert.deepEqual(cloudCalls[0], {
+      type: "init",
+      options: {
+        env: "dice-test-123",
+        traceUser: true
+      }
+    });
+    assert.deepEqual(cloudCalls[1], {
+      type: "connect",
+      options: {
+        service: "express-rw1k",
+        path: "/ws"
+      }
+    });
   } finally {
     cleanup();
   }
