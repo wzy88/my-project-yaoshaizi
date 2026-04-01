@@ -393,6 +393,40 @@ test("room page: cloud container connect failure surfaces the underlying error d
   }
 });
 
+test("room page: cloud container connect failure uses a friendly fallback when the error is empty", async () => {
+  const { page, modals, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [CLOUD_ENV_ID_KEY]: "dice-test-123",
+      [CLOUD_SERVICE_KEY]: "express-rw1k",
+      [CLOUD_WS_PATH_KEY]: "/ws"
+    },
+    apiAvailability: {
+      cloud: {
+        init() {},
+        connectContainer() {
+          return Promise.reject({});
+        }
+      }
+    }
+  });
+
+  try {
+    page.debugClientEvent = () => {};
+    page.scheduleReconnect = () => {};
+    page.onLoad({ mode: "join", roomId: "123456" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(page.data.lastWsError, "连接中断，请稍后重试");
+    assert.equal(modals.length > 0, true);
+    assert.equal(modals[0].title, "连接失败");
+    assert.equal(modals[0].content, "连接中断，请稍后重试");
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: invalid pending join is discarded before flush can send it", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {

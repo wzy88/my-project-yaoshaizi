@@ -1133,6 +1133,25 @@ function isLoopbackWsUrl(wsUrl) {
   return /^wss?:\/\/(127\.0\.0\.1|localhost|\[?::1\]?)(:\d+)?(\/|$)/i.test(String(wsUrl || "").trim());
 }
 
+function extractWsErrorText(errorLike, fallbackText = "连接中断，请稍后重试") {
+  const source = errorLike && typeof errorLike === "object" ? errorLike : {};
+  const candidates = [
+    source.errMsg,
+    source.message,
+    source.reason,
+    source.code ? `code=${source.code}` : ""
+  ];
+
+  for (const candidate of candidates) {
+    const text = String(candidate || "").trim();
+    if (text) {
+      return text;
+    }
+  }
+
+  return fallbackText;
+}
+
 function ensureRecordPermission() {
   return new Promise((resolve) => {
     wx.getSetting({
@@ -2281,7 +2300,7 @@ Page({
         if (this.activeSocketId !== socketId) {
           return;
         }
-        const errMsg = error && error.message ? String(error.message) : "connectContainer failed";
+        const errMsg = extractWsErrorText(error);
         this.socketTask = null;
         this.stopHeartbeat();
         this.setData({
@@ -2434,7 +2453,7 @@ Page({
         return;
       }
 
-      const errMsg = err && err.errMsg ? err.errMsg : "connect error";
+      const errMsg = extractWsErrorText(err);
       this.socketTask = null;
       this.stopHeartbeat();
       this.setData({
