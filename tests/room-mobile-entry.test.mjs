@@ -27,6 +27,7 @@ function instantiateRoomPage({
 
   const storageState = { ...storage };
   const toasts = [];
+  const modals = [];
   let pageConfig = null;
 
   globalThis.getApp = () => ({
@@ -72,7 +73,12 @@ function instantiateRoomPage({
     showToast({ title }) {
       toasts.push(String(title || ""));
     },
-    showModal() {},
+    showModal(options) {
+      modals.push(options || {});
+      if (options && typeof options.success === "function") {
+        options.success({ confirm: true, cancel: false, content: "" });
+      }
+    },
     authorize() {},
     openSetting() {},
     getSetting() {},
@@ -127,7 +133,7 @@ function instantiateRoomPage({
     }
   };
 
-  return { page, toasts, storageState, cleanup };
+  return { page, toasts, modals, storageState, cleanup };
 }
 
 test("room page: mobile join with loopback ws stays on the room shell and prompts for ws config", () => {
@@ -281,6 +287,42 @@ test("room page: cloud container config bypasses loopback ws validation on mobil
     assert.equal(page.data.networkStatusText, "连接中");
     assert.equal(page.data.pendingActionText, "连接成功后将自动加入房间 123456");
     assert.equal(toasts.includes("请先改成局域网IP或wss地址"), false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: cloud container connect failure surfaces the underlying error detail", async () => {
+  const { page, toasts, modals, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [CLOUD_ENV_ID_KEY]: "dice-test-123",
+      [CLOUD_SERVICE_KEY]: "express-rw1k",
+      [CLOUD_WS_PATH_KEY]: "/ws"
+    },
+    apiAvailability: {
+      cloud: {
+        init() {},
+        connectContainer() {
+          return Promise.reject(new Error("service not found"));
+        }
+      }
+    }
+  });
+
+  try {
+    page.debugClientEvent = () => {};
+    page.scheduleReconnect = () => {};
+    page.onLoad({ mode: "join", roomId: "123456" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    assert.equal(page.data.networkStatusText, "网络异常");
+    assert.equal(page.data.lastWsError, "service not found");
+    assert.ok(toasts.includes("连接失败"));
+    assert.equal(modals.length > 0, true);
+    assert.equal(modals[0].title, "连接失败");
+    assert.match(String(modals[0].content || ""), /service not found/);
   } finally {
     cleanup();
   }

@@ -2278,7 +2278,7 @@ Page({
         });
         this.refreshWsHint(errMsg);
         this.pushLog(`[ws] error ${errMsg}`);
-        wx.showToast({ title: "连接失败，请看错误", icon: "none" });
+        this.showConnectionFailure(errMsg);
 
         if (this.skipAutoReconnectOnce) {
           this.skipAutoReconnectOnce = false;
@@ -2440,7 +2440,7 @@ Page({
         skipAutoReconnectOnce: this.skipAutoReconnectOnce,
         connectionMode: connectionMeta.connectionMode || "direct"
       });
-      wx.showToast({ title: "连接失败，请看错误", icon: "none" });
+      this.showConnectionFailure(errMsg);
 
       if (this.skipAutoReconnectOnce) {
         this.skipAutoReconnectOnce = false;
@@ -2487,6 +2487,18 @@ Page({
       });
     } catch (error) {
       // ignore heartbeat send failure
+    }
+  },
+
+  showConnectionFailure(errMsg) {
+    const detail = String(errMsg || "未知错误");
+    wx.showToast({ title: "连接失败", icon: "none" });
+    if (typeof wx.showModal === "function") {
+      wx.showModal({
+        title: "连接失败",
+        content: detail,
+        showCancel: false
+      });
     }
   },
 
