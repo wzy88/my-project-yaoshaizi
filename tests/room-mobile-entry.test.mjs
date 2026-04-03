@@ -18,7 +18,8 @@ function instantiateRoomPage({
   storage = {},
   appWsUrl = "ws://127.0.0.1:3000/ws",
   appContainerConfig = null,
-  apiAvailability = {}
+  apiAvailability = {},
+  useRealSfxFiles = false
 } = {}) {
   const originalPage = globalThis.Page;
   const originalWx = globalThis.wx;
@@ -86,6 +87,8 @@ function instantiateRoomPage({
     getSetting() {},
     navigateTo() {},
     cloud: apiAvailability.cloud || null,
+    env: apiAvailability.env || null,
+    getFileSystemManager: apiAvailability.getFileSystemManager,
     connectSocket() {
       throw new Error("connectSocket should be stubbed in the test instance");
     }
@@ -101,7 +104,9 @@ function instantiateRoomPage({
     }
   };
   Object.assign(page, pageConfig);
-  page.ensureSfxFiles = async () => {};
+  if (!useRealSfxFiles) {
+    page.ensureSfxFiles = async () => {};
+  }
 
   const cleanup = () => {
     if (page.clockTimer) {
@@ -138,7 +143,59 @@ function instantiateRoomPage({
   return { page, toasts, modals, storageState, cleanup };
 }
 
-test("room page: mobile join with loopback ws stays on the room shell and prompts for ws config", () => {
+test("room page: roll uses the bundled audio asset while the other sfx keep the lighter generated profile", async () => {
+  const files = new Map();
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws",
+    useRealSfxFiles: true,
+    apiAvailability: {
+      env: {
+        USER_DATA_PATH: "/tmp/dice-sfx"
+      },
+      getFileSystemManager() {
+        return {
+          access({ path, success, fail }) {
+            if (files.has(path)) {
+              success();
+              return;
+            }
+            fail(new Error("ENOENT"));
+          },
+          writeFile({ filePath, data, success }) {
+            files.set(filePath, data);
+            success();
+          }
+        };
+      }
+    }
+  });
+
+  try {
+    page.sfxContext = {};
+    await page.ensureSfxFiles();
+
+    const ok = files.get("/tmp/dice-sfx/dice_sfx_ok.wav");
+    const open = files.get("/tmp/dice-sfx/dice_sfx_open.wav");
+    const lose = files.get("/tmp/dice-sfx/dice_sfx_lose.wav");
+    const win = files.get("/tmp/dice-sfx/dice_sfx_win.wav");
+
+    assert.equal(page.sfxPaths.roll, "/assets/audio/dice-roll.mp3");
+    assert.equal(files.has("/tmp/dice-sfx/dice_sfx_roll.wav"), false);
+    assert.equal(Boolean(ok && open && lose && win), true);
+    assert.equal(ok.byteLength >= 2400 && ok.byteLength <= 3000, true);
+    assert.equal(open.byteLength > ok.byteLength, true);
+    assert.equal(open.byteLength < 4800, true);
+    assert.equal(lose.byteLength > win.byteLength, true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: mobile join uses the built-in cloud container defaults before any manual config", () => {
   const { page, toasts, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -154,12 +211,13 @@ test("room page: mobile join with loopback ws stays on the room shell and prompt
 
     page.onLoad({ mode: "join", roomId: "123456" });
 
-    assert.equal(connectAttempts, 0);
+    assert.equal(connectAttempts, 1);
     assert.equal(page.data.joinRoomId, "123456");
     assert.equal(page.data.pendingActionText, "连接成功后将自动加入房间 123456");
-    assert.equal(page.data.networkStatusText, "请修改地址");
-    assert.match(page.data.wsHintText, /手机真机无法访问 127\.0\.0\.1/);
-    assert.ok(toasts.includes("请先改成局域网IP或wss地址"));
+    assert.equal(page.data.containerEnvId, "test-5gz3z9msd3e7502f");
+    assert.equal(page.data.containerService, "express-rw1k");
+    assert.equal(page.data.containerWsPath, "/ws");
+    assert.equal(toasts.includes("请先改成局域网IP或wss地址"), false);
   } finally {
     cleanup();
   }
@@ -180,7 +238,7 @@ test("room page: default room id display uses the six hyphen placeholder", () =>
   }
 });
 
-test("room page: accepting legal on mobile join still reveals ws config guidance when using loopback", () => {
+test("room page: accepting legal on mobile join still uses the built-in cloud defaults", () => {
   const { page, toasts, storageState, cleanup } = instantiateRoomPage({
     storage: {
       [NICKNAME_KEY]: "手机玩家",
@@ -197,13 +255,13 @@ test("room page: accepting legal on mobile join still reveals ws config guidance
     page.onLoad({ mode: "join", roomId: "654321" });
     page.acceptLegal();
 
-    assert.equal(connectAttempts, 0);
+    assert.equal(connectAttempts, 1);
     assert.equal(page.data.legalAccepted, true);
     assert.equal(page.data.pendingActionText, "连接成功后将自动加入房间 654321");
-    assert.equal(page.data.networkStatusText, "请修改地址");
-    assert.match(page.data.wsHintText, /手机真机无法访问 127\.0\.0\.1/);
+    assert.equal(page.data.containerEnvId, "test-5gz3z9msd3e7502f");
+    assert.equal(page.data.containerService, "express-rw1k");
     assert.deepEqual(storageState[LEGAL_ACCEPT_KEY].accepted, true);
-    assert.ok(toasts.includes("请先改成局域网IP或wss地址"));
+    assert.equal(toasts.includes("请先改成局域网IP或wss地址"), false);
   } finally {
     cleanup();
   }
@@ -352,6 +410,61 @@ test("room page: cloud container config falls back to app global data when page 
         path: "/ws"
       }
     });
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: built-in cloud container defaults bypass loopback ws validation without stored config", () => {
+  const cloudCalls = [];
+  const socketTask = {
+    onOpen() {},
+    onClose() {},
+    onError() {},
+    onMessage() {},
+    send() {},
+    close() {}
+  };
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    apiAvailability: {
+      cloud: {
+        init(options) {
+          cloudCalls.push({ type: "init", options });
+        },
+        connectContainer(options) {
+          cloudCalls.push({ type: "connect", options });
+          return Promise.resolve({ socketTask });
+        }
+      }
+    }
+  });
+
+  try {
+    page.debugClientEvent = () => {};
+    page.onLoad({ mode: "join", roomId: "123456" });
+
+    assert.equal(cloudCalls.length >= 2, true);
+    assert.deepEqual(cloudCalls[0], {
+      type: "init",
+      options: {
+        env: "test-5gz3z9msd3e7502f",
+        traceUser: true
+      }
+    });
+    assert.deepEqual(cloudCalls[1], {
+      type: "connect",
+      options: {
+        service: "express-rw1k",
+        path: "/ws"
+      }
+    });
+    assert.equal(page.data.networkStatusText, "连接中");
+    assert.equal(page.data.pendingActionText, "连接成功后将自动加入房间 123456");
+    assert.equal(toasts.includes("请先改成局域网IP或wss地址"), false);
   } finally {
     cleanup();
   }
@@ -662,6 +775,85 @@ test("room page: room state decorates the shell once room data is ready", () => 
     assert.equal(page.data.roomId, "123456");
     assert.equal(page.data.displayRoomId, "123456");
     assert.equal(page.data.playersDecorated.length, 1);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: round start audio plays once when room state enters a new rolling round", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sfxCalls = [];
+    page.playSfx = (kind) => {
+      sfxCalls.push(kind);
+    };
+    page.data.playerId = "player-a";
+
+    const basePayload = {
+      roomId: "123456",
+      currentPlayerId: "player-a",
+      config: {
+        direction: "cw",
+        wildcardOneEnabled: true,
+        openMode: "single",
+        dicePerPlayer: 5,
+        minOpeningCount: 5,
+        testMode: false
+      },
+      players: [
+        {
+          id: "player-a",
+          nickname: "手机玩家",
+          avatar: "",
+          isOwner: true,
+          onlineStatus: "online",
+          turnStatus: "active",
+          seatIndex: 1,
+          diceCupStatus: "closed",
+          rollLocked: false
+        }
+      ],
+      waitingPlayers: [],
+      networkHealth: "good",
+      version: 1,
+      serverTs: Date.now()
+    };
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...basePayload,
+        phase: "ready",
+        round: 0
+      }
+    }));
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...basePayload,
+        phase: "rolling",
+        round: 1
+      }
+    }));
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...basePayload,
+        phase: "rolling",
+        round: 1
+      }
+    }));
+
+    assert.deepEqual(sfxCalls, ["roundStart"]);
   } finally {
     cleanup();
   }
@@ -1213,6 +1405,147 @@ test("room page: all players see the settlement dialog and only the loser can co
     assert.equal(page.data.settlementVisible, true);
     assert.equal(page.data.settlementCanContinue, true);
     assert.equal(page.data.settlementRows.length, 2);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: settlement audio plays once when the dialog first appears and does not stack with win lose cues", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sfxCalls = [];
+    page.playSfx = (kind) => {
+      sfxCalls.push(kind);
+    };
+    page.startSettlementCountdown = () => {
+      page.setData({ settlementContinueSec: 2 });
+    };
+    page.data.playerId = "winner";
+    page.data.playersRaw = [
+      { id: "winner", nickname: "赢家", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "idle", seatIndex: 1, diceCupStatus: "closed", rollLocked: false },
+      { id: "loser", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "closed", rollLocked: false }
+    ];
+
+    const openResult = {
+      round: 3,
+      openerId: "winner",
+      targets: [
+        {
+          targetId: "loser",
+          declared: { count: 8, point: 5 },
+          actual: 4,
+          winnerId: "winner"
+        }
+      ],
+      serverTs: Date.now()
+    };
+
+    const roundSummary = {
+      round: 3,
+      roomId: "123456",
+      players: [
+        { playerId: "winner", dice: [5, 2, 5, 1, 5] },
+        { playerId: "loser", dice: [1, 5, 3, 2, 4] }
+      ],
+      openResult,
+      serverTs: Date.now()
+    };
+
+    page.handleServerPacket(JSON.stringify({
+      event: "open:result",
+      payload: openResult
+    }));
+    page.handleServerPacket(JSON.stringify({
+      event: "round:summary",
+      payload: roundSummary
+    }));
+
+    assert.deepEqual(sfxCalls, ["settlement"]);
+    assert.equal(page.data.settlementVisible, true);
+    assert.equal(page.data.settlementRows.length, 2);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: hud primary button uses the bundled primary cue during rolling instead of the legacy roll cue", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sfxCalls = [];
+    const sent = [];
+    page.playSfx = (kind) => {
+      sfxCalls.push(kind);
+    };
+    page.haptic = () => {};
+    page.showMyDiceDrawerRolling = () => {};
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+
+    page.setData({
+      phase: "rolling",
+      canPrimaryAction: true,
+      selfIsWaiting: false,
+      selfHasDice: false,
+      selfRollLocked: false,
+      selfRollCountThisRound: 0,
+      recording: false,
+      myDiceRolling: false
+    });
+
+    page.onHudPrimaryAction();
+
+    assert.deepEqual(sfxCalls, ["primary"]);
+    assert.deepEqual(sent, [{ event: "dice:roll", payload: {} }]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: hud primary button uses the bundled primary cue when opening the call panel", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sfxCalls = [];
+    page.playSfx = (kind) => {
+      sfxCalls.push(kind);
+    };
+    page.setData({
+      phase: "calling",
+      currentPlayerId: "player-a",
+      playerId: "player-a",
+      selfIsWaiting: false,
+      callPanelVisible: false,
+      callPanelExpanded: false,
+      lastCallObj: { count: 3, point: 4 }
+    });
+    page.getMaxCallCount = () => 10;
+
+    page.onHudPrimaryAction();
+
+    assert.equal(page.data.callPanelVisible, true);
+    assert.equal(page.data.callPanelExpanded, true);
+    assert.deepEqual(sfxCalls, ["primary"]);
   } finally {
     cleanup();
   }

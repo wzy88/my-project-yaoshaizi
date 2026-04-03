@@ -1,4 +1,14 @@
+const {
+  DEFAULT_CLOUD_ENV_ID,
+  DEFAULT_CLOUD_SERVICE
+} = require("./constants");
+
 const DEFAULT_CONTAINER_WS_PATH = "/ws";
+const DEFAULT_CONTAINER_CONFIG = Object.freeze({
+  envId: DEFAULT_CLOUD_ENV_ID,
+  service: DEFAULT_CLOUD_SERVICE,
+  wsPath: DEFAULT_CONTAINER_WS_PATH
+});
 
 function normalizeContainerPath(value) {
   let path = String(value || "").trim();
@@ -18,6 +28,21 @@ function normalizeContainerConfig(raw) {
     service: String(source.service || "").trim(),
     wsPath: normalizeContainerPath(source.wsPath)
   };
+}
+
+function getDefaultContainerConfig() {
+  return { ...DEFAULT_CONTAINER_CONFIG };
+}
+
+function resolveContainerConfig(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const defaultConfig = getDefaultContainerConfig();
+
+  return normalizeContainerConfig({
+    envId: String(source.envId || "").trim() || defaultConfig.envId,
+    service: String(source.service || "").trim() || defaultConfig.service,
+    wsPath: String(source.wsPath || "").trim() || defaultConfig.wsPath
+  });
 }
 
 function hasContainerService(raw) {
@@ -74,8 +99,11 @@ function initMiniProgramCloud(raw) {
 
 module.exports = {
   DEFAULT_CONTAINER_WS_PATH,
+  DEFAULT_CONTAINER_CONFIG,
   normalizeContainerPath,
   normalizeContainerConfig,
+  getDefaultContainerConfig,
+  resolveContainerConfig,
   hasContainerService,
   buildContainerSummary,
   canUseCloudSocketApi,

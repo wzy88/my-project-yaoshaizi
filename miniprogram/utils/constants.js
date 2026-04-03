@@ -1,9 +1,14 @@
+const DEFAULT_CLOUD_ENV_ID = "test-5gz3z9msd3e7502f";
+const DEFAULT_CLOUD_SERVICE = "express-rw1k";
+
 module.exports = {
   LEGAL_ACCEPT_KEY: "diceLegalConsentV1",
   WS_URL_KEY: "diceWsUrlV1",
   CLOUD_ENV_ID_KEY: "diceCloudEnvIdV1",
   CLOUD_SERVICE_KEY: "diceCloudServiceV1",
   CLOUD_WS_PATH_KEY: "diceCloudWsPathV1",
+  DEFAULT_CLOUD_ENV_ID,
+  DEFAULT_CLOUD_SERVICE,
   SESSION_KEY: "diceSession",
   NICKNAME_KEY: "diceNicknameV1",
   AVATAR_URL_KEY: "diceAvatarUrlV1",

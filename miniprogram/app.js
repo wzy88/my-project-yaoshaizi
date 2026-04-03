@@ -5,7 +5,8 @@ const {
   CLOUD_WS_PATH_KEY
 } = require("./utils/constants");
 const {
-  normalizeContainerConfig,
+  getDefaultContainerConfig,
+  resolveContainerConfig,
   initMiniProgramCloud
 } = require("./utils/cloud-container");
 const { isDevtoolsPlatform } = require("./utils/system-info");
@@ -13,7 +14,7 @@ const { isDevtoolsPlatform } = require("./utils/system-info");
 App({
   globalData: {
     wsUrl: "ws://127.0.0.1:3000/ws",
-    containerConfig: normalizeContainerConfig({}),
+    containerConfig: getDefaultContainerConfig(),
     isDevtoolsMode: false
   },
   onLaunch() {
@@ -27,14 +28,14 @@ App({
     }
 
     try {
-      this.globalData.containerConfig = normalizeContainerConfig({
+      this.globalData.containerConfig = resolveContainerConfig({
         envId: wx.getStorageSync(CLOUD_ENV_ID_KEY),
         service: wx.getStorageSync(CLOUD_SERVICE_KEY),
         wsPath: wx.getStorageSync(CLOUD_WS_PATH_KEY)
       });
       initMiniProgramCloud(this.globalData.containerConfig);
     } catch (error) {
-      this.globalData.containerConfig = normalizeContainerConfig({});
+      this.globalData.containerConfig = getDefaultContainerConfig();
     }
 
     try {

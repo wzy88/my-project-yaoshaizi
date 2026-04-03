@@ -13,6 +13,7 @@ const {
 const {
   DEFAULT_CONTAINER_WS_PATH,
   normalizeContainerConfig,
+  resolveContainerConfig,
   hasContainerService,
   buildContainerSummary,
   canUseCloudSocketApi,
@@ -95,7 +96,7 @@ Page({
       app.globalData.wsUrl = trimmed;
     }
 
-    const containerConfig = normalizeContainerConfig({
+    const containerConfig = resolveContainerConfig({
       envId: wx.getStorageSync(CLOUD_ENV_ID_KEY),
       service: wx.getStorageSync(CLOUD_SERVICE_KEY),
       wsPath: wx.getStorageSync(CLOUD_WS_PATH_KEY)

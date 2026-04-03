@@ -15,6 +15,7 @@ const { DEFAULT_3D_DIE_ASSET, SELF_DICE_PLACEHOLDER, getDieAsset } = require("..
 const {
   DEFAULT_CONTAINER_WS_PATH,
   normalizeContainerConfig,
+  resolveContainerConfig,
   hasContainerService,
   buildContainerSummary,
   canUseCloudSocketApi,
@@ -28,6 +29,12 @@ const ROOM_ASSETS = {
   avatarD: "/assets/figma-room-v2/210fcfda-928e-4840-a3e3-173c823b96b8.svg",
   avatarE: "/assets/figma-room-v2/fae378fc-f9e8-496b-a6c8-fee07102a3e1.svg",
   avatarF: "/assets/figma-room-v2/bf7e06ef-5ad9-474e-b2b3-6bbd604fb91f.svg"
+};
+const ROOM_AUDIO_ASSETS = {
+  roll: "/assets/audio/dice-roll.mp3",
+  settlement: "/assets/audio/settlement.mp3",
+  primary: "/assets/audio/primary-action.mp3",
+  roundStart: "/assets/audio/round-start.mp3"
 };
 
 function buildSelfDiceFallback(count = SELF_DICE_PLACEHOLDER.length) {
@@ -989,74 +996,139 @@ function buildWavSfx(kind) {
   const k = String(kind || "");
   const sampleRate = 16000;
 
-  const tone = ({ frequencyHz, durationMs, volume = 0.35 }) => {
-    const duration = Math.max(30, Number(durationMs || 0));
+  const render = ({ durationMs, sampleAt }) => {
+    const duration = Math.max(40, Number(durationMs || 0));
     const sampleCount = Math.max(1, Math.floor((sampleRate * duration) / 1000));
-    const freq = Math.max(80, Number(frequencyHz || 440));
-    const amp = Math.max(0, Math.min(1, Number(volume))) * 0.9;
-    const fadeSamples = Math.min(sampleCount, Math.floor(sampleRate * 0.01));
-
     return buildWavPcm16({
       sampleRate,
       samples: sampleCount,
-      sampleAt: (i, sr) => {
-        const t = i / sr;
-        let env = 1;
-        if (i < fadeSamples) env = i / fadeSamples;
-        else if (sampleCount - i < fadeSamples) env = (sampleCount - i) / fadeSamples;
-        return Math.sin(2 * Math.PI * freq * t) * amp * env;
-      }
+      sampleAt
     });
   };
 
-  const click = ({ durationMs, baseHz = 900, volume = 0.55 }) => {
-    const duration = Math.max(20, Number(durationMs || 0));
-    const sampleCount = Math.max(1, Math.floor((sampleRate * duration) / 1000));
-    const amp = Math.max(0, Math.min(1, Number(volume)));
-    const decay = Math.max(0.006, Math.min(0.06, duration / 1000));
-
-    return buildWavPcm16({
-      sampleRate,
-      samples: sampleCount,
-      sampleAt: (i, sr) => {
-        const t = i / sr;
-        const env = Math.exp(-t / decay);
-        const n = (Math.random() * 2 - 1) * 0.35;
-        const s = Math.sin(2 * Math.PI * Number(baseHz || 900) * t);
-        return (s * 0.55 + n) * amp * env;
-      }
-    });
-  };
-
-  const roll = ({ durationMs = 520, volume = 0.55 }) => {
-    const duration = Math.max(160, Number(durationMs || 0));
-    const sampleCount = Math.max(1, Math.floor((sampleRate * duration) / 1000));
-    const amp = Math.max(0, Math.min(1, Number(volume)));
+  const softTone = ({ frequencyHz, durationMs, volume = 0.25, detuneHz = 0, glide = 0 }) => {
+    const duration = Math.max(50, Number(durationMs || 0));
     const totalT = duration / 1000;
-    let lp = 0;
+    const freq = Math.max(90, Number(frequencyHz || 440));
+    const detune = Number(detuneHz || 0);
+    const amp = Math.max(0, Math.min(1, Number(volume)));
 
-    return buildWavPcm16({
-      sampleRate,
-      samples: sampleCount,
+    return render({
+      durationMs: duration,
       sampleAt: (i, sr) => {
         const t = i / sr;
         const progress = Math.min(1, t / totalT);
-        const env = (1 - progress) * (1 - progress) * 0.95 + 0.05;
+        const env = Math.pow(1 - progress, 1.8);
+        const glideFreq = freq + glide * progress;
+        const base = Math.sin(2 * Math.PI * glideFreq * t);
+        const layer = Math.sin(2 * Math.PI * (glideFreq + detune) * t + 0.35);
+        return (base * 0.72 + layer * 0.28) * env * amp;
+      }
+    });
+  };
+
+  const knock = ({ durationMs, bodyHz, overtoneHz, volume = 0.32, brightness = 0.16 }) => {
+    const duration = Math.max(60, Number(durationMs || 0));
+    const totalT = duration / 1000;
+    const baseHz = Math.max(140, Number(bodyHz || 320));
+    const topHz = Math.max(baseHz + 60, Number(overtoneHz || 860));
+    const amp = Math.max(0, Math.min(1, Number(volume)));
+
+    return render({
+      durationMs: duration,
+      sampleAt: (i, sr) => {
+        const t = i / sr;
+        const attack = Math.min(1, t / 0.008);
+        const bodyEnv = Math.exp(-t / (totalT * 0.44));
+        const topEnv = Math.exp(-t / (totalT * 0.14));
+        const noiseEnv = Math.exp(-t / (totalT * 0.08));
+        const body = Math.sin(2 * Math.PI * baseHz * t);
+        const overtone = Math.sin(2 * Math.PI * topHz * t + 0.3);
+        const noise = (Math.random() * 2 - 1) * brightness;
+        return (body * 0.8 * bodyEnv + overtone * 0.18 * topEnv + noise * noiseEnv) * amp * attack;
+      }
+    });
+  };
+
+  const roll = ({ durationMs = 520, volume = 0.28 }) => {
+    const duration = Math.max(240, Number(durationMs || 0));
+    const totalT = duration / 1000;
+    const amp = Math.max(0, Math.min(1, Number(volume)));
+    const impacts = [];
+
+    let cursor = 0.028;
+    while (cursor < totalT - 0.03) {
+      const progress = cursor / totalT;
+      impacts.push({
+        time: cursor,
+        amp: 0.14 + (1 - progress) * 0.14 + Math.random() * 0.03,
+        freq: 240 + Math.random() * 520,
+        decay: 22 + Math.random() * 20
+      });
+      cursor += 0.016 + Math.random() * 0.014 + progress * 0.032;
+    }
+
+    let low = 0;
+    let grain = 0;
+
+    return render({
+      durationMs: duration,
+      sampleAt: (i, sr) => {
+        const t = i / sr;
+        const progress = Math.min(1, t / totalT);
+        const bodyEnv = Math.pow(1 - progress, 1.5);
+        const hissEnv = Math.pow(1 - progress, 2.8);
         const n = Math.random() * 2 - 1;
-        lp = lp * 0.86 + n * 0.14;
-        const hit = (i % Math.floor(sr * 0.04) === 0) ? (Math.random() * 2 - 1) * 0.5 : 0;
-        return (lp * 0.85 + hit) * amp * env;
+        low = low * 0.9 + n * 0.1;
+        grain = grain * 0.56 + (n - low) * 0.44;
+
+        let collision = 0;
+        for (let index = 0; index < impacts.length; index += 1) {
+          const impact = impacts[index];
+          const dt = t - impact.time;
+          if (dt < 0 || dt > 0.028) continue;
+          const hitEnv = Math.exp(-dt * impact.decay);
+          const strike = Math.sin(2 * Math.PI * impact.freq * dt);
+          const chatter = Math.sin(2 * Math.PI * impact.freq * 1.9 * dt + 0.2);
+          collision += (strike * 0.62 + chatter * 0.14) * impact.amp * hitEnv;
+        }
+
+        const rumble = low * 0.16 + grain * 0.045;
+        return (rumble * bodyEnv + grain * 0.025 * hissEnv + collision) * amp;
+      }
+    });
+  };
+
+  const swell = ({ durationMs, lowHz, highHz, volume = 0.24, upward = true }) => {
+    const duration = Math.max(160, Number(durationMs || 0));
+    const totalT = duration / 1000;
+    const from = Math.max(120, Number(lowHz || 240));
+    const to = Math.max(from + 20, Number(highHz || 520));
+    const amp = Math.max(0, Math.min(1, Number(volume)));
+
+    return render({
+      durationMs: duration,
+      sampleAt: (i, sr) => {
+        const t = i / sr;
+        const progress = Math.min(1, t / totalT);
+        const head = Math.min(1, progress / 0.12);
+        const tail = Math.pow(1 - progress, 1.55);
+        const freqA = upward ? from + (to - from) * progress : to - (to - from) * progress;
+        const freqB = upward ? freqA * 1.25 : freqA * 0.76;
+        const toneA = Math.sin(2 * Math.PI * freqA * t);
+        const toneB = Math.sin(2 * Math.PI * freqB * t + 0.32);
+        return (toneA * 0.68 + toneB * 0.32) * amp * head * tail;
       }
     });
   };
 
   if (k === "roll") return roll({});
-  if (k === "open") return click({ durationMs: 130, baseHz: 1200, volume: 0.6 });
-  if (k === "ok") return click({ durationMs: 80, baseHz: 700, volume: 0.5 });
-  if (k === "call") return tone({ frequencyHz: 360, durationMs: 110, volume: 0.32 });
-  if (k === "win") return tone({ frequencyHz: 784, durationMs: 210, volume: 0.3 });
-  if (k === "lose") return tone({ frequencyHz: 196, durationMs: 260, volume: 0.3 });
-  return tone({ frequencyHz: 440, durationMs: 90, volume: 0.25 });
+  if (k === "open") return knock({ durationMs: 138, bodyHz: 390, overtoneHz: 1040, volume: 0.24, brightness: 0.08 });
+  if (k === "ok") return knock({ durationMs: 88, bodyHz: 290, overtoneHz: 680, volume: 0.21, brightness: 0.055 });
+  if (k === "call") return softTone({ frequencyHz: 330, durationMs: 120, volume: 0.2, detuneHz: 5, glide: 12 });
+  if (k === "win") return swell({ durationMs: 210, lowHz: 420, highHz: 720, volume: 0.18, upward: true });
+  if (k === "lose") return swell({ durationMs: 280, lowHz: 220, highHz: 340, volume: 0.17, upward: false });
+  return softTone({ frequencyHz: 440, durationMs: 96, volume: 0.18, detuneHz: 4, glide: 0 });
 }
 
 function mimeToExt(mimeType) {
@@ -1414,6 +1486,8 @@ Page({
 	    this.turnCountdownKey = "";
 	    this.turnDeadlineTs = 0;
 	    this.lastAutoRollRound = 0;
+    this.hasReceivedRoomState = false;
+    this.lastRoundStartSfxKey = "";
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
     this.settlementCountdownTimer = null;
@@ -1657,7 +1731,7 @@ Page({
       app.globalData.wsUrl = cachedWsUrl.trim();
     }
 
-    const containerConfig = normalizeContainerConfig({
+    const containerConfig = resolveContainerConfig({
       envId: wx.getStorageSync(CLOUD_ENV_ID_KEY),
       service: wx.getStorageSync(CLOUD_SERVICE_KEY),
       wsPath: wx.getStorageSync(CLOUD_WS_PATH_KEY)
@@ -2048,6 +2122,7 @@ Page({
         return;
       }
     }
+    this.pendingHudPrimarySfx = true;
     this.onPrimaryAction();
   },
 
@@ -2084,7 +2159,7 @@ Page({
       return appConfig;
     }
 
-    return normalizeContainerConfig({
+    return resolveContainerConfig({
       envId: wx.getStorageSync(CLOUD_ENV_ID_KEY),
       service: wx.getStorageSync(CLOUD_SERVICE_KEY),
       wsPath: wx.getStorageSync(CLOUD_WS_PATH_KEY)
@@ -2689,7 +2764,7 @@ Page({
 
   startGame() {
     this.haptic("light");
-    this.playSfx("call");
+    this.playPrimaryAwareSfx("call");
     this.sendEvent("game:start", {});
   },
 
@@ -2706,7 +2781,7 @@ Page({
     }
 
     this.haptic("light");
-    this.playSfx("roll");
+    this.playPrimaryAwareSfx("roll");
     this.setData({
       selfRollCountThisRound: Math.min(
         MAX_ROLLS_PER_ROUND,
@@ -2719,13 +2794,13 @@ Page({
 
   lockDice() {
     this.haptic("light");
-    this.playSfx("ok");
+    this.playPrimaryAwareSfx("ok");
     this.sendEvent("dice:lock", {});
   },
 
   finishRolling() {
     this.haptic("light");
-    this.playSfx("call");
+    this.playPrimaryAwareSfx("call");
     this.sendEvent("rolling:finish", {});
   },
 
@@ -2915,10 +2990,14 @@ Page({
 
     const selfId = String(this.data.playerId || "");
     const settlementCanContinue = Boolean(model.loserId) && selfId === String(model.loserId);
+    const shouldPlaySettlementSfx = !this.data.settlementVisible;
     if (settlementCanContinue) {
       this.startSettlementCountdown(2);
     } else {
       this.clearSettlementCountdown();
+    }
+    if (shouldPlaySettlementSfx) {
+      this.playSfx("settlement");
     }
     this.setData({
       settlementVisible: true,
@@ -2950,6 +3029,7 @@ Page({
 
   restartRound() {
     this.haptic("light");
+    this.playPrimaryAwareSfx("");
     const expected = this.data.roomConfig && typeof this.data.roomConfig.dicePerPlayer === "number"
       ? this.data.roomConfig.dicePerPlayer
       : 5;
@@ -2996,6 +3076,7 @@ Page({
 
   onPrimaryAction() {
     if (!this.data.canPrimaryAction) {
+      this.pendingHudPrimarySfx = false;
       return;
     }
 
@@ -3032,7 +3113,10 @@ Page({
 
     if (phase === "ended") {
       this.restartRound();
+      return;
     }
+
+    this.pendingHudPrimarySfx = false;
   },
 
   makeCallWithInput() {
@@ -3049,7 +3133,7 @@ Page({
       return;
     }
 
-    this.playSfx("call");
+    this.playPrimaryAwareSfx("call");
     this.sendEvent("call:make", {
       count,
       point
@@ -3341,7 +3425,7 @@ Page({
     }
 
     this.haptic("light");
-    this.playSfx("open");
+    this.playPrimaryAwareSfx("open");
     this.setData({
       callSelectorMode: "",
       callPanelExpanded: false
@@ -3949,6 +4033,20 @@ Page({
         const phase = payload.phase || "ready";
         const lastCallObj = payload.lastCall || null;
         const incomingRound = payload.round || 0;
+        const previousPhase = String(this.data.phase || "ready");
+        const previousRound = Number(this.data.round || 0);
+        const roundStartSfxKey = `${String(roomId || "")}:${incomingRound}`;
+        const shouldPlayRoundStartSfx = Boolean(
+          this.hasReceivedRoomState
+          && phase === "rolling"
+          && incomingRound > 0
+          && roundStartSfxKey !== this.lastRoundStartSfxKey
+          && (
+            previousPhase === "ready"
+            || previousPhase === "ended"
+            || previousRound !== incomingRound
+          )
+        );
         const turnKey = `${incomingRound}:${phase}:${payload.currentPlayerId || "-"}:${lastCallObj ? lastCallObj.ts : 0}`;
 
         if (phase === "calling") {
@@ -4298,6 +4396,12 @@ Page({
           }, 320);
         }
 
+        this.hasReceivedRoomState = true;
+        if (shouldPlayRoundStartSfx) {
+          this.lastRoundStartSfxKey = roundStartSfxKey;
+          this.playSfx("roundStart");
+        }
+
         break;
       }
       case "chat:list": {
@@ -4451,19 +4555,6 @@ Page({
         const first = targets[0];
         if (first) {
           const winnerShort = String(first.winnerId || "").slice(0, 6) || "-";
-
-          const openerId = String(payload.openerId || "");
-          const targetId = String(first.targetId || "");
-          const winnerId = String(first.winnerId || "");
-          const loserId = winnerId && targetId
-            ? (winnerId === targetId ? openerId : targetId)
-            : "";
-          const selfId = String(this.data.playerId || "");
-          if (winnerId && selfId === winnerId) {
-            this.playSfx("win");
-          } else if (loserId && selfId === loserId) {
-            this.playSfx("lose");
-          }
 
           this.setData({
             openResultText: `胜者：${winnerShort}（${first.declared.count}个${first.declared.point} / 实${first.actual}）`,
@@ -4641,25 +4732,31 @@ Page({
 
   async ensureSfxFiles() {
     if (!this.sfxContext || !wx.env || !wx.env.USER_DATA_PATH || typeof wx.getFileSystemManager !== "function") {
-      this.sfxPaths = {};
+      this.sfxPaths = {
+        roll: ROOM_AUDIO_ASSETS.roll,
+        settlement: ROOM_AUDIO_ASSETS.settlement,
+        primary: ROOM_AUDIO_ASSETS.primary,
+        roundStart: ROOM_AUDIO_ASSETS.roundStart
+      };
       return;
     }
 
     const base = wx.env.USER_DATA_PATH;
-    const keys = ["roll", "ok", "call", "open", "win", "lose"];
+    const keys = ["ok", "call", "open", "win", "lose"];
 
-    const nextPaths = {};
+    const nextPaths = {
+      roll: ROOM_AUDIO_ASSETS.roll,
+      settlement: ROOM_AUDIO_ASSETS.settlement,
+      primary: ROOM_AUDIO_ASSETS.primary,
+      roundStart: ROOM_AUDIO_ASSETS.roundStart
+    };
     for (const key of keys) {
       const path = `${base}/dice_sfx_${key}.wav`;
       try {
-        await accessFile(path);
+        const buffer = buildWavSfx(key);
+        await writeArrayBufferToFile(path, buffer);
       } catch (error) {
-        try {
-          const buffer = buildWavSfx(key);
-          await writeArrayBufferToFile(path, buffer);
-        } catch (error) {
-          // ignore sfx write failures (still playable without)
-        }
+        // ignore sfx write failures (still playable without)
       }
       nextPaths[key] = path;
     }
@@ -4687,6 +4784,17 @@ Page({
     }
   },
 
+  playPrimaryAwareSfx(fallbackKind = "") {
+    if (this.pendingHudPrimarySfx) {
+      this.pendingHudPrimarySfx = false;
+      this.playSfx("primary");
+      return;
+    }
+    if (fallbackKind) {
+      this.playSfx(fallbackKind);
+    }
+  },
+
   noop() {},
 
   haptic(type = "light") {
@@ -4708,6 +4816,7 @@ Page({
     if (this.data.phase !== "calling" || this.data.currentPlayerId !== this.data.playerId || this.data.selfIsWaiting) {
       return;
     }
+    this.playSfx("primary");
     this.setData({
       callPanelVisible: true,
       callPanelExpanded: true,
@@ -4843,6 +4952,8 @@ Page({
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
+    this.hasReceivedRoomState = false;
+    this.lastRoundStartSfxKey = "";
 
     this.pendingVoiceFileId = "";
     this.clearPendingRoomAction();
