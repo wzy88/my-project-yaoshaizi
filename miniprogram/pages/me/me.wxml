@@ -58,10 +58,10 @@
             <text class="row-arrow">›</text>
           </view>
         </view>
-        <view class="row">
+        <view class="row" bindtap="openRecordPermissionSettings">
           <text class="row-label">麦克风权限</text>
           <view class="row-right">
-            <text class="row-value">{{avatarUrl ? '已授权' : '未授权'}}</text>
+            <text class="row-value">{{recordPermissionText}}</text>
             <text class="row-arrow">›</text>
           </view>
         </view>
@@ -120,7 +120,7 @@
         </view>
       </view>
       <text class="section-hint">{{wsHintText}}</text>
-      <text class="section-hint">推荐配置微信云托管服务名与 `/ws` 路径；本地 `ws://127.0.0.1:3000/ws` 只保留给开发联调备用。</text>
+      <text class="section-hint">推荐优先配置正式云托管服务；本地或测试地址仅用于开发联调。</text>
     </view>
 
     <view class="logout-wrap">

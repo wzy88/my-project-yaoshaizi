@@ -16,7 +16,6 @@ Component({
     selected: 0,
     tabs: [
       { pagePath: "/pages/lobby/lobby", text: "首页" },
-      { pagePath: "/pages/store/store", text: "" },
       { pagePath: "/pages/me/me", text: "我的" }
     ]
   },

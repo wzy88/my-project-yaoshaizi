@@ -23,7 +23,7 @@
 
     <text class="title">摇骰子</text>
     <text class="sub">LIAR'S DICE · 在线对局</text>
-    <text class="desc">进入大厅，创建房间或加入正在进行的酒桌局。</text>
+    <text class="desc">进入大厅，创建房间或加入正在进行的在线对局。</text>
   </view>
 
   <view class="action-panel">

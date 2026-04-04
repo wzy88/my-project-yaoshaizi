@@ -120,12 +120,12 @@
               <image wx:if="{{item.callPointAsset}}" class="room-self__bubble-die seat__bubble-die" src="{{item.callPointAsset}}" mode="aspectFit"></image>
             </view>
           </block>
-          <view class="room-self__dice-cup {{selfHasDice || myDiceRolling ? 'has-dice' : ''}} {{myDiceRolling ? 'is-rolling' : ''}} {{myDiceJustRevealed ? 'is-revealed' : ''}}">
+          <view class="room-self__dice-cup {{selfHasDice || myDiceRolling || myDiceRevealing ? 'has-dice' : ''}} {{myDiceRolling ? 'is-rolling' : ''}} {{myDiceRevealing ? 'is-revealing' : ''}} {{myDiceJustRevealed ? 'is-revealed' : ''}}">
             <view class="room-self__dice-pile">
-              <view class="room-self__dice-stack {{myDiceRolling ? 'is-rolling' : ''}}">
+              <view class="room-self__dice-stack {{myDiceRolling ? 'is-rolling' : ''}} {{myDiceRevealing ? 'is-revealing' : ''}}">
                 <block wx:for="{{roomSelfDiceFaces}}" wx:key="index">
-                  <view class="room-self__die-slot room-self__die-slot--{{index}}">
-                    <image class="room-self__die" src="{{item.asset}}" mode="aspectFit"></image>
+                  <view class="room-self__die-slot room-self__die-slot--{{index}} {{item.motionClass}} {{item.revealed ? 'is-revealed' : 'is-pending'}}">
+                    <image class="room-self__die {{item.revealed ? 'is-revealed' : 'is-pending'}}" src="{{item.asset}}" mode="aspectFit"></image>
                   </view>
                 </block>
               </view>

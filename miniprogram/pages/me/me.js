@@ -49,7 +49,7 @@ function buildWsHint(options, lastWsError = "") {
     if (err.includes("connectContainer")) return `云托管连接失败：${err}`;
     return `当前优先走微信云托管：${summary}`;
   }
-  if (!url) return "请先填写服务器地址";
+  if (!url) return "请先配置云托管服务，或填写调试地址";
   if (!/^wss?:\/\//i.test(url)) return "地址格式不正确，请使用 ws:// 或 wss://";
   const matched = url.match(/^wss?:\/\/([^/:?#]+)/i);
   const host = matched ? matched[1].toLowerCase() : "";
@@ -68,6 +68,12 @@ function buildTimeText() {
   return `${hh}:${mm}`;
 }
 
+function buildRecordPermissionText(granted) {
+  if (granted === true) return "已授权";
+  if (granted === false) return "未授权";
+  return "未申请";
+}
+
 Page({
   data: {
     timeText: "10:21",
@@ -81,6 +87,7 @@ Page({
     nickname: "",
     avatarUrl: "",
     initial: "玩",
+    recordPermissionText: "未申请",
     sfxEnabled: true,
     hapticEnabled: true,
     devtoolsMode: false,
@@ -140,6 +147,8 @@ Page({
       hasSession,
       sessionRoomId: hasSession ? session.roomId : ""
     });
+
+    this.refreshRecordPermissionText();
   },
 
   onShow() {
@@ -155,7 +164,7 @@ Page({
 
     const tabBar = this.getTabBar && this.getTabBar();
     if (tabBar && tabBar.setData) {
-      tabBar.setData({ selected: 2 });
+      tabBar.setData({ selected: 1 });
     }
 
     const session = wx.getStorageSync(SESSION_KEY);
@@ -166,6 +175,8 @@ Page({
         sessionRoomId: hasSession ? session.roomId : ""
       });
     }
+
+    this.refreshRecordPermissionText();
   },
 
   onNicknameChange(event) {
@@ -220,11 +231,46 @@ Page({
     wx.setStorageSync(HAPTIC_ENABLED_KEY, next);
   },
 
+  refreshRecordPermissionText() {
+    if (!wx.getSetting || typeof wx.getSetting !== "function") {
+      this.setData({ recordPermissionText: "未检查" });
+      return;
+    }
+
+    wx.getSetting({
+      success: (res) => {
+        const authSetting = res && res.authSetting ? res.authSetting : {};
+        this.setData({
+          recordPermissionText: buildRecordPermissionText(authSetting["scope.record"])
+        });
+      },
+      fail: () => {
+        this.setData({ recordPermissionText: "未检查" });
+      }
+    });
+  },
+
+  openRecordPermissionSettings() {
+    if (!wx.openSetting || typeof wx.openSetting !== "function") {
+      wx.showToast({ title: "请在系统设置中开启", icon: "none" });
+      return;
+    }
+
+    wx.openSetting({
+      success: () => {
+        this.refreshRecordPermissionText();
+      },
+      fail: () => {
+        wx.showToast({ title: "打开设置失败", icon: "none" });
+      }
+    });
+  },
+
   openWsConfig() {
     wx.showModal({
       title: "云托管服务名",
       editable: true,
-      placeholderText: "例如 express-rw1k",
+      placeholderText: "例如 dice-prod",
       content: this.data.containerService || "",
       success: (serviceRes) => {
         if (!serviceRes.confirm) return;

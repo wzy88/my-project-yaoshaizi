@@ -43,20 +43,41 @@ function buildSelfDiceFallback(count = SELF_DICE_PLACEHOLDER.length) {
   return Array.from({ length: expected }, (_, index) => SELF_DICE_PLACEHOLDER[index % SELF_DICE_PLACEHOLDER.length]);
 }
 
+function buildSelfCupDieItem(value, index, revealed = true) {
+  return {
+    value: Number(value) || 0,
+    asset: getDieAsset(value),
+    stackClass: `stack-${index % 5}`,
+    motionClass: `motion-${index % 5}`,
+    revealed: Boolean(revealed)
+  };
+}
+
 function buildSelfDiceDisplayItems() {
   return Array.from({ length: 5 }, (_, index) => ({
-    value: 0,
-    asset: DEFAULT_3D_DIE_ASSET,
-    stackClass: `stack-${index % 5}`
+    ...buildSelfCupDieItem(0, index, false),
+    asset: DEFAULT_3D_DIE_ASSET
   }));
 }
 
 function buildDiceFaceItems(values) {
-  return (Array.isArray(values) ? values : []).map((value, index) => ({
-    value: Number(value) || 0,
-    asset: getDieAsset(value),
-    stackClass: `stack-${index % 5}`
-  }));
+  return (Array.isArray(values) ? values : []).map((value, index) => buildSelfCupDieItem(value, index, true));
+}
+
+function isSelfRollSlotRevealed(slotIndex, revealCount) {
+  const count = Math.max(0, Number(revealCount) || 0);
+  return ROOM_SELF_REVEAL_ORDER.slice(0, count).includes(slotIndex);
+}
+
+function buildSelfRollDisplayItems({ count = 5, finalDice = [], revealCount = 0 }) {
+  const size = Math.max(1, Number(count) || 5);
+  const rollingValues = buildRandomDiceValues(size);
+
+  return Array.from({ length: size }, (_, index) => {
+    const finalValue = Number(finalDice[index]) || 0;
+    const revealed = finalValue >= 1 && finalValue <= 6 && isSelfRollSlotRevealed(index, revealCount);
+    return buildSelfCupDieItem(revealed ? finalValue : rollingValues[index], index, revealed);
+  });
 }
 
 function buildSettlementDiceItems(values, highlightValue = 0) {
@@ -100,7 +121,10 @@ function getSeatAvatarPresentation(avatarSrc, fallbackIndex) {
 
 const MAX_ROLLS_PER_ROUND = 5;
 const ROOM_SELF_ROLLING_FRAME_MS = 90;
-const ROOM_SELF_ROLLING_DURATION_MS = 1080;
+const ROOM_SELF_ROLLING_DURATION_MS = 1152;
+const ROOM_SELF_REVEAL_STAGGER_MS = 84;
+const ROOM_SELF_REVEAL_SETTLE_MS = 1200;
+const ROOM_SELF_REVEAL_ORDER = [1, 3, 0, 4, 2, 5, 6, 7, 8, 9];
 
 const DICE_FACE_SYMBOLS = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 
@@ -1176,6 +1200,14 @@ function extractWsErrorText(errorLike, fallbackText = "连接中断，请稍后�
   return fallbackText;
 }
 
+function hasConnectableTarget(wsUrl, containerConfig) {
+  if (hasContainerService(containerConfig)) {
+    return true;
+  }
+
+  return /^wss?:\/\/.+/i.test(String(wsUrl || "").trim());
+}
+
 function ensureRecordPermission() {
   return new Promise((resolve) => {
     wx.getSetting({
@@ -1283,6 +1315,7 @@ Page({
     myDiceVisible: false,
     myDicePeekVisible: false,
     myDiceRolling: false,
+    myDiceRevealing: false,
     myDiceJustRevealed: false,
     recording: false,
     voiceTipText: "按住语音键说话，松开发送",
@@ -1391,7 +1424,12 @@ Page({
     this.voiceTempMap = {};
 	    this.myDiceRevealTimer = null;
 	    this.myDiceAutoPeekTimer = null;
+    this.myDiceRevealStepTimer = null;
     this.roomSelfRollingTimer = null;
+    this.currentSelfRollActionId = "";
+    this.pendingPrivateDice = [];
+    this.selfRollRevealCount = 0;
+    this.selfRollAudioGatePassed = false;
 	    this.turnCountdownTimer = null;
 	    this.turnCountdownKey = "";
 	    this.turnDeadlineTs = 0;
@@ -1691,6 +1729,9 @@ Page({
     }
 
     if (legalAccepted) {
+      if (this.handleMissingConnectionConfig()) {
+        return;
+      }
       if (this.handleBlockedAutoConnect()) {
         return;
       }
@@ -1791,7 +1832,8 @@ Page({
         && !this.data.selfRollLocked
         && hasSelfRollsRemaining(this.data)
         && !this.data.recording
-        && !this.data.myDiceRolling;
+        && !this.data.myDiceRolling
+        && !this.data.myDiceRevealing;
       if (!canShakeRoll) {
         return;
       }
@@ -1890,7 +1932,8 @@ Page({
       this.reconnectTimer = null;
     }
     this.stopHeartbeat();
-    this.clearRoomSelfRollingTimer();
+    this.clearMyDiceTimers();
+    this.resetSelfRollTransientState();
 
     if (this.socketTask) {
       this.debugClientEvent("ws:close_request", {
@@ -2074,6 +2117,22 @@ Page({
       }, errorText),
       connectionSummaryText: buildContainerSummary(this.getContainerConfig())
     });
+  },
+
+  handleMissingConnectionConfig() {
+    const containerConfig = this.getContainerConfig();
+    if (hasConnectableTarget(this.data.wsUrl, containerConfig)) {
+      return false;
+    }
+
+    this.setData({
+      connected: false,
+      connecting: false,
+      networkStatusText: "待配置",
+      lastWsError: ""
+    });
+    this.refreshWsHint("");
+    return true;
   },
 
   handleBlockedAutoConnect() {
@@ -2664,6 +2723,7 @@ Page({
       || !hasSelfRollsRemaining(this.data)
       || this.data.recording
       || this.data.myDiceRolling
+      || this.data.myDiceRevealing
     ) {
       return;
     }
@@ -2699,13 +2759,114 @@ Page({
     }
   },
 
-  startRoomSelfRolling(expected) {
+  clearMyDiceRevealStepTimer() {
+    if (this.myDiceRevealStepTimer) {
+      clearTimeout(this.myDiceRevealStepTimer);
+      this.myDiceRevealStepTimer = null;
+    }
+  },
+
+  clearMyDiceTimers() {
+    if (this.myDiceRevealTimer) {
+      clearTimeout(this.myDiceRevealTimer);
+      this.myDiceRevealTimer = null;
+    }
+    if (this.myDiceAutoPeekTimer) {
+      clearTimeout(this.myDiceAutoPeekTimer);
+      this.myDiceAutoPeekTimer = null;
+    }
+    this.clearMyDiceRevealStepTimer();
+    this.clearRoomSelfRollingTimer();
+  },
+
+  resetSelfRollTransientState() {
+    this.currentSelfRollActionId = "";
+    this.pendingPrivateDice = [];
+    this.selfRollRevealCount = 0;
+    this.selfRollAudioGatePassed = false;
+  },
+
+  getSelfRollAudioDurationMs() {
+    return ROOM_SELF_ROLLING_DURATION_MS;
+  },
+
+  getSelfRollRevealStaggerMs() {
+    return ROOM_SELF_REVEAL_STAGGER_MS;
+  },
+
+  getSelfRollSettleDurationMs() {
+    return ROOM_SELF_REVEAL_SETTLE_MS;
+  },
+
+  updateSelfRollDisplay(expected) {
+    this.setData({
+      roomSelfDiceFaces: buildSelfRollDisplayItems({
+        count: expected,
+        finalDice: this.pendingPrivateDice,
+        revealCount: this.selfRollRevealCount
+      })
+    });
+  },
+
+  maybeStartSelfRollReveal(expected, actionId = this.currentSelfRollActionId) {
+    if (!actionId || actionId !== this.currentSelfRollActionId) {
+      return;
+    }
+    if (!this.selfRollAudioGatePassed) {
+      return;
+    }
+    if (!Array.isArray(this.pendingPrivateDice) || this.pendingPrivateDice.length !== expected) {
+      return;
+    }
+    if (this.data.myDiceRevealing) {
+      return;
+    }
+
+    this.setData({
+      myDiceRolling: false,
+      myDiceRevealing: true,
+      myDiceJustRevealed: false
+    });
+
+    const revealNext = () => {
+      if (actionId !== this.currentSelfRollActionId) {
+        return;
+      }
+
+      this.selfRollRevealCount = Math.min(expected, this.selfRollRevealCount + 1);
+      this.updateSelfRollDisplay(expected);
+
+      if (this.selfRollRevealCount >= expected) {
+        this.clearMyDiceRevealStepTimer();
+        this.clearRoomSelfRollingTimer();
+        this.setData({
+          myDiceRevealing: false,
+          myDiceJustRevealed: true,
+          roomSelfDiceFaces: buildDiceFaceItems(this.pendingPrivateDice)
+        });
+        this.myDiceRevealTimer = setTimeout(() => {
+          if (actionId !== this.currentSelfRollActionId) {
+            return;
+          }
+          this.setData({ myDiceJustRevealed: false });
+          this.myDiceRevealTimer = null;
+        }, this.getSelfRollSettleDurationMs());
+        return;
+      }
+
+      this.myDiceRevealStepTimer = setTimeout(revealNext, this.getSelfRollRevealStaggerMs());
+    };
+
+    revealNext();
+  },
+
+  startRoomSelfRolling(expected, actionId = this.currentSelfRollActionId) {
     const size = Math.max(1, Number(expected) || 5);
     const applyRollingFrame = () => {
-      const rollingFaces = buildDiceFaceItems(buildRandomDiceValues(size));
-      this.setData({
-        roomSelfDiceFaces: rollingFaces
-      });
+      if (!actionId || actionId !== this.currentSelfRollActionId) {
+        return;
+      }
+      this.updateSelfRollDisplay(size);
     };
 
     this.clearRoomSelfRollingTimer();
@@ -2717,40 +2878,34 @@ Page({
     const expected = this.data.roomConfig && typeof this.data.roomConfig.dicePerPlayer === "number"
       ? this.data.roomConfig.dicePerPlayer
       : 5;
+    const actionId = buildActionId();
 
-    if (this.myDiceRevealTimer) {
-      clearTimeout(this.myDiceRevealTimer);
-      this.myDiceRevealTimer = null;
-    }
-    if (this.myDiceAutoPeekTimer) {
-      clearTimeout(this.myDiceAutoPeekTimer);
-      this.myDiceAutoPeekTimer = null;
-    }
-
-    const display = buildRandomDiceValues(expected);
-    const rollingFaces = buildDiceFaceItems(display);
+    this.clearMyDiceTimers();
+    this.currentSelfRollActionId = actionId;
+    this.pendingPrivateDice = [];
+    this.selfRollRevealCount = 0;
+    this.selfRollAudioGatePassed = false;
 
     this.setData({
+      privateDice: [],
+      selfHasDice: false,
       myDiceVisible: true,
       myDicePeekVisible: false,
       myDiceRolling: true,
+      myDiceRevealing: false,
       myDiceJustRevealed: false,
-      roomSelfDiceFaces: rollingFaces
+      roomSelfDiceFaces: buildSelfRollDisplayItems({ count: expected })
     });
-    this.startRoomSelfRolling(expected);
+    this.startRoomSelfRolling(expected, actionId);
 
     this.myDiceAutoPeekTimer = setTimeout(() => {
-      if (!this.data.myDiceRolling) {
-        this.myDiceAutoPeekTimer = null;
+      if (actionId !== this.currentSelfRollActionId) {
         return;
       }
-      this.clearRoomSelfRollingTimer();
-      this.setData({
-        myDiceRolling: false,
-        myDiceJustRevealed: false
-      });
+      this.selfRollAudioGatePassed = true;
       this.myDiceAutoPeekTimer = null;
-    }, ROOM_SELF_ROLLING_DURATION_MS);
+      this.maybeStartSelfRollReveal(expected, actionId);
+    }, this.getSelfRollAudioDurationMs());
   },
 
   openMyDiceDrawer() {
@@ -2770,6 +2925,7 @@ Page({
       myDiceVisible: true,
       myDicePeekVisible: false,
       myDiceRolling: false,
+      myDiceRevealing: false,
       myDiceJustRevealed: false,
       roomSelfDiceFaces: buildDiceFaceItems(display)
     });
@@ -2786,6 +2942,7 @@ Page({
       myDiceVisible: false,
       myDicePeekVisible: canPeek,
       myDiceRolling: false,
+      myDiceRevealing: false,
       myDiceJustRevealed: false
     });
   },
@@ -2890,6 +3047,8 @@ Page({
   restartRound() {
     this.haptic("light");
     this.playPrimaryAwareSfx("");
+    this.clearMyDiceTimers();
+    this.resetSelfRollTransientState();
     const expected = this.data.roomConfig && typeof this.data.roomConfig.dicePerPlayer === "number"
       ? this.data.roomConfig.dicePerPlayer
       : 5;
@@ -2911,6 +3070,7 @@ Page({
       myDiceVisible: false,
       myDicePeekVisible: false,
       myDiceRolling: false,
+      myDiceRevealing: false,
       myDiceJustRevealed: false,
       callTimeline: [],
       lastCallKey: ""
@@ -3873,8 +4033,14 @@ Page({
         let lastCallKey = String(this.data.lastCallKey || "");
         const roundChanged = incomingRound !== this.data.round;
         if (roundChanged) {
+          this.clearMyDiceTimers();
+          this.resetSelfRollTransientState();
           callTimeline = [];
           lastCallKey = "";
+        }
+        if (selfIsWaiting && (this.data.myDiceRolling || this.data.myDiceRevealing)) {
+          this.clearMyDiceTimers();
+          this.resetSelfRollTransientState();
         }
 
         let lastByLabel = "-";
@@ -3946,7 +4112,7 @@ Page({
 
         const hasDice = Array.isArray(this.data.privateDice) && this.data.privateDice.length === dicePerPlayer;
         const myDicePeekVisible = !selfIsWaiting && phase !== "ended" && !this.data.myDiceVisible && hasDice;
-        const roomSelfDiceFaces = this.data.myDiceRolling
+        const roomSelfDiceFaces = (this.data.myDiceRolling || this.data.myDiceRevealing)
           ? this.data.roomSelfDiceFaces
           : (hasDice ? buildDiceFaceItems(this.data.privateDice) : buildSelfDiceDisplayItems());
 
@@ -4017,7 +4183,7 @@ Page({
           selfIsWaiting,
           selfIsOwner,
           selfHasCalled,
-          selfHasDice: hasDice,
+          selfHasDice: (selfIsWaiting || roundChanged) ? false : hasDice,
           selfRollLocked,
           selfRollCountThisRound,
           selfAvatarUrl,
@@ -4051,7 +4217,10 @@ Page({
           turnCountdownSec: this.data.turnCountdownSec,
           roomSelfDiceFaces: (selfIsWaiting || roundChanged) ? buildSelfDiceDisplayItems() : roomSelfDiceFaces,
           myDiceVisible: (selfIsWaiting || phase === "ended" || roundChanged) ? false : this.data.myDiceVisible,
-          myDicePeekVisible: selfIsWaiting ? false : myDicePeekVisible
+          myDicePeekVisible: selfIsWaiting ? false : myDicePeekVisible,
+          myDiceRolling: (selfIsWaiting || phase === "ended" || roundChanged) ? false : this.data.myDiceRolling,
+          myDiceRevealing: (selfIsWaiting || phase === "ended" || roundChanged) ? false : this.data.myDiceRevealing,
+          myDiceJustRevealed: (selfIsWaiting || roundChanged) ? false : this.data.myDiceJustRevealed
         });
 
         this.hasReceivedRoomState = true;
@@ -4152,32 +4321,33 @@ Page({
         const ok = cleaned.length === expected && cleaned.every((n) => Number.isInteger(n) && n >= 1 && n <= 6);
         const finalDice = ok ? cleaned : [];
 
-        if (this.myDiceRevealTimer) {
-          clearTimeout(this.myDiceRevealTimer);
-          this.myDiceRevealTimer = null;
-        }
-        if (this.myDiceAutoPeekTimer) {
-          clearTimeout(this.myDiceAutoPeekTimer);
-          this.myDiceAutoPeekTimer = null;
-        }
-        this.clearRoomSelfRollingTimer();
-
+        this.pendingPrivateDice = finalDice.slice();
         this.setData({
           privateDice: finalDice,
           selfHasDice: finalDice.length === expected,
           myDiceVisible: !this.data.selfIsWaiting && this.data.phase !== "ended",
-          myDicePeekVisible: false,
-          myDiceRolling: false,
-          myDiceJustRevealed: true,
-          roomSelfDiceFaces: buildDiceFaceItems(finalDice.length === expected
-            ? finalDice
-            : buildSelfDiceFallback(expected))
+          myDicePeekVisible: false
         });
 
-        this.myDiceRevealTimer = setTimeout(() => {
-          this.setData({ myDiceJustRevealed: false });
-          this.myDiceRevealTimer = null;
-        }, 1200);
+        if (!this.data.myDiceRolling && !this.data.myDiceRevealing) {
+          this.clearMyDiceTimers();
+          this.setData({
+            myDiceRolling: false,
+            myDiceRevealing: false,
+            myDiceJustRevealed: true,
+            roomSelfDiceFaces: buildDiceFaceItems(finalDice.length === expected
+              ? finalDice
+              : buildSelfDiceFallback(expected))
+          });
+
+          this.myDiceRevealTimer = setTimeout(() => {
+            this.setData({ myDiceJustRevealed: false });
+            this.myDiceRevealTimer = null;
+          }, this.getSelfRollSettleDurationMs());
+          break;
+        }
+
+        this.maybeStartSelfRollReveal(expected);
 
         break;
       }
@@ -4553,16 +4723,8 @@ Page({
     if (this.audioContext) {
       this.audioContext.stop();
     }
-    this.clearRoomSelfRollingTimer();
-
-    if (this.myDiceRevealTimer) {
-      clearTimeout(this.myDiceRevealTimer);
-      this.myDiceRevealTimer = null;
-    }
-    if (this.myDiceAutoPeekTimer) {
-      clearTimeout(this.myDiceAutoPeekTimer);
-      this.myDiceAutoPeekTimer = null;
-    }
+    this.clearMyDiceTimers();
+    this.resetSelfRollTransientState();
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
@@ -4610,6 +4772,7 @@ Page({
       myDiceVisible: false,
       myDicePeekVisible: false,
       myDiceRolling: false,
+      myDiceRevealing: false,
       myDiceJustRevealed: false,
       roomSelfDiceFaces: buildSelfDiceDisplayItems(),
       historyItems: [],
@@ -4660,16 +4823,8 @@ Page({
     this.voiceTempMap = {};
     this.pendingVoiceFileId = "";
     this.clearPendingRoomAction();
-    this.clearRoomSelfRollingTimer();
-
-    if (this.myDiceRevealTimer) {
-      clearTimeout(this.myDiceRevealTimer);
-      this.myDiceRevealTimer = null;
-    }
-    if (this.myDiceAutoPeekTimer) {
-      clearTimeout(this.myDiceAutoPeekTimer);
-      this.myDiceAutoPeekTimer = null;
-    }
+    this.clearMyDiceTimers();
+    this.resetSelfRollTransientState();
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
@@ -4708,6 +4863,7 @@ Page({
       myDiceVisible: false,
       myDicePeekVisible: false,
       myDiceRolling: false,
+      myDiceRevealing: false,
       myDiceJustRevealed: false,
       roomSelfDiceFaces: buildSelfDiceDisplayItems(),
       selfRollLocked: false,
@@ -4803,6 +4959,9 @@ Page({
     });
 
     if (!this.data.connected && !this.data.connecting) {
+      if (this.handleMissingConnectionConfig()) {
+        return;
+      }
       if (this.handleBlockedAutoConnect()) {
         return;
       }

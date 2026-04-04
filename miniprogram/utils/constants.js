@@ -1,5 +1,5 @@
-const DEFAULT_CLOUD_ENV_ID = "test-5gz3z9msd3e7502f";
-const DEFAULT_CLOUD_SERVICE = "express-rw1k";
+const DEFAULT_CLOUD_ENV_ID = "";
+const DEFAULT_CLOUD_SERVICE = "";
 
 module.exports = {
   LEGAL_ACCEPT_KEY: "diceLegalConsentV1",

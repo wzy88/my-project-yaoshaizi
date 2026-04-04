@@ -4854,10 +4854,12 @@
 .room-self__die-slot {
   width: 67.18rpx;
   height: 67.18rpx;
+  transition: opacity 120ms linear;
 }
 
 .room-self__die {
   filter: drop-shadow(0 7.46rpx 26.12rpx rgba(0, 0, 0, 0.55));
+  transition: transform 120ms linear, opacity 120ms linear, filter 120ms linear;
 }
 
 .room-self__die-slot--0 { left: 4.35rpx; top: 4.35rpx; transform: rotate(-8deg); }
@@ -4870,6 +4872,12 @@
 .room-self__die-slot--7 { left: 18rpx; top: -4rpx; transform: rotate(-4deg) scale(0.92); }
 .room-self__die-slot--8 { left: 98rpx; top: -6rpx; transform: rotate(6deg) scale(0.92); }
 .room-self__die-slot--9 { left: 176rpx; top: 0; transform: rotate(14deg) scale(0.9); }
+
+.room-self__die-slot.motion-0 .room-self__die { animation-delay: 0ms; animation-duration: 206ms; }
+.room-self__die-slot.motion-1 .room-self__die { animation-delay: 44ms; animation-duration: 224ms; }
+.room-self__die-slot.motion-2 .room-self__die { animation-delay: 92ms; animation-duration: 238ms; }
+.room-self__die-slot.motion-3 .room-self__die { animation-delay: 28ms; animation-duration: 214ms; }
+.room-self__die-slot.motion-4 .room-self__die { animation-delay: 124ms; animation-duration: 246ms; }
 
 .room-self__dice-glass {
   position: absolute;
@@ -5221,20 +5229,39 @@
   animation: room-self-stack-shift 170ms cubic-bezier(0.39, 0, 0.24, 1) infinite;
 }
 
-.room-self__dice-cup.is-rolling .room-self__die {
-  animation: room-self-die-spin 220ms cubic-bezier(0.38, 0, 0.24, 1) infinite;
+.room-self__dice-cup.is-rolling .room-self__die.is-pending {
+  animation-name: room-self-die-spin;
+  animation-timing-function: cubic-bezier(0.38, 0, 0.24, 1);
+  animation-iteration-count: infinite;
 }
 
-.room-self__dice-cup.is-rolling .room-self__die-slot--0 .room-self__die { animation-delay: 0ms; }
-.room-self__dice-cup.is-rolling .room-self__die-slot--1 .room-self__die { animation-delay: 35ms; }
-.room-self__dice-cup.is-rolling .room-self__die-slot--2 .room-self__die { animation-delay: 70ms; }
-.room-self__dice-cup.is-rolling .room-self__die-slot--3 .room-self__die { animation-delay: 105ms; }
-.room-self__dice-cup.is-rolling .room-self__die-slot--4 .room-self__die { animation-delay: 140ms; }
-.room-self__dice-cup.is-rolling .room-self__die-slot--5 .room-self__die { animation-delay: 55ms; }
-.room-self__dice-cup.is-rolling .room-self__die-slot--6 .room-self__die { animation-delay: 125ms; }
-.room-self__dice-cup.is-rolling .room-self__die-slot--7 .room-self__die { animation-delay: 20ms; }
-.room-self__dice-cup.is-rolling .room-self__die-slot--8 .room-self__die { animation-delay: 90ms; }
-.room-self__dice-cup.is-rolling .room-self__die-slot--9 .room-self__die { animation-delay: 160ms; }
+.room-self__dice-cup.is-revealing {
+  transform-origin: 50% 76%;
+  animation: room-self-cup-settle 340ms ease-out 1;
+}
+
+.room-self__dice-cup.is-revealing .room-self__dice-stack {
+  animation: none;
+}
+
+.room-self__dice-cup.is-revealing .room-self__die.is-pending {
+  animation-name: room-self-die-spin-reveal;
+  animation-timing-function: cubic-bezier(0.36, 0, 0.22, 1);
+  animation-iteration-count: infinite;
+}
+
+.room-self__dice-cup.is-revealing .room-self__die.is-revealed,
+.room-self__dice-cup.is-revealed .room-self__die {
+  animation: room-self-die-settle 260ms ease-out;
+}
+
+.room-self__dice-cup.is-revealing .room-self__die-slot.is-revealed {
+  opacity: 1;
+}
+
+.room-self__dice-cup.is-revealing .room-self__die-slot.is-pending {
+  opacity: 0.96;
+}
 
 .room-self__dice-cup.is-revealed .room-self__die {
   animation: room-self-die-settle 260ms ease-out;
@@ -5271,6 +5298,20 @@
 
   100% {
     transform: translate(10rpx, 20rpx) rotate(-8deg);
+  }
+}
+
+@keyframes room-self-cup-settle {
+  0% {
+    transform: translate(12rpx, 16rpx) rotate(-7deg);
+  }
+
+  55% {
+    transform: translate(-4rpx, -2rpx) rotate(2deg);
+  }
+
+  100% {
+    transform: translate(0, 0) rotate(0deg);
   }
 }
 
@@ -5311,6 +5352,24 @@
 
   100% {
     transform: translate(-10rpx, 22rpx) rotate(418deg) scale(0.94);
+  }
+}
+
+@keyframes room-self-die-spin-reveal {
+  0% {
+    transform: translate(-8rpx, -12rpx) rotate(-22deg) scale(0.9);
+  }
+
+  30% {
+    transform: translate(14rpx, -6rpx) rotate(94deg) scale(1.02);
+  }
+
+  68% {
+    transform: translate(-12rpx, 10rpx) rotate(188deg) scale(0.94);
+  }
+
+  100% {
+    transform: translate(10rpx, 12rpx) rotate(282deg) scale(0.98);
   }
 }
 

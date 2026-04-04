@@ -78,6 +78,14 @@
   letter-spacing: 1rpx;
 }
 
+.block-hint {
+  display: block;
+  margin-top: 12rpx;
+  color: rgba(255, 255, 255, 0.36);
+  font-size: 20rpx;
+  line-height: 1.45;
+}
+
 .chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -106,6 +114,19 @@
   box-shadow: 0 0 18rpx rgba(35, 181, 111, 0.2);
 }
 
+.chip.is-disabled {
+  color: rgba(255, 255, 255, 0.32);
+  border-color: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.025);
+  box-shadow: none;
+}
+
+.chip.active.is-disabled {
+  color: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .toggle-card {
   margin-top: 12rpx;
   padding: 18rpx 20rpx;
@@ -113,6 +134,12 @@
   align-items: center;
   justify-content: space-between;
   gap: 18rpx;
+}
+
+.toggle-card.is-disabled {
+  background: rgba(255, 255, 255, 0.028);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: none;
 }
 
 .toggle-copy {
@@ -147,6 +174,10 @@
   background: #23b56f;
 }
 
+.toggle-pill.is-disabled {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .toggle-pill__thumb {
   position: absolute;
   left: 4rpx;
@@ -161,6 +192,19 @@
 
 .toggle-pill.is-on .toggle-pill__thumb {
   transform: translateX(38rpx);
+}
+
+.toggle-card.is-disabled .toggle-title {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.toggle-card.is-disabled .toggle-sub {
+  color: rgba(255, 255, 255, 0.32);
+}
+
+.toggle-card.is-disabled .toggle-pill__thumb {
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: none;
 }
 
 .panel-note {
@@ -202,4 +246,10 @@
 .cancel-btn:active {
   opacity: 0.92;
   transform: scale(0.985);
+}
+
+.chip.is-disabled:active,
+.toggle-card.is-disabled:active {
+  opacity: 1;
+  transform: none;
 }

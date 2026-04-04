@@ -166,25 +166,42 @@ test("room self glass stays subtle so the dice do not look foggy", () => {
   assert.match(source, /\.room-self__dice-cup\.has-dice\s+\.room-self__dice-glass\s*\{[\s\S]*rgba\(0,\s*0,\s*0,\s*0\.26\)/);
 });
 
-test("room self rolling animation uses stronger staged motion and dedicated die slots", () => {
+test("room self rolling animation uses staged motion, reveal sequencing, and dedicated die slots", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
   const scriptPath = path.join(process.cwd(), "miniprogram/pages/room/room.js");
   const source = fs.readFileSync(scriptPath, "utf8");
 
-  assert.match(wxml, /class="room-self__die-slot room-self__die-slot--\{\{index\}\}"/);
+  assert.match(
+    wxml,
+    /class="room-self__die-slot room-self__die-slot--\{\{index\}\} \{\{item\.motionClass\}\} \{\{item\.revealed \? 'is-revealed' : 'is-pending'\}\}"/
+  );
+  assert.match(
+    wxml,
+    /class="room-self__die \{\{item\.revealed \? 'is-revealed' : 'is-pending'\}\}"/
+  );
   assert.match(wxss, /\.room-self__die-slot\s*\{/);
+  assert.match(wxss, /\.room-self__die-slot\.motion-0 \.room-self__die\s*\{[\s\S]*animation-delay:\s*0ms;[\s\S]*animation-duration:\s*206ms;/);
   assert.match(wxss, /\.room-self__dice-cup\.is-rolling\s*\{[\s\S]*animation:\s*room-self-cup-rock 220ms cubic-bezier\(0\.36,\s*0\.02,\s*0\.22,\s*1\) infinite/);
   assert.match(wxss, /\.room-self__dice-cup\.is-rolling \.room-self__dice-stack\s*\{[\s\S]*animation:\s*room-self-stack-shift 170ms cubic-bezier\(0\.39,\s*0,\s*0\.24,\s*1\) infinite/);
-  assert.match(wxss, /\.room-self__dice-cup\.is-rolling \.room-self__die\s*\{[\s\S]*animation:\s*room-self-die-spin 220ms cubic-bezier\(0\.38,\s*0,\s*0\.24,\s*1\) infinite/);
+  assert.match(wxss, /\.room-self__dice-cup\.is-rolling \.room-self__die\.is-pending\s*\{[\s\S]*animation-name:\s*room-self-die-spin;[\s\S]*animation-timing-function:\s*cubic-bezier\(0\.38,\s*0,\s*0\.24,\s*1\);[\s\S]*animation-iteration-count:\s*infinite;/);
+  assert.match(wxss, /\.room-self__dice-cup\.is-revealing\s*\{[\s\S]*animation:\s*room-self-cup-settle 340ms ease-out 1;/);
+  assert.match(wxss, /\.room-self__dice-cup\.is-revealing \.room-self__die\.is-pending\s*\{[\s\S]*animation-name:\s*room-self-die-spin-reveal;[\s\S]*animation-timing-function:\s*cubic-bezier\(0\.36,\s*0,\s*0\.22,\s*1\);[\s\S]*animation-iteration-count:\s*infinite;/);
+  assert.match(wxss, /\.room-self__dice-cup\.is-revealing \.room-self__die-slot\.is-revealed\s*\{[\s\S]*opacity:\s*1;/);
+  assert.match(wxss, /\.room-self__dice-cup\.is-revealing \.room-self__die-slot\.is-pending\s*\{[\s\S]*opacity:\s*0\.96;/);
   assert.match(wxss, /@keyframes room-self-cup-rock\s*\{[\s\S]*25%\s*\{[\s\S]*rotate\(-16deg\)/);
+  assert.match(wxss, /@keyframes room-self-cup-settle\s*\{[\s\S]*0%\s*\{[\s\S]*translate\(12rpx,\s*16rpx\) rotate\(-7deg\)/);
   assert.match(wxss, /@keyframes room-self-stack-shift\s*\{[\s\S]*35%\s*\{[\s\S]*translate\(18rpx,\s*-6rpx\) scale\(1\.05\)/);
   assert.match(wxss, /@keyframes room-self-die-spin\s*\{[\s\S]*rotate\(-26deg\) scale\(0\.86\)/);
+  assert.match(wxss, /@keyframes room-self-die-spin-reveal\s*\{[\s\S]*30%\s*\{[\s\S]*rotate\(94deg\) scale\(1\.02\)/);
   assert.match(wxss, /@keyframes room-self-die-spin\s*\{[\s\S]*75%\s*\{[\s\S]*rotate\(332deg\) scale\(1\.08\)/);
   assert.match(wxss, /@keyframes room-self-die-spin\s*\{[\s\S]*100%\s*\{[\s\S]*rotate\(418deg\) scale\(0\.94\)/);
   assert.match(wxss, /@keyframes room-self-die-settle\s*\{[\s\S]*transform:\s*translateY\(16rpx\) scale\(0\.88\)/);
   assert.match(source, /const ROOM_SELF_ROLLING_FRAME_MS = 90;/);
-  assert.match(source, /const ROOM_SELF_ROLLING_DURATION_MS = 1080;/);
+  assert.match(source, /const ROOM_SELF_ROLLING_DURATION_MS = 1152;/);
+  assert.match(source, /const ROOM_SELF_REVEAL_STAGGER_MS = 84;/);
+  assert.match(source, /const ROOM_SELF_REVEAL_SETTLE_MS = 1200;/);
+  assert.match(source, /const ROOM_SELF_REVEAL_ORDER = \[1,\s*3,\s*0,\s*4,\s*2,\s*5,\s*6,\s*7,\s*8,\s*9\];/);
 });
 
 test("room table watermark keeps the Chinese and English labels on two separate lines", () => {

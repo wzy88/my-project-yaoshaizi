@@ -16,7 +16,7 @@ const {
 function instantiateRoomPage({
   platform = "android",
   storage = {},
-  appWsUrl = "ws://127.0.0.1:3000/ws",
+  appWsUrl = "",
   appContainerConfig = null,
   apiAvailability = {},
   useRealSfxFiles = false
@@ -195,7 +195,7 @@ test("room page: roll uses the bundled audio asset while the other sfx keep the 
   }
 });
 
-test("room page: mobile join uses the built-in cloud container defaults before any manual config", () => {
+test("room page: mobile join keeps the pending action and waits for manual config when defaults are empty", () => {
   const { page, toasts, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -211,12 +211,13 @@ test("room page: mobile join uses the built-in cloud container defaults before a
 
     page.onLoad({ mode: "join", roomId: "123456" });
 
-    assert.equal(connectAttempts, 1);
+    assert.equal(connectAttempts, 0);
     assert.equal(page.data.joinRoomId, "123456");
     assert.equal(page.data.pendingActionText, "连接成功后将自动加入房间 123456");
-    assert.equal(page.data.containerEnvId, "test-5gz3z9msd3e7502f");
-    assert.equal(page.data.containerService, "express-rw1k");
+    assert.equal(page.data.containerEnvId, "");
+    assert.equal(page.data.containerService, "");
     assert.equal(page.data.containerWsPath, "/ws");
+    assert.equal(page.data.networkStatusText, "待配置");
     assert.equal(toasts.includes("请先改成局域网IP或wss地址"), false);
   } finally {
     cleanup();
@@ -238,11 +239,10 @@ test("room page: default room id display uses the six hyphen placeholder", () =>
   }
 });
 
-test("room page: accepting legal on mobile join still uses the built-in cloud defaults", () => {
+test("room page: accepting legal on mobile join keeps the pending action until a real connection target is configured", () => {
   const { page, toasts, storageState, cleanup } = instantiateRoomPage({
     storage: {
-      [NICKNAME_KEY]: "手机玩家",
-      [WS_URL_KEY]: "ws://127.0.0.1:3000/ws"
+      [NICKNAME_KEY]: "手机玩家"
     }
   });
 
@@ -255,11 +255,12 @@ test("room page: accepting legal on mobile join still uses the built-in cloud de
     page.onLoad({ mode: "join", roomId: "654321" });
     page.acceptLegal();
 
-    assert.equal(connectAttempts, 1);
+    assert.equal(connectAttempts, 0);
     assert.equal(page.data.legalAccepted, true);
     assert.equal(page.data.pendingActionText, "连接成功后将自动加入房间 654321");
-    assert.equal(page.data.containerEnvId, "test-5gz3z9msd3e7502f");
-    assert.equal(page.data.containerService, "express-rw1k");
+    assert.equal(page.data.containerEnvId, "");
+    assert.equal(page.data.containerService, "");
+    assert.equal(page.data.networkStatusText, "待配置");
     assert.deepEqual(storageState[LEGAL_ACCEPT_KEY].accepted, true);
     assert.equal(toasts.includes("请先改成局域网IP或wss地址"), false);
   } finally {
@@ -410,61 +411,6 @@ test("room page: cloud container config falls back to app global data when page 
         path: "/ws"
       }
     });
-  } finally {
-    cleanup();
-  }
-});
-
-test("room page: built-in cloud container defaults bypass loopback ws validation without stored config", () => {
-  const cloudCalls = [];
-  const socketTask = {
-    onOpen() {},
-    onClose() {},
-    onError() {},
-    onMessage() {},
-    send() {},
-    close() {}
-  };
-  const { page, toasts, cleanup } = instantiateRoomPage({
-    storage: {
-      [LEGAL_ACCEPT_KEY]: { accepted: true },
-      [NICKNAME_KEY]: "手机玩家"
-    },
-    apiAvailability: {
-      cloud: {
-        init(options) {
-          cloudCalls.push({ type: "init", options });
-        },
-        connectContainer(options) {
-          cloudCalls.push({ type: "connect", options });
-          return Promise.resolve({ socketTask });
-        }
-      }
-    }
-  });
-
-  try {
-    page.debugClientEvent = () => {};
-    page.onLoad({ mode: "join", roomId: "123456" });
-
-    assert.equal(cloudCalls.length >= 2, true);
-    assert.deepEqual(cloudCalls[0], {
-      type: "init",
-      options: {
-        env: "test-5gz3z9msd3e7502f",
-        traceUser: true
-      }
-    });
-    assert.deepEqual(cloudCalls[1], {
-      type: "connect",
-      options: {
-        service: "express-rw1k",
-        path: "/ws"
-      }
-    });
-    assert.equal(page.data.networkStatusText, "连接中");
-    assert.equal(page.data.pendingActionText, "连接成功后将自动加入房间 123456");
-    assert.equal(toasts.includes("请先改成局域网IP或wss地址"), false);
   } finally {
     cleanup();
   }
@@ -1606,7 +1552,7 @@ test("room page: private dice results wait for the roll audio window before stag
     assert.equal(page.data.roomSelfDiceFaces.filter((item) => item.revealed).length >= 1, true);
     assert.equal(page.data.roomSelfDiceFaces.filter((item) => item.revealed).length < 5, true);
 
-    await new Promise((resolve) => setTimeout(resolve, 72));
+    await new Promise((resolve) => setTimeout(resolve, 56));
 
     assert.equal(page.data.myDiceRevealing, false);
     assert.equal(page.data.myDiceJustRevealed, true);

@@ -13,7 +13,7 @@ const { isDevtoolsPlatform } = require("./utils/system-info");
 
 App({
   globalData: {
-    wsUrl: "ws://127.0.0.1:3000/ws",
+    wsUrl: "",
     containerConfig: getDefaultContainerConfig(),
     isDevtoolsMode: false
   },

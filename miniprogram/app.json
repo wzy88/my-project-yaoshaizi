@@ -1,7 +1,6 @@
 {
   "pages": [
     "pages/lobby/lobby",
-    "pages/store/store",
     "pages/me/me",
     "pages/rules/rules",
     "pages/create-room/create-room",
@@ -23,10 +22,6 @@
       {
         "pagePath": "pages/lobby/lobby",
         "text": "首页"
-      },
-      {
-        "pagePath": "pages/store/store",
-        "text": ""
       },
       {
         "pagePath": "pages/me/me",
