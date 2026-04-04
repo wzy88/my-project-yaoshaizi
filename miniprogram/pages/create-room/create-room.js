@@ -16,8 +16,8 @@ Page({
   data: {
     nickname: "",
     playerCountOptions: [2, 3, 4, 5, 6, 7, 8],
-    playerCount: 4,
-    allowSpectator: true,
+    playerCount: 8,
+    allowSpectator: false,
     lockRoom: false,
     wildcardOneEnabled: true,
     testMode: false,

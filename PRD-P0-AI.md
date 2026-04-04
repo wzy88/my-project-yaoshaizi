@@ -92,14 +92,20 @@
 用于统计 `totalCount(faceY)` 时修正“某个玩家的贡献”：
 
 - 顺子算 0：本局骰面为严格连续且无重复序列时，该玩家贡献为 0（例如 5 颗骰为 `1-2-3-4-5` 或 `2-3-4-5-6`）
-- 豹子加 1：本局骰面全部相同，则在统计该点数时额外 `+1`
-- 统计顺序：先判定顺子/豹子并得到“原始点数计数”（含豹子加成），再按通配1规则把 `1` 合并进当前被叫点数 `Y`
+- 豹子加 1：本局骰面能凑成同一点数的豹子时，则在统计该点数时额外 `+1`
+  - 自然豹子：5 颗骰原始点数全部相同
+  - 通配豹子：当 `wildcardOneEnabled=true` 且本局尚未有人叫过 `1` 时，若整手骰子都属于 `{Y,1}`，则统计点数 `Y` 时也视为 `Y` 的豹子
+- 统计顺序：先按当前被叫点数 `Y` 判断顺子/豹子贡献，再按通配1规则完成最终计数
 
 统计公式（强制）：
 
 - 若顺子：对任意点数贡献为 0
-- 否则 `baseCount(face) = 出现次数 + (豹子且 allSameFace==face ? 1 : 0)`
-- 若 `wildcardOneEnabled && wildcardOneActive && Y != 1`：`contrib(Y) = baseCount(Y) + baseCount(1)`；否则 `contrib(Y) = baseCount(Y)`
+- 若 `Y == 1`：`contrib(Y) = count(1) + (自然豹子且 allSameFace==1 ? 1 : 0)`
+- 若 `wildcardOneEnabled && wildcardOneActive && Y != 1`：
+  - `effectiveCount(Y) = count(Y) + count(1)`
+  - 若 `effectiveCount(Y) == diceCount`：`contrib(Y) = diceCount + 1`
+  - 否则：`contrib(Y) = effectiveCount(Y) + (自然豹子且 allSameFace==Y ? 1 : 0)`
+- 否则：`contrib(Y) = count(Y) + (自然豹子且 allSameFace==Y ? 1 : 0)`
 
 ## 2. 用户故事 + 验收标准（P0）
 

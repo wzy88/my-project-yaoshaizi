@@ -75,8 +75,10 @@
 - 叫骰上限：`X <= 玩家数*dicePerPlayer`；当上一手 `X` 已达上限时，仍允许“点数上涨”（直到 `Y=6`），仅当达到 `X=上限 且 Y=6` 时，下家只能开牌
 - 特殊牌型（按线下家规；用于统计 `totalCount(faceY)` 时对“某个玩家的贡献”做修正）：
   - 顺子算 0：若该玩家本局骰面为严格连续且无重复的序列（例如 5 颗骰为 `1-2-3-4-5` 或 `2-3-4-5-6`），则该玩家本局 **所有点数贡献均为 0**
-  - 豹子加 1：若该玩家本局骰面全部相同（例如 5 颗骰全是 4），则在统计该点数时额外 `+1`（即该玩家对该点数的贡献 = `出现次数 + 1`）
-  - 统计顺序（避免歧义）：先判定顺子/豹子并得到“原始点数计数”（含豹子加成），再按通配1规则把 `1` 合并进当前被叫点数 `Y`
+  - 豹子加 1：若该玩家本局骰面能凑成同一点数的豹子，则在统计该点数时额外 `+1`
+    - 自然豹子：5 颗骰原始点数全部相同（例如 `4-4-4-4-4`）
+    - 通配豹子：当 `wildcardOneEnabled=true` 且本局尚未有人叫过 `1` 时，若该玩家整手骰子都属于 `{Y,1}`，则统计点数 `Y` 时也视为 `Y` 的豹子（例如 `5-5-5-5-1`、`5-5-1-1-5` 都按 `5` 的豹子处理）
+  - 统计顺序（避免歧义）：先按当前被叫点数 `Y` 判断顺子/豹子贡献，再按通配1规则完成最终计数
 - 质疑/开牌（MVP）：
   - 只能“开上一手叫骰的人”（不能开任意人；不能开多人）
   - 开牌后公开所有玩家骰面
@@ -91,21 +93,22 @@
 
 #### 2.5.1 `totalCount(Y)` 统计口径（强制，避免歧义）
 
-对每个玩家先计算其“原始点数计数”：
+对每个玩家，当前被叫点数 `Y` 的贡献按以下规则计算：
 
-- 若顺子算 0：该玩家对任意点数贡献均为 0
-- 否则 `baseCount(face) = face 出现次数 + (豹子且 allSameFace==face ? 1 : 0)`
-
-再计算该玩家对当前被叫点数 `Y` 的贡献：
-
-- 若 `wildcardOneEnabled && wildcardOneActive && Y != 1`：`contrib(Y) = baseCount(Y) + baseCount(1)`
-- 否则：`contrib(Y) = baseCount(Y)`
+- 若顺子算 0：`contrib(Y) = 0`
+- 若 `Y == 1`：`contrib(Y) = count(1) + (自然豹子且 allSameFace==1 ? 1 : 0)`
+- 若 `wildcardOneEnabled && wildcardOneActive && Y != 1`：
+  - `effectiveCount(Y) = count(Y) + count(1)`
+  - 若 `effectiveCount(Y) == diceCount`：`contrib(Y) = diceCount + 1`（按 `Y` 的豹子处理）
+  - 否则：`contrib(Y) = effectiveCount(Y) + (自然豹子且 allSameFace==Y ? 1 : 0)`
+- 否则：`contrib(Y) = count(Y) + (自然豹子且 allSameFace==Y ? 1 : 0)`
 
 示例（`dicePerPlayer=5`，`wildcardOneEnabled=true` 且 `wildcardOneActive=true`）：
 
 - A：`[1,1,4,5,6]`，则 `baseCount(4)=1`、`baseCount(1)=2`，所以 `contrib(4)=3`
 - B：`[4,4,4,2,6]`，则 `contrib(4)=3`
 - C：`[2,3,4,5,6]`（顺子算 0），则 `contrib(4)=0`
+- D：`[5,5,5,5,1]`，若 `Y=5` 且本局尚未叫过 `1`，则 `contrib(5)=6`（按 `5` 的豹子处理）
 - 全场 `totalCount(4)=3+3+0=6`
 
 ### 2.6 叫骰输入（MVP）

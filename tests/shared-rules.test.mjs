@@ -27,3 +27,8 @@ test("shared rules: leopard of 1 adds +1 and can wildcard", () => {
   assert.equal(countPointWithOptions(allDice, 2, { oneAsWildcard: false }), 0);
 });
 
+test("shared rules: wildcard one can complete a non-1 leopard when no one has called 1", () => {
+  const allDice = [[5, 5, 5, 5, 1]];
+  assert.equal(countPointWithOptions(allDice, 5, { oneAsWildcard: true }), 6);
+  assert.equal(countPointWithOptions(allDice, 5, { oneAsWildcard: false }), 4);
+});

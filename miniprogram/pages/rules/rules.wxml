@@ -32,6 +32,7 @@
     <view class="bullets">
       <text class="bullet">- 是否开启「1 可通配」由房主创建时选择，开局后不可修改。</text>
       <text class="bullet">- 若有人叫了 1 点，则本局剩余流程中 1 仅算 1，不再通配任何点数。</text>
+      <text class="bullet">- 若本局还没人叫过 1，则在统计非 1 点数时，1 可替代该点；若你的整手只由「该点数 + 1」组成（如 5-5-5-5-1），则这手也按该点数的豹子处理，额外 +1。</text>
     </view>
   </view>
 
@@ -48,7 +49,7 @@
     <text class="section-title">5. 特殊牌型（本房间家规）</text>
     <view class="bullets">
       <text class="bullet">- 顺子算0：若你的骰面为严格连续且不重复（如 1-2-3-4-5），则你对任何点数的贡献都计为 0。</text>
-      <text class="bullet">- 豹子加1：若你的骰面全相同（如全是 4），则该点数统计时额外 +1。</text>
+      <text class="bullet">- 豹子加1：若你的骰面能凑成同一点数的豹子（如全是 4；或在通配 1 仍有效时为 5-5-5-5-1），则该点数统计时额外 +1。</text>
     </view>
   </view>
 

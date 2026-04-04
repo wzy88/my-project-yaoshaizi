@@ -140,3 +140,23 @@ test("room engine: openDice settles and loser starts next round", () => {
   engine.restartRound(opener);
   assert.equal(engine.getState().phase, "rolling");
 });
+
+test("room engine: settlement treats 5-5-5-5-1 as a 5 leopard while wildcard one remains active", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.startGame("P_OWNER");
+
+  engine.setNextDice("P_OWNER", [5, 5, 5, 5, 1], "P_OWNER");
+  engine.setNextDice("P_OWNER", [2, 3, 4, 6, 6], "P_B");
+
+  engine.finishRolling("P_OWNER");
+  const bidder = engine.getState().currentPlayerId;
+  assert.equal(bidder, "P_OWNER");
+
+  engine.makeCall(bidder, 6, 5);
+  const opener = engine.getState().currentPlayerId;
+  assert.equal(opener, "P_B");
+
+  const { openResult } = engine.openDice(opener, engine.getRuleOptionsForCurrentRound());
+  assert.equal(openResult.targets[0].actual, 6);
+  assert.equal(openResult.targets[0].winnerId, "P_OWNER");
+});

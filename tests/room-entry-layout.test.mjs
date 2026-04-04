@@ -78,6 +78,27 @@ test("room shell removes the old horizontal self-cup shadow slab", () => {
   assert.doesNotMatch(wxss, /@keyframes room-self-shadow-swing/);
 });
 
+test("room shell no longer renders the shake-to-start guide banner", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.doesNotMatch(wxml, /class="shake-guide"/);
+  assert.doesNotMatch(wxml, /摇一摇开始本局/);
+  assert.doesNotMatch(wxss, /\.shake-guide\s*\{/);
+  assert.doesNotMatch(wxss, /\.shake-guide__text\s*\{/);
+});
+
+test("room self area renders a matching call bubble for the local player", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxml, /wx:if="\{\{item\.isSelf && item\.callText\}\}" class="room-self__bubble seat__bubble(?:\s+\{\{item\.bubbleClass\}\})?"/);
+  assert.match(wxml, /class="room-self__bubble-count seat__bubble-count">\{\{item\.callCount\}\}<\/text>/);
+  assert.match(wxml, /class="room-self__bubble-die seat__bubble-die" src="\{\{item\.callPointAsset\}\}"/);
+  assert.match(wxss, /\.room-self__bubble\s*\{[\s\S]*right:\s*-217rpx/);
+  assert.match(wxss, /\.room-self__bubble\s*\{[\s\S]*bottom:\s*146rpx/);
+  assert.match(wxss, /\.room-self__bubble\s*\{[\s\S]*right:\s*-198rpx/);
+  assert.match(wxss, /\.room-self__bubble\s*\{[\s\S]*bottom:\s*166rpx/);
+});
+
 test("room shell removes the floor shadows under outer cups", () => {
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
   assert.match(wxss, /\.ghost-cup\s+\.figma-cup__shadow,\s*\.seat-stage-cup\s+\.figma-cup__shadow\s*\{[\s\S]*display:\s*none/);
@@ -143,6 +164,38 @@ test("room self glass stays subtle so the dice do not look foggy", () => {
   assert.match(source, /\.room-self__dice-glass\s*\{[\s\S]*rgba\(0,\s*0,\s*0,\s*0\.1\)/);
   assert.match(source, /\.room-self__dice-cup\.has-dice\s+\.room-self__dice-glass\s*\{[\s\S]*rgba\(255,\s*255,\s*255,\s*0\.12\)/);
   assert.match(source, /\.room-self__dice-cup\.has-dice\s+\.room-self__dice-glass\s*\{[\s\S]*rgba\(0,\s*0,\s*0,\s*0\.26\)/);
+});
+
+test("room self rolling animation uses stronger staged motion and dedicated die slots", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  const scriptPath = path.join(process.cwd(), "miniprogram/pages/room/room.js");
+  const source = fs.readFileSync(scriptPath, "utf8");
+
+  assert.match(wxml, /class="room-self__die-slot room-self__die-slot--\{\{index\}\}"/);
+  assert.match(wxss, /\.room-self__die-slot\s*\{/);
+  assert.match(wxss, /\.room-self__dice-cup\.is-rolling\s*\{[\s\S]*animation:\s*room-self-cup-rock 220ms cubic-bezier\(0\.36,\s*0\.02,\s*0\.22,\s*1\) infinite/);
+  assert.match(wxss, /\.room-self__dice-cup\.is-rolling \.room-self__dice-stack\s*\{[\s\S]*animation:\s*room-self-stack-shift 170ms cubic-bezier\(0\.39,\s*0,\s*0\.24,\s*1\) infinite/);
+  assert.match(wxss, /\.room-self__dice-cup\.is-rolling \.room-self__die\s*\{[\s\S]*animation:\s*room-self-die-spin 220ms cubic-bezier\(0\.38,\s*0,\s*0\.24,\s*1\) infinite/);
+  assert.match(wxss, /@keyframes room-self-cup-rock\s*\{[\s\S]*25%\s*\{[\s\S]*rotate\(-16deg\)/);
+  assert.match(wxss, /@keyframes room-self-stack-shift\s*\{[\s\S]*35%\s*\{[\s\S]*translate\(18rpx,\s*-6rpx\) scale\(1\.05\)/);
+  assert.match(wxss, /@keyframes room-self-die-spin\s*\{[\s\S]*rotate\(-26deg\) scale\(0\.86\)/);
+  assert.match(wxss, /@keyframes room-self-die-spin\s*\{[\s\S]*75%\s*\{[\s\S]*rotate\(332deg\) scale\(1\.08\)/);
+  assert.match(wxss, /@keyframes room-self-die-spin\s*\{[\s\S]*100%\s*\{[\s\S]*rotate\(418deg\) scale\(0\.94\)/);
+  assert.match(wxss, /@keyframes room-self-die-settle\s*\{[\s\S]*transform:\s*translateY\(16rpx\) scale\(0\.88\)/);
+  assert.match(source, /const ROOM_SELF_ROLLING_FRAME_MS = 90;/);
+  assert.match(source, /const ROOM_SELF_ROLLING_DURATION_MS = 1080;/);
+});
+
+test("room table watermark keeps the Chinese and English labels on two separate lines", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxml, /class="room-stage__watermark"/);
+  assert.match(wxml, /class="room-stage__watermark-cn">吹牛</);
+  assert.match(wxml, /class="room-stage__watermark-en">LIAR'S DICE</);
+  assert.match(wxss, /\.room-stage__watermark\s*\{[\s\S]*display:\s*flex/);
+  assert.match(wxss, /\.room-stage__watermark\s*\{[\s\S]*flex-direction:\s*column/);
+  assert.match(wxss, /\.room-stage__watermark-en\s*\{[^}]*position:\s*static/);
 });
 
 test("owner start button copy no longer includes the minimum-player hint", () => {

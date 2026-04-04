@@ -497,10 +497,8 @@ test("room page: cloud container connect failure surfaces the underlying error d
 
     assert.equal(page.data.networkStatusText, "网络异常");
     assert.equal(page.data.lastWsError, "service not found");
-    assert.ok(toasts.includes("连接失败"));
-    assert.equal(modals.length > 0, true);
-    assert.equal(modals[0].title, "连接失败");
-    assert.match(String(modals[0].content || ""), /service not found/);
+    assert.deepEqual(toasts, []);
+    assert.equal(modals.length, 0);
   } finally {
     cleanup();
   }
@@ -532,9 +530,44 @@ test("room page: cloud container connect failure uses a friendly fallback when t
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     assert.equal(page.data.lastWsError, "连接中断，请稍后重试");
-    assert.equal(modals.length > 0, true);
-    assert.equal(modals[0].title, "连接失败");
-    assert.equal(modals[0].content, "连接中断，请稍后重试");
+    assert.equal(modals.length, 0);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: connection failure handler no longer surfaces blocking prompts", () => {
+  const { page, toasts, modals, cleanup } = instantiateRoomPage();
+
+  try {
+    page.showConnectionFailure("service not found");
+    page.showConnectionFailure("service not found");
+
+    assert.deepEqual(toasts, []);
+    assert.equal(modals.length, 0);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: system error packets no longer surface generic toast prompts", () => {
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.handleServerPacket(JSON.stringify({
+      event: "system:error",
+      payload: {
+        message: "未知错误"
+      }
+    }));
+
+    assert.deepEqual(toasts, []);
   } finally {
     cleanup();
   }
@@ -780,6 +813,79 @@ test("room page: room state decorates the shell once room data is ready", () => 
   }
 });
 
+test("room page: self current call is preserved in decorated player data for the local bubble", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.data.playerId = "player-a";
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "123456",
+        phase: "calling",
+        round: 1,
+        currentPlayerId: "player-b",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false
+        },
+        players: [
+          {
+            id: "player-a",
+            nickname: "手机玩家",
+            avatar: "",
+            isOwner: true,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 1,
+            diceCupStatus: "closed",
+            rollLocked: false,
+            currentCall: {
+              count: 3,
+              point: 4
+            }
+          },
+          {
+            id: "player-b",
+            nickname: "对手",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "active",
+            seatIndex: 2,
+            diceCupStatus: "closed",
+            rollLocked: false
+          }
+        ],
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 1,
+        serverTs: Date.now()
+      }
+    }));
+
+    const selfPlayer = page.data.playersDecorated.find((item) => item.isSelf);
+    assert.equal(Boolean(selfPlayer), true);
+    assert.equal(selfPlayer.callText, "3个4");
+    assert.equal(selfPlayer.callCount, "3");
+    assert.equal(selfPlayer.callPoint, "4");
+    assert.equal(Boolean(selfPlayer.callPointAsset), true);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: round start audio plays once when room state enters a new rolling round", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -854,6 +960,115 @@ test("room page: round start audio plays once when room state enters a new rolli
     }));
 
     assert.deepEqual(sfxCalls, ["roundStart"]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: self area no longer tracks or renders the previous call hint", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.data.playerId = "player-a";
+
+    const basePayload = {
+      roomId: "123456",
+      currentPlayerId: "player-b",
+      config: {
+        direction: "cw",
+        wildcardOneEnabled: true,
+        openMode: "single",
+        dicePerPlayer: 5,
+        minOpeningCount: 5,
+        testMode: false
+      },
+      players: [
+        {
+          id: "player-a",
+          nickname: "手机玩家",
+          avatar: "",
+          isOwner: true,
+          onlineStatus: "online",
+          turnStatus: "idle",
+          seatIndex: 1,
+          diceCupStatus: "closed",
+          rollLocked: false
+        },
+        {
+          id: "player-b",
+          nickname: "对手",
+          avatar: "",
+          isOwner: false,
+          onlineStatus: "online",
+          turnStatus: "active",
+          seatIndex: 2,
+          diceCupStatus: "closed",
+          rollLocked: false
+        }
+      ],
+      waitingPlayers: [],
+      networkHealth: "good",
+      version: 1,
+      serverTs: Date.now()
+    };
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...basePayload,
+        phase: "calling",
+        round: 1,
+        lastCall: {
+          by: "player-b",
+          count: 3,
+          point: 4,
+          ts: 101
+        }
+      }
+    }));
+
+    assert.equal(Object.prototype.hasOwnProperty.call(page.data, "selfLastCallText"), false);
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...basePayload,
+        phase: "opening",
+        round: 1,
+        lastCall: {
+          by: "player-b",
+          count: 3,
+          point: 4,
+          ts: 101
+        }
+      }
+    }));
+
+    assert.equal(Object.prototype.hasOwnProperty.call(page.data, "selfLastCallText"), false);
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...basePayload,
+        phase: "calling",
+        round: 2,
+        currentPlayerId: "player-a",
+        lastCall: {
+          by: "player-a",
+          count: 4,
+          point: 6,
+          ts: 202
+        }
+      }
+    }));
+
+    assert.equal(Object.prototype.hasOwnProperty.call(page.data, "selfLastCallText"), false);
   } finally {
     cleanup();
   }
@@ -1350,6 +1565,63 @@ test("room page: hitting the 5-roll cap makes further roll attempts a silent no-
   }
 });
 
+test("room page: private dice results wait for the roll audio window before staggered reveal", async () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.getSelfRollAudioDurationMs = () => 30;
+    page.getSelfRollRevealStaggerMs = () => 12;
+    page.getSelfRollSettleDurationMs = () => 24;
+
+    page.setData({
+      phase: "rolling",
+      selfIsWaiting: false,
+      roomConfig: {
+        dicePerPlayer: 5
+      }
+    });
+
+    page.showMyDiceDrawerRolling();
+    page.handleServerPacket(JSON.stringify({
+      event: "dice:privateResult",
+      payload: {
+        dice: [1, 2, 3, 4, 5]
+      }
+    }));
+
+    assert.equal(page.data.myDiceRolling, true);
+    assert.equal(page.data.myDiceRevealing, false);
+    assert.equal(page.data.roomSelfDiceFaces.filter((item) => item.revealed).length, 0);
+
+    await new Promise((resolve) => setTimeout(resolve, 36));
+
+    assert.equal(page.data.myDiceRolling, false);
+    assert.equal(page.data.myDiceRevealing, true);
+    assert.equal(page.data.roomSelfDiceFaces.filter((item) => item.revealed).length >= 1, true);
+    assert.equal(page.data.roomSelfDiceFaces.filter((item) => item.revealed).length < 5, true);
+
+    await new Promise((resolve) => setTimeout(resolve, 72));
+
+    assert.equal(page.data.myDiceRevealing, false);
+    assert.equal(page.data.myDiceJustRevealed, true);
+    assert.deepEqual(page.data.privateDice, [1, 2, 3, 4, 5]);
+    assert.deepEqual(page.data.roomSelfDiceFaces.map((item) => item.value), [1, 2, 3, 4, 5]);
+    assert.equal(page.data.roomSelfDiceFaces.every((item) => item.revealed), true);
+
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    assert.equal(page.data.myDiceJustRevealed, false);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: all players see the settlement dialog and only the loser can continue", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -1475,7 +1747,7 @@ test("room page: settlement audio plays once when the dialog first appears and d
   }
 });
 
-test("room page: hud primary button uses the bundled primary cue during rolling instead of the legacy roll cue", () => {
+test("room page: hud primary button keeps the rolling cue instead of reusing the bundled primary cue", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -1509,14 +1781,14 @@ test("room page: hud primary button uses the bundled primary cue during rolling 
 
     page.onHudPrimaryAction();
 
-    assert.deepEqual(sfxCalls, ["primary"]);
+    assert.deepEqual(sfxCalls, ["roll"]);
     assert.deepEqual(sent, [{ event: "dice:roll", payload: {} }]);
   } finally {
     cleanup();
   }
 });
 
-test("room page: hud primary button uses the bundled primary cue when opening the call panel", () => {
+test("room page: opening the call panel from the hud primary button stays silent", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -1545,7 +1817,49 @@ test("room page: hud primary button uses the bundled primary cue when opening th
 
     assert.equal(page.data.callPanelVisible, true);
     assert.equal(page.data.callPanelExpanded, true);
+    assert.deepEqual(sfxCalls, []);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: submitting a manual call from the panel uses the bundled primary cue", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sfxCalls = [];
+    const sent = [];
+    page.playSfx = (kind) => {
+      sfxCalls.push(kind);
+    };
+    page.haptic = () => {};
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.setData({
+      phase: "calling",
+      currentPlayerId: "player-a",
+      playerId: "player-a",
+      selfIsWaiting: false,
+      callForcedOpen: false,
+      callPanelVisible: true,
+      callPanelExpanded: true,
+      callCount: "4",
+      callPoint: "5",
+      primaryActionText: "叫牌"
+    });
+
+    page.makeCallWithInput();
+
     assert.deepEqual(sfxCalls, ["primary"]);
+    assert.deepEqual(sent, [{ event: "call:make", payload: { count: 4, point: 5 } }]);
+    assert.equal(page.data.callPanelVisible, false);
   } finally {
     cleanup();
   }

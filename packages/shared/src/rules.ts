@@ -44,30 +44,39 @@ export function countPointWithOptions(
     const isLeopard = normalized.every((d) => d === normalized[0]);
     const leopardFace = isLeopard ? normalized[0] : 0;
 
-    let baseCountPoint = 0;
-    let baseCountOne = 0;
+    let pointCount = 0;
+    let oneCount = 0;
 
     for (const dice of normalized) {
       if (dice === point) {
-        baseCountPoint += 1;
+        pointCount += 1;
       }
       if (dice === 1) {
-        baseCountOne += 1;
+        oneCount += 1;
       }
     }
 
-    if (isLeopard) {
-      if (leopardFace === point) {
-        baseCountPoint += 1;
+    if (point === 1) {
+      total += pointCount;
+      if (isLeopard && leopardFace === 1) {
+        total += 1;
       }
-      if (leopardFace === 1) {
-        baseCountOne += 1;
-      }
+      continue;
     }
 
-    total += baseCountPoint;
-    if (options.oneAsWildcard && point !== 1) {
-      total += baseCountOne;
+    if (options.oneAsWildcard) {
+      const effectiveCount = pointCount + oneCount;
+      if (effectiveCount === diceCount) {
+        total += diceCount + 1;
+        continue;
+      }
+
+      total += effectiveCount;
+    } else {
+      total += pointCount;
+      if (isLeopard && leopardFace === point) {
+        total += 1;
+      }
     }
   }
 

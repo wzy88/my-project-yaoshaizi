@@ -98,8 +98,9 @@ function getSeatAvatarPresentation(avatarSrc, fallbackIndex) {
   };
 }
 
-const FIGMA_SCORE_FALLBACKS = [12500, 9800, 14200, 21000, 8700, 15400, 10500, 28000];
 const MAX_ROLLS_PER_ROUND = 5;
+const ROOM_SELF_ROLLING_FRAME_MS = 90;
+const ROOM_SELF_ROLLING_DURATION_MS = 1080;
 
 const DICE_FACE_SYMBOLS = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 
@@ -244,18 +245,6 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     rows,
     loserId
   };
-}
-
-function phaseToText(phase) {
-  const map = {
-    ready: "准备阶段",
-    rolling: "摇骰阶段",
-    calling: "叫牌阶段",
-    opening: "开牌中",
-    ended: "结算完成"
-  };
-
-  return map[phase] || "准备阶段";
 }
 
 function normalizeRoomId(roomId) {
@@ -544,39 +533,6 @@ function safeDecodeComponent(raw) {
   }
 }
 
-function formatScoreText(value) {
-  const num = Number(value);
-  if (!Number.isFinite(num) || num <= 0) return "";
-  return String(Math.round(num));
-}
-
-function resolvePlayerScoreText(player, fallbackIndex = 0, preferSelfFallback = false) {
-  const source = player && typeof player === "object" ? player : {};
-  const candidates = [
-    source.score,
-    source.coins,
-    source.gold,
-    source.chips,
-    source.balance,
-    source.amount,
-    source.points
-  ];
-
-  for (const value of candidates) {
-    const formatted = formatScoreText(value);
-    if (formatted) {
-      return formatted;
-    }
-  }
-
-  if (preferSelfFallback) {
-    return String(FIGMA_SCORE_FALLBACKS[FIGMA_SCORE_FALLBACKS.length - 1]);
-  }
-
-  const normalizedIndex = Math.abs(Number(fallbackIndex) || 0) % FIGMA_SCORE_FALLBACKS.length;
-  return String(FIGMA_SCORE_FALLBACKS[normalizedIndex]);
-}
-
 function clampPercent(value, min = 0, max = 100) {
   const num = Number(value);
   if (!Number.isFinite(num)) return min;
@@ -665,10 +621,8 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
     const callCount = player.currentCall ? String(Number(player.currentCall.count) || "") : "";
     const callPoint = player.currentCall ? String(Number(player.currentCall.point) || "") : "";
     const isSelf = String(player.id || "") === String(selfPlayerId || "");
-    const badgeClass = player.isOwner ? "badge-owner" : "badge-seat";
     const isHeroSlot = geometry.slotClass === "slot-top";
     const avatarPresentation = getSeatAvatarPresentation(player.avatar, slotIndex);
-    const scoreText = resolvePlayerScoreText(player, slotIndex, isSelf);
 
     return {
       ...player,
@@ -685,7 +639,6 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
       cupToneClass: resolveSeatCupToneClass(player),
       cupStageStyle: `left:${designPxToRpx(geometry.cupX != null ? Number(geometry.cupX) : Number(seatX))};top:${designPxToRpx(geometry.cupY != null ? Number(geometry.cupY) : Number(seatY))};`,
       glowClass: isSelf ? "glow-self" : glowClasses[slotIndex % glowClasses.length],
-      badgeClass,
       isSelf,
       isHeroSlot,
       seatStyle: `left:${designPxToRpx(seatX)};top:${designPxToRpx(seatY)};`,
@@ -699,7 +652,6 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
       callCount,
       callPoint,
       callPointAsset: getDieAsset(callPoint),
-      scoreText,
       canSelect: player.id !== selfPlayerId,
       selected: selectedSet.has(player.id)
     };
@@ -1285,7 +1237,6 @@ Page({
     avatarUrl: "",
     selfAvatarUrl: "",
     selfInitial: "玩",
-    selfScoreText: "28000",
     joinRoomId: "",
     createDirection: "cw",
     createWildcardOneEnabled: true,
@@ -1298,19 +1249,11 @@ Page({
     playerId: "",
     resumeToken: "",
     phase: "ready",
-    phaseText: "准备阶段",
     round: 0,
     currentPlayerId: "",
-    currentPlayerShort: "-",
-    lastCallText: "-",
     lastCallObj: null,
-    hasLastCall: false,
-    openButtonText: "开牌",
-    openHintText: "",
     primaryActionText: "开始",
     canPrimaryAction: false,
-    startButtonText: "开始",
-    canStart: false,
     roomConfig: null,
     playersRaw: [],
     playersDecorated: [],
@@ -1325,29 +1268,7 @@ Page({
     selectedTargetIds: [],
     ghostSeats: [],
     privateDice: [],
-    privateDiceFaces: [],
-    privateDiceText: "-",
     roomSelfDiceFaces: buildSelfDiceDisplayItems(),
-    publicDiceText: "-",
-    publicDiceList: [],
-    openResultText: "",
-    stagePrimaryText: "",
-    stageSecondaryText: "",
-    stageDiceText: "-",
-    selfCallHint: "",
-    stageCallMain: "",
-    stageCallSub: "",
-    stageCallTicker: [],
-    stageCallCount: 0,
-    stageCallPoint: 0,
-    stageCallPointAsset: "",
-    stageCallBy: "",
-    stageCallBump: false,
-    stageShowProgress: false,
-    stageResultVisible: false,
-    stageWinnerText: "",
-    stageDeclaredText: "",
-    stageActualText: "",
     settlementVisible: false,
     settlementSummaryText: "",
     settlementDeclaredText: "",
@@ -1363,12 +1284,8 @@ Page({
     myDicePeekVisible: false,
     myDiceRolling: false,
     myDiceJustRevealed: false,
-    myDiceDisplayDice: buildSelfDiceFallback(5),
-    myDiceDisplayFaces: buildDiceFaceItems(buildSelfDiceFallback(5)),
-    myDiceSummaryText: "—",
     recording: false,
     voiceTipText: "按住语音键说话，松开发送",
-    showDebug: false,
     callCount: "3",
     callPoint: "6",
     callCountOptions: buildCallCountOptionItems(3, 8, 1),
@@ -1388,17 +1305,12 @@ Page({
     chatItemsRaw: [],
     chatItems: [],
     chatUnreadCount: 0,
-    hideSocialUi: false,
     voiceItemsRaw: [],
     voiceItems: [],
     playingVoiceId: "",
     playingVoiceTip: "点击语音可播放",
     sfxEnabled: true,
     hapticEnabled: true,
-    clockText: formatClock(Date.now()),
-    featuredPlayerName: "",
-    featuredPlayerAvatar: "",
-    featuredPlayerInitial: "玩",
     roomShellStyle: "",
     roomTopbarCornerStyle: "",
     roomTopbarCenterStyle: "",
@@ -1412,8 +1324,7 @@ Page({
     seatingSelectedText: "未选择",
     seatRows: [],
     legalAccepted: false,
-    showLegalModal: false,
-    logs: []
+    showLegalModal: false
   },
 
   showActionSheetSafe(options) {
@@ -1481,7 +1392,6 @@ Page({
 	    this.myDiceRevealTimer = null;
 	    this.myDiceAutoPeekTimer = null;
     this.roomSelfRollingTimer = null;
-	    this.stageBumpTimer = null;
 	    this.turnCountdownTimer = null;
 	    this.turnCountdownKey = "";
 	    this.turnDeadlineTs = 0;
@@ -1535,10 +1445,6 @@ Page({
 
     this.sfxPaths = {};
     void this.ensureSfxFiles();
-    this.clockTimer = setInterval(() => {
-      this.setData({ clockText: formatClock(Date.now()) });
-    }, 30000);
-    this.setData({ clockText: formatClock(Date.now()) });
 
     // Optional: WechatSI speech-to-text plugin (if the project enables it in app.json).
     try {
@@ -1722,7 +1628,6 @@ Page({
         playerId: cached.playerId,
         resumeToken: cached.resumeToken
       });
-      this.pushLog("[session] loaded");
     }
 
     const cachedWsUrl = wx.getStorageSync(WS_URL_KEY);
@@ -1984,10 +1889,6 @@ Page({
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    if (this.clockTimer) {
-      clearInterval(this.clockTimer);
-      this.clockTimer = null;
-    }
     this.stopHeartbeat();
     this.clearRoomSelfRollingTimer();
 
@@ -2122,7 +2023,6 @@ Page({
         return;
       }
     }
-    this.pendingHudPrimarySfx = true;
     this.onPrimaryAction();
   },
 
@@ -2385,7 +2285,6 @@ Page({
           lastWsError: errMsg
         });
         this.refreshWsHint(errMsg);
-        this.pushLog(`[ws] error ${errMsg}`);
         this.showConnectionFailure(errMsg);
 
         if (this.skipAutoReconnectOnce) {
@@ -2461,7 +2360,6 @@ Page({
         lastWsError: ""
       });
       this.refreshWsHint("");
-      this.pushLog("[ws] connected");
       this.debugClientEvent("ws:open", {
         socketId,
         roomId: this.data.roomId,
@@ -2500,7 +2398,6 @@ Page({
         lastWsError: reason ? `close(${code}):${reason}` : `close(${code})`
       });
       this.refreshWsHint(reason ? `close(${code}):${reason}` : `close(${code})`);
-      this.pushLog(`[ws] closed code=${code}`);
       this.debugClientEvent("ws:close", {
         socketId,
         code,
@@ -2538,7 +2435,6 @@ Page({
         lastWsError: errMsg
       });
       this.refreshWsHint(errMsg);
-      this.pushLog(`[ws] error ${errMsg}`);
       this.debugClientEvent("ws:error", {
         socketId,
         errMsg,
@@ -2599,15 +2495,7 @@ Page({
   },
 
   showConnectionFailure(errMsg) {
-    const detail = String(errMsg || "未知错误");
-    wx.showToast({ title: "连接失败", icon: "none" });
-    if (typeof wx.showModal === "function") {
-      wx.showModal({
-        title: "连接失败",
-        content: detail,
-        showCancel: false
-      });
-    }
+    void errMsg;
   },
 
   scheduleReconnect() {
@@ -2814,18 +2702,15 @@ Page({
   startRoomSelfRolling(expected) {
     const size = Math.max(1, Number(expected) || 5);
     const applyRollingFrame = () => {
-      const rollingDice = buildRandomDiceValues(size);
-      const rollingFaces = buildDiceFaceItems(rollingDice);
+      const rollingFaces = buildDiceFaceItems(buildRandomDiceValues(size));
       this.setData({
-        roomSelfDiceFaces: rollingFaces,
-        myDiceDisplayDice: rollingDice,
-        myDiceDisplayFaces: rollingFaces
+        roomSelfDiceFaces: rollingFaces
       });
     };
 
     this.clearRoomSelfRollingTimer();
     applyRollingFrame();
-    this.roomSelfRollingTimer = setInterval(applyRollingFrame, 120);
+    this.roomSelfRollingTimer = setInterval(applyRollingFrame, ROOM_SELF_ROLLING_FRAME_MS);
   },
 
   showMyDiceDrawerRolling() {
@@ -2850,10 +2735,7 @@ Page({
       myDicePeekVisible: false,
       myDiceRolling: true,
       myDiceJustRevealed: false,
-      myDiceDisplayDice: display,
-      myDiceDisplayFaces: rollingFaces,
-      roomSelfDiceFaces: rollingFaces,
-      myDiceSummaryText: "摇骰中…"
+      roomSelfDiceFaces: rollingFaces
     });
     this.startRoomSelfRolling(expected);
 
@@ -2865,11 +2747,10 @@ Page({
       this.clearRoomSelfRollingTimer();
       this.setData({
         myDiceRolling: false,
-        myDiceJustRevealed: false,
-        myDiceSummaryText: "等待摇骰结果…"
+        myDiceJustRevealed: false
       });
       this.myDiceAutoPeekTimer = null;
-    }, 2600);
+    }, ROOM_SELF_ROLLING_DURATION_MS);
   },
 
   openMyDiceDrawer() {
@@ -2884,18 +2765,13 @@ Page({
     const privateDice = Array.isArray(this.data.privateDice) ? this.data.privateDice : [];
     const fallback = buildSelfDiceFallback(expected);
     const display = privateDice.length === expected ? privateDice : fallback;
-    const summary = privateDice.length === expected ? this.buildMyDiceSummary(privateDice, this.data.roomConfig) : "等待摇骰";
 
     this.setData({
       myDiceVisible: true,
       myDicePeekVisible: false,
       myDiceRolling: false,
       myDiceJustRevealed: false,
-      myDiceDisplayDice: display,
-      myDiceDisplayFaces: buildDiceFaceItems(display),
-      privateDiceFaces: buildDiceFaceItems(display),
-      roomSelfDiceFaces: buildDiceFaceItems(display),
-      myDiceSummaryText: summary
+      roomSelfDiceFaces: buildDiceFaceItems(display)
     });
   },
 
@@ -2912,22 +2788,6 @@ Page({
       myDiceRolling: false,
       myDiceJustRevealed: false
     });
-  },
-
-  buildMyDiceSummary(dice, roomConfig) {
-    const nums = Array.isArray(dice) ? dice : [];
-    const counts = [0, 0, 0, 0, 0, 0, 0];
-    nums.forEach((n) => {
-      if (Number.isInteger(n) && n >= 1 && n <= 6) counts[n] += 1;
-    });
-
-    const brief = [1, 2, 3, 4, 5, 6]
-      .map((p) => (counts[p] ? `${p}×${counts[p]}` : ""))
-      .filter(Boolean)
-      .join("  ");
-
-    const wildcard = roomConfig && roomConfig.wildcardOneEnabled ? "通配1：开" : "通配1：关";
-    return `${brief || "—"}  ·  ${wildcard}`;
   },
 
   clearSettlementCountdown() {
@@ -3035,13 +2895,6 @@ Page({
       : 5;
 
     this.setData({
-      publicDiceText: "-",
-      publicDiceList: [],
-      openResultText: "",
-      stageResultVisible: false,
-      stageWinnerText: "",
-      stageDeclaredText: "",
-      stageActualText: "",
       settlementVisible: false,
       settlementSummaryText: "",
       settlementDeclaredText: "",
@@ -3051,8 +2904,6 @@ Page({
       settlementCanContinue: false,
       settlementContinueSec: 0,
       privateDice: [],
-      privateDiceFaces: [],
-      privateDiceText: "-",
       roomSelfDiceFaces: buildSelfDiceDisplayItems(),
       selfHasDice: false,
       selfHasCalled: false,
@@ -3061,12 +2912,8 @@ Page({
       myDicePeekVisible: false,
       myDiceRolling: false,
       myDiceJustRevealed: false,
-      myDiceDisplayDice: buildSelfDiceFallback(expected),
-      myDiceDisplayFaces: buildDiceFaceItems(buildSelfDiceFallback(expected)),
-      myDiceSummaryText: "—",
       callTimeline: [],
-      lastCallKey: "",
-      stageCallTicker: []
+      lastCallKey: ""
     });
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
@@ -3076,7 +2923,6 @@ Page({
 
   onPrimaryAction() {
     if (!this.data.canPrimaryAction) {
-      this.pendingHudPrimarySfx = false;
       return;
     }
 
@@ -3115,8 +2961,6 @@ Page({
       this.restartRound();
       return;
     }
-
-    this.pendingHudPrimarySfx = false;
   },
 
   makeCallWithInput() {
@@ -3133,7 +2977,7 @@ Page({
       return;
     }
 
-    this.playPrimaryAwareSfx("call");
+    this.playSfx("primary");
     this.sendEvent("call:make", {
       count,
       point
@@ -3798,15 +3642,8 @@ Page({
   },
 
   openToolsDevMenu() {
-    const items = [];
-    const actions = [];
-
-    const next = this.data.showDebug ? "隐藏调试日志" : "显示调试日志";
-    items.push(next);
-    actions.push(() => this.setData({ showDebug: !this.data.showDebug }));
-
-    items.push("打开调试页");
-    actions.push(() => wx.navigateTo({ url: "/pages/index/index" }));
+    const items = ["打开调试页"];
+    const actions = [() => wx.navigateTo({ url: "/pages/index/index" })];
 
     this.showActionSheetSafe({
       itemList: items,
@@ -3959,11 +3796,7 @@ Page({
         payload,
         actionId
       }),
-      success: () => {
-        if (!options.silentLog) {
-          this.pushLog(`-> ${event}`);
-        }
-      },
+      success: () => {},
       fail: () => {
         delete this.actionEventMap[actionId];
         wx.showToast({ title: "发送失败", icon: "none" });
@@ -3977,7 +3810,6 @@ Page({
     try {
       packet = JSON.parse(raw);
     } catch (error) {
-      this.pushLog("<- invalid packet");
       return;
     }
 
@@ -3996,32 +3828,14 @@ Page({
         const roomDirection = roomConfig && (roomConfig.direction === "ccw" ? "ccw" : "cw");
         const playersDecorated = decoratePlayers(playersRaw, this.data.playerId, validTargets, payload.lastCall, roomDirection);
         const ghostSeats = buildGhostSeats(playersDecorated, playersRaw.length);
-        const currentPlayer = playersRaw.find((player) => player.id === payload.currentPlayerId);
         const self = playersRaw.find((player) => player.id === this.data.playerId);
-        const selfDecorated = playersDecorated.find((player) => player.isSelf);
-        const featuredPlayer = currentPlayer || self || playersRaw[0] || null;
-        const featuredPlayerName = featuredPlayer
-          ? (safeDecodeComponent(featuredPlayer.nickname).trim() || "玩家").slice(0, 6)
-          : "";
-        const featuredSeatIndex = Number(featuredPlayer && featuredPlayer.seatIndex);
-        const featuredAvatarFallbackIndex = Number.isInteger(featuredSeatIndex) && featuredSeatIndex > 0
-          ? (featuredSeatIndex - 1) % FIGMA_DEFAULT_AVATARS.length
-          : 0;
-        const featuredPlayerAvatar = featuredPlayer
-          ? String(featuredPlayer.avatar || FIGMA_DEFAULT_AVATARS[featuredAvatarFallbackIndex] || "")
-          : "";
-        const featuredPlayerInitial = featuredPlayerName ? featuredPlayerName.slice(0, 1) : "玩";
         const selfIsOwner = Boolean(self && self.isOwner);
         const selfHasCalled = Boolean(self && self.currentCall);
         const selfRollLocked = Boolean(self && self.rollLocked);
         const selfRollCountThisRound = Number(self && self.rollCountThisRound) || 0;
         const selfAvatarUrl = (self && self.avatar) ? self.avatar : (this.data.avatarUrl || "");
-        const selfScoreText = selfDecorated
-          ? String(selfDecorated.scoreText || "")
-          : resolvePlayerScoreText(self, 7, true);
         const selfIsWaiting = waitingPlayersRaw.some((player) => player.id === this.data.playerId)
           && !playersRaw.some((player) => player.id === this.data.playerId);
-        const selfCallHint = self && self.currentCall ? `上一手：${self.currentCall.count}个${self.currentCall.point}` : "";
         const dicePerPlayer = roomConfig && typeof roomConfig.dicePerPlayer === "number"
           ? roomConfig.dicePerPlayer
           : 5;
@@ -4057,7 +3871,6 @@ Page({
 
         let callTimeline = Array.isArray(this.data.callTimeline) ? this.data.callTimeline : [];
         let lastCallKey = String(this.data.lastCallKey || "");
-        let stageCallBump = false;
         const roundChanged = incomingRound !== this.data.round;
         if (roundChanged) {
           callTimeline = [];
@@ -4085,119 +3898,11 @@ Page({
               point: lastCallObj.point
             }, ...callTimeline].slice(0, 20);
             lastCallKey = key;
-            stageCallBump = true;
           }
         }
 
-        const stageCallTicker = callTimeline.slice(0, 3);
-        let openButtonText = "开牌";
-        let openHintText = "";
-        if (phase === "opening") {
-          openButtonText = "开牌中";
-          openHintText = "处理中";
-        } else if (phase === "ready") {
-          openButtonText = "开牌";
-          openHintText = "未开局";
-        } else if (phase === "rolling") {
-          openButtonText = "开牌";
-          openHintText = "摇骰中";
-        } else if (phase === "ended") {
-          openButtonText = "开牌";
-          openHintText = "已结算";
-        } else if (phase === "calling") {
-          if (!lastCallObj) {
-            openButtonText = "开牌";
-            openHintText = "需上一手";
-          } else if (payload.currentPlayerId && payload.currentPlayerId !== this.data.playerId) {
-            openButtonText = "开牌";
-            openHintText = "等轮到你";
-          } else {
-            openButtonText = "开牌";
-            openHintText = "可开";
-          }
-        }
-
-        const canStart = Boolean(selfIsOwner && phase === "ready" && playerCount >= 2);
-        const startButtonText = selfIsOwner ? "开始" : "等待房主";
-
-        const isMyTurn = payload.currentPlayerId === this.data.playerId;
-        const stageShowProgress = phase === "opening";
-        let stagePrimaryText = `第${payload.round || 0}局 · ${phaseToText(phase)}`;
-        let stageSecondaryText = "";
-
-        if (selfIsWaiting) {
-          stageSecondaryText = "等待下一局加入对局";
-        } else if (phase === "ready") {
-          stageSecondaryText = selfIsOwner
-            ? (playerCount >= 2 ? "可排位后开始" : "等待更多玩家加入")
-            : "等待房主开始";
-        } else if (phase === "rolling") {
-          const lockedCount = playersRaw.filter((p) => p.rollLocked).length;
-          const totalCount = playersRaw.length;
-          if (!selfRollLocked) {
-            stageSecondaryText = `摇骰中：${lockedCount}/${totalCount}已OK · 请摇一摇并点OK`;
-          } else {
-            stageSecondaryText = `已OK，等待其他玩家确认（${lockedCount}/${totalCount}）`;
-          }
-        } else if (phase === "calling") {
-          stageSecondaryText = isMyTurn ? "轮到你叫骰或质疑" : `等待 ${currentPlayer ? String(currentPlayer.nickname || "").slice(0, 2) : "玩家"} 操作`;
-        } else if (phase === "opening") {
-          stageSecondaryText = "正在开牌，请稍候";
-        } else if (phase === "ended") {
-          const isNextRoundStarter = payload.currentPlayerId === this.data.playerId;
-          if ((waitingPlayersRaw || []).length > 0) {
-            const countText = `有${waitingPlayersRaw.length}位等待者`;
-            if (isNextRoundStarter) {
-              stageSecondaryText = `${countText}，可先安排入座再开始`;
-            } else if (selfIsOwner) {
-              stageSecondaryText = `${countText}，等待输家开始`;
-            } else {
-              stageSecondaryText = `${countText}旁观中`;
-            }
-          } else {
-            stageSecondaryText = isNextRoundStarter ? "由你开始下一局" : "等待输家开始";
-          }
-        }
-
-        let stageCallMain = "";
-        let stageCallSub = "";
-        let stageCallCount = 0;
-        let stageCallPoint = 0;
-        let stageCallBy = "";
-        if (phase === "ended") {
-          stageCallMain = "全局骰面";
-          stageCallSub = "本局结果已公开";
-        } else if (phase === "opening") {
-          stageCallMain = lastCallObj ? `${lastCallObj.count}个${lastCallObj.point}` : "开牌中";
-          stageCallSub = lastCallObj ? `当前叫牌 · ${lastByLabel}` : "正在开牌，请稍候";
-        } else if (phase === "rolling") {
-          stageCallMain = "请摇骰";
-          stageCallSub = `每人${dicePerPlayer}颗 · 起叫≥${roomConfig && roomConfig.minOpeningCount ? roomConfig.minOpeningCount : 1}`;
-        } else if (phase === "calling") {
-          stageCallMain = lastCallObj
-            ? `${lastCallObj.count}个${lastCallObj.point}`
-            : "等待起叫";
-          stageCallSub = lastCallObj
-            ? `上家：${lastByLabel}`
-            : `已摇骰完成（每人${dicePerPlayer}颗）· 起叫≥${roomConfig && roomConfig.minOpeningCount ? roomConfig.minOpeningCount : 1}`;
-        } else {
-          stageCallMain = "准备阶段";
-          stageCallSub = selfIsOwner ? "可排位后开始" : "等待房主开始";
-        }
-
-        if (lastCallObj) {
-          stageCallCount = Number(lastCallObj.count) || 0;
-          stageCallPoint = Number(lastCallObj.point) || 0;
-          stageCallBy = lastByLabel;
-        } else {
-          stageCallCount = 0;
-          stageCallPoint = 0;
-          stageCallBy = "";
-        }
-
-        const stageDiceText = phase === "ended"
-          ? (this.data.publicDiceText || "-")
-          : "-";
+        const startActionEnabled = Boolean(selfIsOwner && phase === "ready" && playerCount >= 2);
+        const startActionText = selfIsOwner ? "开始" : "等待房主";
 
         const isMyCallingTurn = payload.phase === "calling"
           && payload.currentPlayerId === this.data.playerId
@@ -4232,7 +3937,6 @@ Page({
         const callPanelExpanded = isMyCallingTurn ? Boolean(this.data.callPanelExpanded) : false;
         const canOpenAction = Boolean(isMyCallingTurn && lastCallObj);
 
-        const stageResultVisible = Boolean(this.data.stageResultVisible) && (phase === "opening" || phase === "ended");
         const settlementVisible = Boolean(this.data.settlementVisible) && phase === "ended";
         if (!settlementVisible && this.data.settlementVisible) {
           this.clearSettlementCountdown();
@@ -4246,21 +3950,14 @@ Page({
           ? this.data.roomSelfDiceFaces
           : (hasDice ? buildDiceFaceItems(this.data.privateDice) : buildSelfDiceDisplayItems());
 
-        const currentPlayerNameShort = currentPlayer
-          ? ((safeDecodeComponent(currentPlayer.nickname).trim() || "").slice(0, 2) || String(currentPlayer.id || "").slice(0, 2))
-          : "";
-        const currentPlayerLabel = currentPlayer
-          ? `${currentPlayer.seatIndex || "-"}号${currentPlayerNameShort}`
-          : "-";
-
         let primaryActionText = "开始";
         let canPrimaryAction = false;
         if (selfIsWaiting) {
           primaryActionText = "旁观中";
           canPrimaryAction = false;
         } else if (phase === "ready") {
-          primaryActionText = startButtonText;
-          canPrimaryAction = canStart;
+          primaryActionText = startActionText;
+          canPrimaryAction = startActionEnabled;
         } else if (phase === "rolling") {
           if (!hasDice) {
             primaryActionText = "摇一摇";
@@ -4307,19 +4004,11 @@ Page({
           displayRoomId: formatRoomIdDisplay(roomId),
           joinRoomId: roomId,
           phase: payload.phase || "ready",
-          phaseText: phaseToText(payload.phase),
           round: payload.round || 0,
           currentPlayerId: payload.currentPlayerId || "",
-          currentPlayerShort: currentPlayerLabel,
-          lastCallText: payload.lastCall ? `${lastByLabel} ${payload.lastCall.count}个${payload.lastCall.point}` : "-",
           lastCallObj,
-          hasLastCall: Boolean(lastCallObj),
-          openButtonText,
-          openHintText,
           primaryActionText,
           canPrimaryAction,
-          canStart,
-          startButtonText,
           roomConfig,
           playersRaw,
           playersDecorated,
@@ -4332,7 +4021,6 @@ Page({
           selfRollLocked,
           selfRollCountThisRound,
           selfAvatarUrl,
-          selfScoreText,
           playerCount,
           seatRows,
           seatingSelectedSeatIndex,
@@ -4340,9 +4028,6 @@ Page({
           voiceItems: this.decorateVoiceItems(this.data.voiceItemsRaw, playersRaw),
           chatItems: this.decorateChatItems(this.data.chatItemsRaw, playersRaw, this.data.playerId),
           selectedTargetIds: validTargets,
-          featuredPlayerName,
-          featuredPlayerAvatar,
-          featuredPlayerInitial,
           callCount: nextCallCount,
           callPoint: nextCallPoint,
           callCountOptions,
@@ -4352,20 +4037,6 @@ Page({
           callPanelExpanded: isMyCallingTurn ? callPanelExpanded : false,
           callPanelVisible,
           canOpenAction,
-          stagePrimaryText,
-          stageSecondaryText,
-          stageDiceText,
-          selfCallHint,
-          stageCallMain,
-          stageCallSub,
-          stageCallTicker,
-          stageCallCount,
-          stageCallPoint,
-          stageCallPointAsset: getDieAsset(stageCallPoint),
-          stageCallBy,
-          stageCallBump: stageCallBump ? true : this.data.stageCallBump,
-          stageShowProgress,
-          stageResultVisible,
           settlementVisible,
           settlementSummaryText: settlementVisible ? this.data.settlementSummaryText : "",
           settlementDeclaredText: settlementVisible ? this.data.settlementDeclaredText : "",
@@ -4375,7 +4046,6 @@ Page({
           settlementCanContinue: settlementVisible ? this.data.settlementCanContinue : false,
           settlementContinueSec: settlementVisible ? this.data.settlementContinueSec : 0,
           privateDice: (selfIsWaiting || roundChanged) ? [] : this.data.privateDice,
-          privateDiceText: (selfIsWaiting || roundChanged) ? "-" : this.data.privateDiceText,
           callTimeline,
           lastCallKey,
           turnCountdownSec: this.data.turnCountdownSec,
@@ -4383,18 +4053,6 @@ Page({
           myDiceVisible: (selfIsWaiting || phase === "ended" || roundChanged) ? false : this.data.myDiceVisible,
           myDicePeekVisible: selfIsWaiting ? false : myDicePeekVisible
         });
-
-        if (stageCallBump) {
-          if (this.stageBumpTimer) {
-            clearTimeout(this.stageBumpTimer);
-            this.stageBumpTimer = null;
-          }
-          this.setData({ stageCallBump: true });
-          this.stageBumpTimer = setTimeout(() => {
-            this.setData({ stageCallBump: false });
-            this.stageBumpTimer = null;
-          }, 320);
-        }
 
         this.hasReceivedRoomState = true;
         if (shouldPlayRoundStartSfx) {
@@ -4493,8 +4151,6 @@ Page({
         const cleaned = Array.isArray(privateDice) ? privateDice.slice(0, expected).map((n) => Number(n)) : [];
         const ok = cleaned.length === expected && cleaned.every((n) => Number.isInteger(n) && n >= 1 && n <= 6);
         const finalDice = ok ? cleaned : [];
-        const summary = finalDice.length === expected ? this.buildMyDiceSummary(finalDice, this.data.roomConfig) : "—";
-        const peek = finalDice.length === expected ? finalDice.join("·") : "-";
 
         if (this.myDiceRevealTimer) {
           clearTimeout(this.myDiceRevealTimer);
@@ -4508,23 +4164,14 @@ Page({
 
         this.setData({
           privateDice: finalDice,
-          privateDiceFaces: buildDiceFaceItems(finalDice),
-          privateDiceText: peek,
           selfHasDice: finalDice.length === expected,
           myDiceVisible: !this.data.selfIsWaiting && this.data.phase !== "ended",
           myDicePeekVisible: false,
           myDiceRolling: false,
           myDiceJustRevealed: true,
-          myDiceDisplayDice: finalDice.length === expected
-            ? finalDice
-            : buildSelfDiceFallback(expected),
-          myDiceDisplayFaces: buildDiceFaceItems(finalDice.length === expected
-            ? finalDice
-            : buildSelfDiceFallback(expected)),
           roomSelfDiceFaces: buildDiceFaceItems(finalDice.length === expected
             ? finalDice
-            : buildSelfDiceFallback(expected)),
-          myDiceSummaryText: summary
+            : buildSelfDiceFallback(expected))
         });
 
         this.myDiceRevealTimer = setTimeout(() => {
@@ -4556,13 +4203,6 @@ Page({
         if (first) {
           const winnerShort = String(first.winnerId || "").slice(0, 6) || "-";
 
-          this.setData({
-            openResultText: `胜者：${winnerShort}（${first.declared.count}个${first.declared.point} / 实${first.actual}）`,
-            stageResultVisible: true,
-            stageWinnerText: `胜者：${winnerShort}`,
-            stageDeclaredText: `叫：${first.declared.count}个${first.declared.point}`,
-            stageActualText: `实：${first.actual}`
-          });
           this.showSettlementPanel(payload, null);
         }
         break;
@@ -4582,30 +4222,12 @@ Page({
           return `${seat}${name}:${dice}`;
         }).join(" | ");
 
-        this.setData({
-          publicDiceText: line || "-",
-          stageDiceText: line || "-",
-          publicDiceList: players.map((p) => {
-            const info = playerMap.get(p.playerId);
-            const seatIndex = info ? info.seatIndex : 0;
-            const nameFull = info ? (safeDecodeComponent(info.nickname).trim() || "玩家") : String(p.playerId || "").slice(0, 8);
-            const dice = Array.isArray(p.dice) ? p.dice.slice(0, 5).map((n) => Number(n)).filter((n) => Number.isInteger(n) && n >= 1 && n <= 6) : [];
-            const diceIcons = dice.map((n) => diceChars[n] || "•").join(" ");
-            return {
-              seatIndex,
-              label: `${seatIndex ? `${seatIndex}号` : ""}${String(nameFull).slice(0, 4)}`,
-              diceIcons,
-              diceRaw: dice.join(" ")
-            };
-          }).sort((a, b) => (a.seatIndex || 99) - (b.seatIndex || 99))
-        });
         this.showSettlementPanel(null, payload);
         break;
       }
       case "voice:uploaded": {
         const who = String(payload.playerId || "").slice(0, 8);
         const sec = Math.max(1, Math.round(Number(payload.durationMs || 0) / 1000));
-        this.pushLog(`[voice] ${who} 上传语音 ${sec}s`);
         this.loadVoiceList();
         break;
       }
@@ -4628,7 +4250,9 @@ Page({
         break;
       }
       case "system:error": {
-        wx.showToast({ title: payload.message || "系统错误", icon: "none" });
+        this.debugClientEvent("system:error", {
+          message: payload && payload.message ? String(payload.message) : ""
+        }, { ui: false });
         break;
       }
       default:
@@ -4785,11 +4409,6 @@ Page({
   },
 
   playPrimaryAwareSfx(fallbackKind = "") {
-    if (this.pendingHudPrimarySfx) {
-      this.pendingHudPrimarySfx = false;
-      this.playSfx("primary");
-      return;
-    }
     if (fallbackKind) {
       this.playSfx(fallbackKind);
     }
@@ -4816,7 +4435,6 @@ Page({
     if (this.data.phase !== "calling" || this.data.currentPlayerId !== this.data.playerId || this.data.selfIsWaiting) {
       return;
     }
-    this.playSfx("primary");
     this.setData({
       callPanelVisible: true,
       callPanelExpanded: true,
@@ -4945,10 +4563,6 @@ Page({
       clearTimeout(this.myDiceAutoPeekTimer);
       this.myDiceAutoPeekTimer = null;
     }
-    if (this.stageBumpTimer) {
-      clearTimeout(this.stageBumpTimer);
-      this.stageBumpTimer = null;
-    }
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
@@ -4964,19 +4578,11 @@ Page({
       playerId: "",
       resumeToken: "",
       phase: "ready",
-      phaseText: phaseToText("ready"),
       round: 0,
       currentPlayerId: "",
-      currentPlayerShort: "-",
-      lastCallText: "-",
       lastCallObj: null,
-      hasLastCall: false,
-      openButtonText: "开牌",
-      openHintText: "",
       primaryActionText: "开始",
       canPrimaryAction: false,
-      startButtonText: "开始",
-      canStart: false,
       roomConfig: null,
       playersRaw: [],
       playersDecorated: [],
@@ -4991,28 +4597,6 @@ Page({
       playerCount: 0,
       selectedTargetIds: [],
       privateDice: [],
-      privateDiceFaces: [],
-      privateDiceText: "-",
-      publicDiceText: "-",
-      publicDiceList: [],
-      openResultText: "",
-      stagePrimaryText: "",
-      stageSecondaryText: "",
-      stageDiceText: "-",
-      selfCallHint: "",
-      stageCallMain: "",
-      stageCallSub: "",
-      stageCallTicker: [],
-      stageCallCount: 0,
-      stageCallPoint: 0,
-      stageCallPointAsset: "",
-      stageCallBy: "",
-      stageCallBump: false,
-      stageShowProgress: false,
-      stageResultVisible: false,
-      stageWinnerText: "",
-      stageDeclaredText: "",
-      stageActualText: "",
       settlementVisible: false,
       settlementSummaryText: "",
       settlementDeclaredText: "",
@@ -5027,10 +4611,7 @@ Page({
       myDicePeekVisible: false,
       myDiceRolling: false,
       myDiceJustRevealed: false,
-      myDiceDisplayDice: buildSelfDiceFallback(5),
-      myDiceDisplayFaces: buildDiceFaceItems(buildSelfDiceFallback(5)),
       roomSelfDiceFaces: buildSelfDiceDisplayItems(),
-      myDiceSummaryText: "—",
       historyItems: [],
       historyNextBeforeRound: null,
       historyVisible: false,
@@ -5089,10 +4670,6 @@ Page({
       clearTimeout(this.myDiceAutoPeekTimer);
       this.myDiceAutoPeekTimer = null;
     }
-    if (this.stageBumpTimer) {
-      clearTimeout(this.stageBumpTimer);
-      this.stageBumpTimer = null;
-    }
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
@@ -5103,29 +4680,8 @@ Page({
       playerId: "",
       resumeToken: "",
       joinRoomId: "",
-      openButtonText: "开牌",
-      openHintText: "",
-      startButtonText: "开始",
-      canStart: false,
       playerCount: 0,
       selfAvatarUrl: this.data.avatarUrl || "",
-      stagePrimaryText: "",
-      stageSecondaryText: "",
-      stageDiceText: "-",
-      selfCallHint: "",
-      stageCallMain: "",
-      stageCallSub: "",
-      stageCallTicker: [],
-      publicDiceList: [],
-      stageCallCount: 0,
-      stageCallPoint: 0,
-      stageCallBy: "",
-      stageCallBump: false,
-      stageShowProgress: false,
-      stageResultVisible: false,
-      stageWinnerText: "",
-      stageDeclaredText: "",
-      stageActualText: "",
       settlementVisible: false,
       settlementSummaryText: "",
       settlementDeclaredText: "",
@@ -5153,10 +4709,7 @@ Page({
       myDicePeekVisible: false,
       myDiceRolling: false,
       myDiceJustRevealed: false,
-      myDiceDisplayDice: buildSelfDiceFallback(5),
-      myDiceDisplayFaces: buildDiceFaceItems(buildSelfDiceFallback(5)),
       roomSelfDiceFaces: buildSelfDiceDisplayItems(),
-      myDiceSummaryText: "—",
       selfRollLocked: false,
       selfRollCountThisRound: 0,
     });
@@ -5261,11 +4814,6 @@ Page({
     wx.showToast({ title: "同意后方可继续使用", icon: "none" });
   },
 
-  pushLog(line) {
-    const logs = [line, ...this.data.logs].slice(0, 10);
-    this.setData({ logs });
-  },
-
   getRouteStack() {
     try {
       return getCurrentPages().map((page) => page.route);
@@ -5282,7 +4830,6 @@ Page({
       ...details
     };
 
-    const showInUi = options && options.ui === true;
     const verboseEvent = String(event || "").startsWith("lifecycle:") || String(event || "").endsWith("_stale");
     const shouldLogConsole = options && options.console === false
       ? false
@@ -5297,15 +4844,5 @@ Page({
       }
     }
 
-    if (!showInUi) {
-      return;
-    }
-
-    try {
-      const text = `[debug] ${event}`;
-      this.pushLog(text);
-    } catch (error) {
-      // ignore UI log failure
-    }
   }
 });
