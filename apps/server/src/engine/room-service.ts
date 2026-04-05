@@ -17,6 +17,7 @@ import {
   RECONNECT_GRACE_MS
 } from "../config.js";
 import { createPlayerId, createResumeToken, createRoomId } from "../utils/random.js";
+import { AccountStore } from "./account-store.js";
 import { HistoryStore } from "./history-store.js";
 import { RoomEngine } from "./room-engine.js";
 import { VoiceStore } from "./voice-store.js";
@@ -42,6 +43,13 @@ type PlayerRemovalReason = "explicit_leave" | "switch_room" | "grace_timeout";
 
 type AnyClientMessage = { [E in ClientEventName]: ClientMessage<E> }[ClientEventName];
 
+interface BoundAccountIdentity {
+  accountId: string;
+  accountDisplayId: string;
+  nickname: string;
+  avatarUrl: string;
+}
+
 export class RoomService {
   private rooms = new Map<string, RoomEngine>();
   private sessions = new Map<WebSocket, Session>();
@@ -50,9 +58,14 @@ export class RoomService {
   private reconnectTimers = new Map<string, NodeJS.Timeout>();
   private turnTimers = new Map<string, NodeJS.Timeout>();
   private turnTimerKeys = new Map<string, string>();
+  private readonly accountStore: AccountStore;
   private historyStore = new HistoryStore();
   private voiceStore = new VoiceStore();
   private chatStore = new ChatStore();
+
+  constructor(accountStore = new AccountStore()) {
+    this.accountStore = accountStore;
+  }
 
   private logDiagnostic(level: "log" | "warn", event: string, details: Record<string, unknown>): void {
     const logger = level === "warn" ? console.warn : console.log;
@@ -130,10 +143,10 @@ export class RoomService {
   private async handleEvent(ws: WebSocket, message: AnyClientMessage): Promise<void> {
     switch (message.event) {
       case "room:create":
-        this.handleRoomCreate(ws, message.payload, message.actionId);
+        await this.handleRoomCreate(ws, message.payload, message.actionId);
         break;
       case "room:join":
-        this.handleRoomJoin(ws, message.payload, message.actionId);
+        await this.handleRoomJoin(ws, message.payload, message.actionId);
         break;
       case "room:rejoin":
         this.handleRoomRejoin(ws, message.payload, message.actionId);
@@ -157,7 +170,7 @@ export class RoomService {
         this.handleRoomLeave(ws, message.actionId);
         break;
       case "player:update":
-        this.handlePlayerUpdate(ws, message.payload, message.actionId);
+        await this.handlePlayerUpdate(ws, message.payload, message.actionId);
         break;
       case "game:start":
         this.handleGameStart(ws, message.actionId);
@@ -219,11 +232,11 @@ export class RoomService {
     }
   }
 
-  private handlePlayerUpdate(
+  private async handlePlayerUpdate(
     ws: WebSocket,
     payload: ClientEventMap["player:update"],
     actionId?: string
-  ): void {
+  ): Promise<void> {
     const { room, session } = this.getRoomAndSession(ws);
     this.ensureActivePlayer(room, session.playerId);
     const nickname = payload.nickname == null ? undefined : safeDecodeURIComponent(payload.nickname).trim();
@@ -233,6 +246,14 @@ export class RoomService {
       nickname: nickname || undefined,
       avatar
     });
+
+    const accountId = this.getBoundAccountId(room, session.playerId);
+    if (accountId) {
+      await this.accountStore.syncProfile(accountId, {
+        nickname: nickname || undefined,
+        avatarUrl: avatar
+      });
+    }
 
     this.sendAck(ws, { actionId, ok: true });
     this.broadcastRoomState(session.roomId);
@@ -281,22 +302,25 @@ export class RoomService {
     this.send(ws, "chat:list", dto);
   }
 
-  private handleRoomCreate(
+  private async handleRoomCreate(
     ws: WebSocket,
     payload: ClientEventMap["room:create"],
     actionId?: string
-  ): void {
+  ): Promise<void> {
     this.ensureOwnerCanCreateRoom(ws, actionId);
     this.prepareSocketForCreateOrJoin(ws);
 
     const nickname = safeDecodeURIComponent(payload.nickname).trim() || "玩家";
     const avatar = String(payload.avatar || "");
+    const boundAccount = await this.resolveBoundAccount(payload);
 
     const roomId = createRoomId(new Set(this.rooms.keys()));
     const playerId = createPlayerId();
 
     const room = new RoomEngine(roomId, {
       id: playerId,
+      accountId: boundAccount?.accountId,
+      accountDisplayId: boundAccount?.accountDisplayId,
       nickname,
       avatar,
       isOwner: true
@@ -306,10 +330,14 @@ export class RoomService {
     this.bindSession(ws, roomId, playerId);
 
     const resumeToken = this.createOrRefreshResumeToken(roomId, playerId);
+    if (boundAccount) {
+      await this.accountStore.touchRoom(boundAccount.accountId, roomId, "owner");
+    }
 
     this.logDiagnostic("log", "room:create", {
       actionId: actionId || "",
       ownerPlayerId: playerId,
+      accountId: boundAccount?.accountId || "",
       nickname,
       ...this.getRoomDiagnostics(roomId),
       ...this.getSocketMeta(ws)
@@ -326,11 +354,11 @@ export class RoomService {
     this.broadcastRoomState(roomId);
   }
 
-  private handleRoomJoin(
+  private async handleRoomJoin(
     ws: WebSocket,
     payload: ClientEventMap["room:join"],
     actionId?: string
-  ): void {
+  ): Promise<void> {
     this.prepareSocketForCreateOrJoin(ws);
 
     this.logDiagnostic("log", "room:join:attempt", {
@@ -354,6 +382,7 @@ export class RoomService {
 
     const nickname = safeDecodeURIComponent(payload.nickname).trim() || "玩家";
     const avatar = String(payload.avatar || "");
+    const boundAccount = await this.resolveBoundAccount(payload);
 
     const playerId = createPlayerId();
     const phase = room.getState().phase;
@@ -366,12 +395,16 @@ export class RoomService {
     if (phase === "ready") {
       room.addPlayer({
         id: playerId,
+        accountId: boundAccount?.accountId,
+        accountDisplayId: boundAccount?.accountDisplayId,
         nickname,
         avatar
       });
     } else {
       room.addWaitingPlayer({
         id: playerId,
+        accountId: boundAccount?.accountId,
+        accountDisplayId: boundAccount?.accountDisplayId,
         nickname,
         avatar
       });
@@ -380,11 +413,15 @@ export class RoomService {
     this.bindSession(ws, payload.roomId, playerId);
 
     const resumeToken = this.createOrRefreshResumeToken(payload.roomId, playerId);
+    if (boundAccount) {
+      await this.accountStore.touchRoom(boundAccount.accountId, payload.roomId, "guest");
+    }
 
     this.logDiagnostic("log", "room:join:success", {
       actionId: actionId || "",
       requestedRoomId: payload.roomId,
       joinedPlayerId: playerId,
+      accountId: boundAccount?.accountId || "",
       nickname,
       ...this.getRoomDiagnostics(payload.roomId),
       ...this.getSocketMeta(ws)
@@ -647,6 +684,7 @@ export class RoomService {
     const { openResult, roundSummary } = room.openDice(session.playerId, room.getRuleOptionsForCurrentRound());
 
     await this.historyStore.saveRoundSummary(roundSummary);
+    await this.accountStore.recordRoundSummary(roundSummary);
 
     this.sendAck(ws, {
       actionId,
@@ -852,6 +890,44 @@ export class RoomService {
     });
 
     this.broadcastRoomState(session.roomId);
+  }
+
+  private async resolveBoundAccount(payload: {
+    accountId?: string;
+    accountSessionToken?: string;
+  }): Promise<BoundAccountIdentity | null> {
+    const accountId = String(payload.accountId || "").trim();
+    const accountSessionToken = String(payload.accountSessionToken || "").trim();
+
+    if (!accountId && !accountSessionToken) {
+      return null;
+    }
+
+    if (!accountId || !accountSessionToken) {
+      throw new GameError(ErrorCode.FORBIDDEN, "账号登录已失效，请重新进入");
+    }
+
+    const profile = await this.accountStore.verifySession(accountId, accountSessionToken);
+    if (!profile) {
+      throw new GameError(ErrorCode.FORBIDDEN, "账号登录已失效，请重新进入");
+    }
+
+    return {
+      accountId: profile.accountId,
+      accountDisplayId: profile.displayId,
+      nickname: profile.nickname,
+      avatarUrl: profile.avatarUrl
+    };
+  }
+
+  private getBoundAccountId(room: RoomEngine, playerId: string): string | undefined {
+    const state = room.getState();
+    const active = state.players.find((player) => player.id === playerId);
+    if (active?.accountId) {
+      return active.accountId;
+    }
+
+    return state.waitingPlayers.find((player) => player.id === playerId)?.accountId;
   }
 
   private getRoomAndSession(ws: WebSocket): { room: RoomEngine; session: Session } {
@@ -1244,6 +1320,7 @@ export class RoomService {
 
       const { openResult, roundSummary } = room.openDice(playerId, room.getRuleOptionsForCurrentRound());
       await this.historyStore.saveRoundSummary(roundSummary);
+      await this.accountStore.recordRoundSummary(roundSummary);
       this.broadcastRoom(roomId, "open:result", openResult);
       this.broadcastRoom(roomId, "round:summary", roundSummary);
       this.broadcastRoomState(roomId);

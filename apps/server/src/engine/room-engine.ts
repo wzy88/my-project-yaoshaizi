@@ -21,6 +21,8 @@ import { rollDice } from "../utils/random.js";
 
 interface AddPlayerInput {
   id: string;
+  accountId?: string;
+  accountDisplayId?: string;
   nickname: string;
   avatar: string;
   isOwner?: boolean;
@@ -115,6 +117,9 @@ export class RoomEngine {
       if (nickname) {
         waiting.nickname = nickname;
       }
+      if (patch.avatar != null) {
+        waiting.avatar = String(patch.avatar || "").trim();
+      }
       this.bumpVersion();
       return;
     }
@@ -126,6 +131,9 @@ export class RoomEngine {
 
     if (nickname) {
       player.nickname = nickname;
+    }
+    if (patch.avatar != null) {
+      player.avatar = String(patch.avatar || "").trim();
     }
 
     this.bumpVersion();
@@ -210,6 +218,8 @@ export class RoomEngine {
 
     const player: InternalPlayer = {
       id: input.id,
+      accountId: input.accountId,
+      accountDisplayId: input.accountDisplayId,
       nickname: input.nickname,
       avatar: input.avatar,
       isOwner: Boolean(input.isOwner),
@@ -247,6 +257,8 @@ export class RoomEngine {
 
     this.waitingPlayers.set(input.id, {
       id: input.id,
+      accountId: input.accountId,
+      accountDisplayId: input.accountDisplayId,
       nickname: input.nickname,
       avatar: input.avatar,
       onlineStatus: "online"
@@ -712,6 +724,9 @@ export class RoomEngine {
       roomId: this.roomId,
       players: this.getOrderedPlayers().map((player) => ({
         playerId: player.id,
+        accountId: player.accountId,
+        accountDisplayId: player.accountDisplayId,
+        nickname: player.nickname,
         dice: [...player.privateDice],
         call: player.currentCall
       })),

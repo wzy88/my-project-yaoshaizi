@@ -18,7 +18,7 @@
     </view>
     <view class="profile-main">
       <text class="profile-title">{{nickname || '玩家'}}</text>
-      <text class="profile-sub">头像固定使用微信头像，昵称可修改</text>
+      <text class="profile-sub">当前微信账号会长期绑定你的战绩和房间记录</text>
     </view>
   </view>
 
@@ -32,13 +32,55 @@
             class="nickname-input"
             value="{{nickname}}"
             bindinput="onNicknameChange"
+            bindblur="onNicknameCommit"
+            bindconfirm="onNicknameCommit"
             placeholder="例如 阿伟"
             placeholder-class="row-placeholder"
           />
           <text class="row-action">修改</text>
         </view>
       </view>
-      <text class="section-hint">说明：小程序无法静默读取微信资料，需要你手动授权同步。</text>
+      <text class="section-hint">登录时会自动带入微信头像昵称；这里改昵称后，会同步到你的长期账号。</text>
+    </view>
+
+    <view class="section">
+      <text class="section-title">长期账号</text>
+      <view class="card-block">
+        <view class="row">
+          <text class="row-label">账号编号</text>
+          <view class="row-right">
+            <text class="row-value row-value--accent">{{accountDisplayId || '待同步'}}</text>
+            <text wx:if="{{accountLoading}}" class="row-tag">同步中</text>
+          </view>
+        </view>
+        <view class="stats-grid">
+          <view class="stats-item">
+            <text class="stats-value">{{totalRounds}}</text>
+            <text class="stats-label">总局数</text>
+          </view>
+          <view class="stats-item">
+            <text class="stats-value">{{roundsWon}}</text>
+            <text class="stats-label">赢局</text>
+          </view>
+          <view class="stats-item">
+            <text class="stats-value">{{winRate}}</text>
+            <text class="stats-label">胜率</text>
+          </view>
+          <view class="stats-item">
+            <text class="stats-value">{{roomsCreated}}</text>
+            <text class="stats-label">建房</text>
+          </view>
+        </view>
+        <view class="row">
+          <text class="row-label">最近对局</text>
+          <text class="row-value">{{lastRoundText}}</text>
+        </view>
+        <view class="row">
+          <text class="row-label">总叫牌 / 开牌</text>
+          <text class="row-value">{{totalCallsMade}} / {{totalOpenRequests}}</text>
+        </view>
+      </view>
+      <text class="section-hint">重新登录后，只要还是同一个微信账号，战绩会继续累计。</text>
     </view>
 
     <view class="section">

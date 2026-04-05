@@ -5,6 +5,7 @@ export type RoomPhase = "ready" | "rolling" | "calling" | "opening" | "ended";
 export type NetworkHealth = "good" | "lag" | "disconnected";
 export type RoomDirection = "cw" | "ccw";
 export type OpenMode = "single" | "multi";
+export type AccountProvider = "wechat";
 
 export interface RoomConfigDTO {
   direction: RoomDirection;
@@ -24,6 +25,8 @@ export interface DiceCall {
 
 export interface PlayerState {
   id: string;
+  accountId?: string;
+  accountDisplayId?: string;
   nickname: string;
   avatar: string;
   isOwner: boolean;
@@ -38,6 +41,8 @@ export interface PlayerState {
 
 export interface WaitingPlayerState {
   id: string;
+  accountId?: string;
+  accountDisplayId?: string;
   nickname: string;
   avatar: string;
   onlineStatus: OnlineStatus;
@@ -76,6 +81,9 @@ export interface OpenResultDTO {
 
 export interface RoundSummaryPlayer {
   playerId: string;
+  accountId?: string;
+  accountDisplayId?: string;
+  nickname: string;
   dice: number[];
   call?: DiceCall;
 }
@@ -142,9 +150,57 @@ export interface ChatListDTO {
   serverTs: number;
 }
 
+export interface RecentRoomDTO {
+  roomId: string;
+  role: "owner" | "guest";
+  lastSeenAt: number;
+}
+
+export interface AccountStatsDTO {
+  totalRounds: number;
+  roundsWon: number;
+  roundsLost: number;
+  totalCallsMade: number;
+  totalOpenRequests: number;
+  roomsCreated: number;
+  roomsJoined: number;
+  lastRoundAt?: number;
+}
+
+export interface AccountProfileDTO {
+  accountId: string;
+  displayId: string;
+  provider: AccountProvider;
+  nickname: string;
+  avatarUrl: string;
+  createdAt: number;
+  lastLoginAt: number;
+  stats: AccountStatsDTO;
+  recentRooms: RecentRoomDTO[];
+}
+
+export interface AccountLoginResultDTO {
+  profile: AccountProfileDTO;
+  sessionToken: string;
+  loginAt: number;
+  authMode: "wechat" | "mock";
+}
+
 export interface ClientEventMap {
-  "room:create": { nickname: string; avatar: string; config: RoomConfigDTO };
-  "room:join": { roomId: string; nickname: string; avatar: string };
+  "room:create": {
+    nickname: string;
+    avatar: string;
+    config: RoomConfigDTO;
+    accountId?: string;
+    accountSessionToken?: string;
+  };
+  "room:join": {
+    roomId: string;
+    nickname: string;
+    avatar: string;
+    accountId?: string;
+    accountSessionToken?: string;
+  };
   "room:rejoin": { roomId: string; playerId: string; resumeToken: string };
   "room:config:update": Partial<Pick<RoomConfigDTO, "direction" | "wildcardOneEnabled" | "dicePerPlayer" | "minOpeningCount">>;
   "room:seat:set": { playerId: string; seatIndex: number };
@@ -152,7 +208,7 @@ export interface ClientEventMap {
   "room:waiting:admit": { playerId: string; seatIndex: number };
   "history:list": { limit?: number; beforeRound?: number };
   "room:leave": Record<string, never>;
-  "player:update": { nickname?: string; avatar?: string };
+  "player:update": { nickname?: string; avatar?: string; accountId?: string; accountSessionToken?: string };
   "game:start": Record<string, never>;
   "dice:roll": Record<string, never>;
   "dice:lock": Record<string, never>;

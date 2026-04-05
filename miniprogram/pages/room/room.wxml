@@ -142,6 +142,11 @@
             </view>
             <text class="room-self__name">{{nickname || '玩家'}}（本人）</text>
           </view>
+          <view wx:if="{{roomId}}" class="room-self__actions">
+            <button class="room-self__share-btn" open-type="share" bindtap="onTapShareRoom">
+              <text class="room-self__share-text">邀请好友</text>
+            </button>
+          </view>
         </view>
       </view>
     </view>

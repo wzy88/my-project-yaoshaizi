@@ -1,8 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import type { RoundSummaryDTO } from "@dice/shared";
+import { resolveDataPath } from "../utils/data-dir.js";
 
 interface ListHistoryOptions {
   roomId: string;
@@ -10,9 +10,7 @@ interface ListHistoryOptions {
   beforeRound?: number;
 }
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const HISTORY_DIR = path.resolve(__dirname, "../../data/history");
+const HISTORY_DIR = resolveDataPath("history");
 
 export class HistoryStore {
   private ready = false;

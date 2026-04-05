@@ -1,13 +1,11 @@
-<view class="login-page">
-  <view class="login-page__nebula login-page__nebula--top"></view>
-  <view class="login-page__nebula login-page__nebula--bottom"></view>
-  <view class="login-page__stars">
-    <view class="login-page__star login-page__star--1"></view>
-    <view class="login-page__star login-page__star--2"></view>
-    <view class="login-page__star login-page__star--3"></view>
-    <view class="login-page__star login-page__star--4"></view>
-    <view class="login-page__star login-page__star--5"></view>
-    <view class="login-page__star login-page__star--6"></view>
+<view class="entry-page">
+  <view class="entry-page__aurora entry-page__aurora--top"></view>
+  <view class="entry-page__aurora entry-page__aurora--bottom"></view>
+  <view class="entry-page__stars">
+    <view class="entry-page__star entry-page__star--1"></view>
+    <view class="entry-page__star entry-page__star--2"></view>
+    <view class="entry-page__star entry-page__star--3"></view>
+    <view class="entry-page__star entry-page__star--4"></view>
   </view>
 
   <view class="status-row">
@@ -22,14 +20,35 @@
     </view>
 
     <text class="title">摇骰子</text>
-    <text class="sub">LIAR'S DICE · 在线对局</text>
-    <text class="desc">进入大厅，创建房间或加入正在进行的在线对局。</text>
+    <text class="sub">在线组局 · 直接开玩</text>
+    <text class="hero-tag">{{profileTitle || '准备开局'}}</text>
+    <text class="desc">微信登录后就能直接创建房间、邀请好友进群玩，头像昵称自动带入，之后可在“我的”里改昵称。</text>
+
+    <view class="benefit-list">
+      <view class="benefit-item">
+        <text class="benefit-dot"></text>
+        <text class="benefit-text">点一次微信登录，直接进入大厅</text>
+      </view>
+      <view class="benefit-item">
+        <text class="benefit-dot"></text>
+        <text class="benefit-text">房间可一键分享给好友或群</text>
+      </view>
+      <view class="benefit-item">
+        <text class="benefit-dot"></text>
+        <text class="benefit-text">同一微信账号长期保留战绩</text>
+      </view>
+    </view>
   </view>
 
   <view class="action-panel">
-    <button class="wx-btn" bindtap="onWechatLogin">
-      <text class="wx-btn__label">微信快速进入</text>
+    <button class="wx-btn" loading="{{loginBusy}}" disabled="{{loginBusy}}" bindtap="onWechatLogin">
+      <text class="wx-btn__label">{{loginBusy ? '登录中...' : '微信登录并进入'}}</text>
     </button>
-    <text class="agreement">登录即同意 <text class="link" bindtap="openTermsPage">用户协议</text> 与 <text class="link" bindtap="openPrivacyPage">隐私政策</text></text>
+    <text class="login-hint">{{loginHintText}}</text>
+    <view wx:if="{{connectionHintText}}" class="connection-panel">
+      <text class="connection-panel__text">{{connectionHintText}}</text>
+      <button class="connection-panel__btn" bindtap="openConnectionSettings">配置云托管</button>
+    </view>
+    <text class="agreement">点击登录即表示同意 <text class="link" bindtap="openTermsPage">用户协议</text> 与 <text class="link" bindtap="openPrivacyPage">隐私政策</text></text>
   </view>
 </view>

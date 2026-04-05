@@ -9,6 +9,7 @@ const {
   CLOUD_ENV_ID_KEY,
   CLOUD_SERVICE_KEY,
   CLOUD_WS_PATH_KEY,
+  SESSION_KEY,
   NICKNAME_KEY,
   WS_URL_KEY
 } = require("../miniprogram/utils/constants.js");
@@ -30,6 +31,7 @@ function instantiateRoomPage({
   const storageState = { ...storage };
   const toasts = [];
   const modals = [];
+  const reLaunches = [];
   let pageConfig = null;
 
   globalThis.getApp = () => ({
@@ -86,6 +88,9 @@ function instantiateRoomPage({
     openSetting() {},
     getSetting() {},
     navigateTo() {},
+    reLaunch({ url }) {
+      reLaunches.push(String(url || ""));
+    },
     cloud: apiAvailability.cloud || null,
     env: apiAvailability.env || null,
     getFileSystemManager: apiAvailability.getFileSystemManager,
@@ -140,7 +145,7 @@ function instantiateRoomPage({
     }
   };
 
-  return { page, toasts, modals, storageState, cleanup };
+  return { page, toasts, modals, reLaunches, storageState, cleanup };
 }
 
 test("room page: roll uses the bundled audio asset while the other sfx keep the lighter generated profile", async () => {
@@ -699,6 +704,203 @@ test("room page: invalid room ids fall back to the placeholder display", () => {
     }));
 
     assert.equal(page.data.displayRoomId, "------");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: share payload routes through the lobby login gate into the current room", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    }
+  });
+
+  try {
+    page.setData({
+      roomId: "123456",
+      nickname: "房主阿伟"
+    });
+
+    const payload = page.onShareAppMessage();
+
+    assert.equal(payload.title, "房主阿伟 邀你加入房间 123456");
+    assert.equal(
+      payload.path,
+      `/pages/lobby/lobby?redirect=${encodeURIComponent("/pages/room/room?mode=join&forceNew=1&roomId=123456")}`
+    );
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: leave waits for the server ack before clearing the local room session", () => {
+  const { page, reLaunches, storageState, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [SESSION_KEY]: {
+        roomId: "123456",
+        playerId: "player-a",
+        resumeToken: "resume-token"
+      }
+    }
+  });
+
+  try {
+    let sentPacket = null;
+    let closeCalls = 0;
+    page.socketTask = {
+      send({ data, success }) {
+        sentPacket = JSON.parse(data);
+        if (typeof success === "function") {
+          success();
+        }
+      },
+      close() {
+        closeCalls += 1;
+      }
+    };
+    page.setData({
+      connected: true,
+      roomId: "123456",
+      displayRoomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      joinRoomId: "123456"
+    });
+
+    page.leaveRoom();
+
+    assert.equal(sentPacket && sentPacket.event, "room:leave");
+    assert.equal(closeCalls, 0);
+    assert.deepEqual(storageState[SESSION_KEY], {
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token"
+    });
+    assert.deepEqual(reLaunches, []);
+
+    page.handleServerPacket(JSON.stringify({
+      event: "action:ack",
+      payload: {
+        ok: true,
+        actionId: sentPacket.actionId
+      }
+    }));
+
+    assert.equal(closeCalls, 1);
+    assert.equal(storageState[SESSION_KEY], undefined);
+    assert.deepEqual(reLaunches, ["/pages/lobby/lobby"]);
+    assert.equal(page.data.roomId, "");
+    assert.equal(page.data.playerId, "");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: page unload best-effort notifies room leave and clears the resumable session", () => {
+  const { page, storageState, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [SESSION_KEY]: {
+        roomId: "123456",
+        playerId: "player-a",
+        resumeToken: "resume-token"
+      }
+    }
+  });
+
+  try {
+    let sentPacket = null;
+    let closeCalls = 0;
+    page.socketTask = {
+      send({ data, success }) {
+        sentPacket = JSON.parse(data);
+        if (typeof success === "function") {
+          success();
+        }
+      },
+      close() {
+        closeCalls += 1;
+      }
+    };
+    page.setData({
+      connected: true,
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token"
+    });
+
+    page.onUnload();
+
+    assert.equal(sentPacket && sentPacket.event, "room:leave");
+    assert.equal(closeCalls, 1);
+    assert.equal(storageState[SESSION_KEY], undefined);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: stale cached session is cleared once the room state no longer contains the local player", () => {
+  const { page, storageState, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [SESSION_KEY]: {
+        roomId: "123456",
+        playerId: "player-a",
+        resumeToken: "resume-token"
+      }
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token"
+    });
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "123456",
+        phase: "ready",
+        round: 0,
+        currentPlayerId: "player-b",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false
+        },
+        players: [
+          {
+            id: "player-b",
+            nickname: "对手",
+            avatar: "",
+            isOwner: true,
+            onlineStatus: "online",
+            turnStatus: "active",
+            seatIndex: 1,
+            diceCupStatus: "closed",
+            rollLocked: false
+          }
+        ],
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 1,
+        serverTs: Date.now()
+      }
+    }));
+
+    assert.equal(storageState[SESSION_KEY], undefined);
   } finally {
     cleanup();
   }

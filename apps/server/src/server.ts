@@ -1,10 +1,12 @@
-import { createServer as createHttpServer } from "node:http";
+import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 
 import { WebSocketServer } from "ws";
 
 import { PORT_RETRY_LIMIT, SERVER_HOST, SERVER_PORT, WS_PATH } from "./config.js";
+import { AccountStore } from "./engine/account-store.js";
 import { RoomService } from "./engine/room-service.js";
+import { resolveWechatIdentity } from "./services/wechat-session-resolver.js";
 
 function normalizePath(input: string): string {
   const value = String(input || "/").trim();
@@ -17,36 +19,14 @@ function normalizePath(input: string): string {
 }
 
 export function createServer() {
-  const roomService = new RoomService();
+  const accountStore = new AccountStore();
+  const roomService = new RoomService(accountStore);
   const retryLimit = Number.isFinite(PORT_RETRY_LIMIT) && PORT_RETRY_LIMIT >= 0
     ? Math.floor(PORT_RETRY_LIMIT)
     : 0;
 
   const httpServer = createHttpServer((req, res) => {
-    const { method } = req;
-    const parsed = new URL(req.url || "/", "http://localhost");
-    const pathname = normalizePath(parsed.pathname);
-
-    if (method === "GET" && pathname === "/health") {
-      res.writeHead(200, {
-        "content-type": "application/json; charset=utf-8"
-      });
-      res.end(JSON.stringify({ ok: true, service: "dice-server", ts: Date.now() }));
-      return;
-    }
-
-    if (method === "GET" && pathname === "/") {
-      res.writeHead(200, {
-        "content-type": "text/plain; charset=utf-8"
-      });
-      res.end(`dice-server is running\nhealth: /health\nws: ${WS_PATH}\n`);
-      return;
-    }
-
-    res.writeHead(404, {
-      "content-type": "application/json; charset=utf-8"
-    });
-    res.end(JSON.stringify({ ok: false, message: "not found" }));
+    void handleHttpRequest(req, res, accountStore);
   });
 
   const wss = new WebSocketServer({
@@ -132,4 +112,186 @@ export function createServer() {
   listenOnPort(SERVER_PORT);
 
   return { httpServer, wss };
+}
+
+async function handleHttpRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  accountStore: AccountStore
+): Promise<void> {
+  try {
+    const { method = "GET" } = req;
+    const parsed = new URL(req.url || "/", "http://localhost");
+    const pathname = normalizePath(parsed.pathname);
+
+    if (method === "OPTIONS") {
+      sendEmpty(res, 204);
+      return;
+    }
+
+    if (method === "GET" && pathname === "/health") {
+      sendJson(res, 200, {
+        ok: true,
+        service: "dice-server",
+        ts: Date.now()
+      });
+      return;
+    }
+
+    if (method === "POST" && pathname === "/api/auth/wechat-login") {
+      const body = await readJsonBody(req);
+      const nickname = String(body.nickname || "").trim();
+      const avatarUrl = String(body.avatarUrl || "").trim();
+      const code = String(body.code || "").trim();
+
+      if (!nickname) {
+        sendJson(res, 400, { ok: false, message: "nickname required" });
+        return;
+      }
+
+      if (!avatarUrl) {
+        sendJson(res, 400, { ok: false, message: "avatarUrl required" });
+        return;
+      }
+
+      const identity = await resolveWechatIdentity({
+        code,
+        forwardedOpenId: getHeader(req, "x-wx-openid"),
+        forwardedUnionId: getHeader(req, "x-wx-unionid")
+      });
+
+      const result = await accountStore.loginWithWechatIdentity({
+        openId: identity.openId,
+        unionId: identity.unionId,
+        nickname,
+        avatarUrl,
+        loginAt: Date.now(),
+        authMode: identity.authMode
+      });
+
+      sendJson(res, 200, {
+        ok: true,
+        data: result
+      });
+      return;
+    }
+
+    if (method === "GET" && pathname === "/api/account/me") {
+      const profile = await authenticateAccountRequest(req, accountStore);
+      if (!profile) {
+        sendJson(res, 401, { ok: false, message: "unauthorized" });
+        return;
+      }
+
+      sendJson(res, 200, {
+        ok: true,
+        data: profile
+      });
+      return;
+    }
+
+    if (method === "PATCH" && pathname === "/api/account/profile") {
+      const profile = await authenticateAccountRequest(req, accountStore);
+      if (!profile) {
+        sendJson(res, 401, { ok: false, message: "unauthorized" });
+        return;
+      }
+
+      const body = await readJsonBody(req);
+      const nickname = String(body.nickname || "").trim();
+      const avatarUrl = String(body.avatarUrl || "").trim();
+      if (!nickname && !avatarUrl) {
+        sendJson(res, 400, { ok: false, message: "profile patch required" });
+        return;
+      }
+
+      const nextProfile = await accountStore.syncProfile(profile.accountId, {
+        nickname,
+        avatarUrl
+      });
+      if (!nextProfile) {
+        sendJson(res, 404, { ok: false, message: "account not found" });
+        return;
+      }
+
+      sendJson(res, 200, {
+        ok: true,
+        data: nextProfile
+      });
+      return;
+    }
+
+    if (method === "GET" && pathname === "/") {
+      res.writeHead(200, {
+        "content-type": "text/plain; charset=utf-8"
+      });
+      res.end(`dice-server is running\nhealth: /health\nws: ${WS_PATH}\nauth: /api/auth/wechat-login\n`);
+      return;
+    }
+
+    sendJson(res, 404, {
+      ok: false,
+      message: "not found"
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "internal error";
+    sendJson(res, 500, {
+      ok: false,
+      message
+    });
+  }
+}
+
+async function authenticateAccountRequest(req: IncomingMessage, accountStore: AccountStore) {
+  const accountId = getHeader(req, "x-dice-account-id");
+  const sessionToken = getHeader(req, "x-dice-session-token");
+  if (!accountId || !sessionToken) {
+    return null;
+  }
+
+  return accountStore.verifySession(accountId, sessionToken);
+}
+
+function getHeader(req: IncomingMessage, key: string): string {
+  const value = req.headers[String(key || "").toLowerCase()];
+  if (Array.isArray(value)) {
+    return String(value[0] || "").trim();
+  }
+  return String(value || "").trim();
+}
+
+function sendJson(res: ServerResponse, statusCode: number, payload: unknown): void {
+  res.writeHead(statusCode, {
+    "content-type": "application/json; charset=utf-8"
+  });
+  res.end(JSON.stringify(payload));
+}
+
+function sendEmpty(res: ServerResponse, statusCode: number): void {
+  res.writeHead(statusCode);
+  res.end();
+}
+
+async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = [];
+
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    chunks.push(buffer);
+    const size = chunks.reduce((sum, item) => sum + item.length, 0);
+    if (size > 512 * 1024) {
+      throw new Error("request body too large");
+    }
+  }
+
+  if (!chunks.length) {
+    return {};
+  }
+
+  const text = Buffer.concat(chunks).toString("utf8").trim();
+  if (!text) {
+    return {};
+  }
+
+  return JSON.parse(text) as Record<string, unknown>;
 }

@@ -4939,6 +4939,44 @@
   letter-spacing: 0.42rpx;
 }
 
+.room-self__actions {
+  margin-top: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.room-self__share-btn {
+  min-width: 192rpx;
+  height: 60rpx;
+  margin: 0;
+  padding: 0 30rpx;
+  border-radius: 999rpx;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 238, 158, 0.26) 0%, rgba(255, 238, 158, 0) 48%),
+    linear-gradient(180deg, rgba(86, 58, 122, 0.98) 0%, rgba(54, 30, 82, 0.98) 100%);
+  border: 1rpx solid rgba(255, 224, 136, 0.34);
+  box-shadow: 0 12rpx 26rpx rgba(0, 0, 0, 0.34);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.room-self__share-btn::after {
+  border: 0;
+}
+
+.room-self__share-btn:active {
+  transform: scale(0.98);
+}
+
+.room-self__share-text {
+  color: #f8efcf;
+  font-size: 22rpx;
+  font-weight: 800;
+  letter-spacing: 2rpx;
+}
+
 .room-fab {
   right: 37.35rpx;
   top: -3.75rpx;

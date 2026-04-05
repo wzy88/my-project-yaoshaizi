@@ -12,6 +12,8 @@ module.exports = {
   SESSION_KEY: "diceSession",
   NICKNAME_KEY: "diceNicknameV1",
   AVATAR_URL_KEY: "diceAvatarUrlV1",
+  WECHAT_LOGIN_TS_KEY: "diceWechatLoginTsV1",
+  ACCOUNT_SESSION_KEY: "diceAccountSessionV1",
   SFX_ENABLED_KEY: "diceSfxEnabledV1",
   HAPTIC_ENABLED_KEY: "diceHapticEnabledV1"
 };

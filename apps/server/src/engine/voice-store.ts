@@ -1,6 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import {
   ErrorCode,
@@ -9,10 +8,9 @@ import {
   type VoiceListItemDTO,
   type VoiceUploadedDTO
 } from "@dice/shared";
+import { resolveDataPath } from "../utils/data-dir.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const VOICE_DIR = path.resolve(__dirname, "../../data/voice");
+const VOICE_DIR = resolveDataPath("voice");
 
 interface SaveVoiceInput {
   roomId: string;

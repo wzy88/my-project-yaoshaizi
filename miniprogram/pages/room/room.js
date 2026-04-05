@@ -12,6 +12,7 @@ const {
   HAPTIC_ENABLED_KEY
 } = require("../../utils/constants");
 const { DEFAULT_3D_DIE_ASSET, SELF_DICE_PLACEHOLDER, getDieAsset } = require("../../utils/dice-assets");
+const { getStoredAccountSession } = require("../../utils/account-api");
 const {
   DEFAULT_CONTAINER_WS_PATH,
   normalizeContainerConfig,
@@ -36,6 +37,18 @@ const ROOM_AUDIO_ASSETS = {
   primary: "/assets/audio/primary-action.mp3",
   roundStart: "/assets/audio/round-start.mp3"
 };
+
+function buildAccountAuthPayload() {
+  const session = getStoredAccountSession();
+  if (!session.loggedIn) {
+    return {};
+  }
+
+  return {
+    accountId: session.accountId,
+    accountSessionToken: session.sessionToken
+  };
+}
 
 function buildSelfDiceFallback(count = SELF_DICE_PLACEHOLDER.length) {
   const size = Number(count);
@@ -555,6 +568,18 @@ function safeDecodeComponent(raw) {
   } catch (error) {
     return value;
   }
+}
+
+function buildRoomJoinUrl(roomId) {
+  const normalizedRoomId = String(roomId || "").trim();
+  if (!normalizedRoomId) {
+    return "/pages/lobby/lobby";
+  }
+  return `/pages/room/room?mode=join&forceNew=1&roomId=${encodeURIComponent(normalizedRoomId)}`;
+}
+
+function buildRoomShareEntryUrl(roomId) {
+  return `/pages/lobby/lobby?redirect=${encodeURIComponent(buildRoomJoinUrl(roomId))}`;
 }
 
 function clampPercent(value, min = 0, max = 100) {
@@ -1401,6 +1426,9 @@ Page({
 	    this.reconnectTimer = null;
 	    this.pendingRoomAction = null;
 	    this.actionEventMap = {};
+	    this.pendingLeaveActionId = "";
+	    this.pendingLeaveTimer = null;
+	    this.leaveFinalized = false;
 	    this.socketSeq = 0;
 	    this.activeSocketId = 0;
 	    this.devtoolsMode = isDevtoolsPlatform();
@@ -1408,6 +1436,7 @@ Page({
       devtoolsMode: this.devtoolsMode,
       ...buildRoomSafeAreaStyles()
     });
+    this.ensureShareMenuVisible();
     this.debugClientEvent("lifecycle:onLoad", {
       options,
       routeStack: this.getRouteStack()
@@ -1745,6 +1774,7 @@ Page({
       playerId: this.data.playerId,
       routeStack: this.getRouteStack()
     });
+    this.ensureShareMenuVisible();
     const nickname = safeDecodeComponent(wx.getStorageSync(NICKNAME_KEY)).trim();
     const avatarUrl = String(wx.getStorageSync(AVATAR_URL_KEY) || "").trim();
 
@@ -1767,11 +1797,16 @@ Page({
     if (this.data.connected && this.data.roomId) {
       this.sendEvent("player:update", {
         nickname: nextNickname || "",
-        avatar: avatarUrl || ""
+        avatar: avatarUrl || "",
+        ...buildAccountAuthPayload()
       }, { silentLog: true });
     }
 
     this.startShakeListener();
+  },
+
+  onShareAppMessage() {
+    return this.buildRoomShareMessage();
   },
 
   onHide() {
@@ -1926,6 +1961,8 @@ Page({
       manualClose: this.manualClose,
       routeStack: this.getRouteStack()
     }, { ui: false });
+    const waitingForLeaveAck = Boolean(this.pendingLeaveActionId);
+    this.clearPendingLeaveRequest();
     this.manualClose = true;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -1934,6 +1971,14 @@ Page({
     this.stopHeartbeat();
     this.clearMyDiceTimers();
     this.resetSelfRollTransientState();
+
+    if (!this.leaveFinalized && this.data.roomId && this.data.playerId && this.data.resumeToken) {
+      wx.removeStorageSync(SESSION_KEY);
+    }
+
+    if (!this.leaveFinalized && !waitingForLeaveAck) {
+      this.notifyServerLeave({ reason: "page_unload" });
+    }
 
     if (this.socketTask) {
       this.debugClientEvent("ws:close_request", {
@@ -1977,7 +2022,8 @@ Page({
     if (this.data.connected && this.data.roomId) {
       this.sendEvent("player:update", {
         nickname,
-        avatar: this.data.avatarUrl || ""
+        avatar: this.data.avatarUrl || "",
+        ...buildAccountAuthPayload()
       }, { silentLog: true });
     }
   },
@@ -2202,7 +2248,8 @@ Page({
       this.sendEvent("room:create", {
         nickname: this.data.nickname || "玩家",
         avatar: this.data.avatarUrl || "",
-        config: action.config
+        config: action.config,
+        ...buildAccountAuthPayload()
       });
       return true;
     }
@@ -2215,7 +2262,8 @@ Page({
       this.sendEvent("room:join", {
         roomId,
         nickname: this.data.nickname || "玩家",
-        avatar: this.data.avatarUrl || ""
+        avatar: this.data.avatarUrl || "",
+        ...buildAccountAuthPayload()
       });
       return true;
     }
@@ -2468,6 +2516,11 @@ Page({
         connectionMode: connectionMeta.connectionMode || "direct"
       });
 
+      if (this.pendingLeaveActionId) {
+        this.finalizeLeaveRoom();
+        return;
+      }
+
       if (this.skipAutoReconnectOnce) {
         this.skipAutoReconnectOnce = false;
         return;
@@ -2504,6 +2557,11 @@ Page({
         connectionMode: connectionMeta.connectionMode || "direct"
       });
       this.showConnectionFailure(errMsg);
+
+      if (this.pendingLeaveActionId) {
+        this.finalizeLeaveRoom();
+        return;
+      }
 
       if (this.skipAutoReconnectOnce) {
         this.skipAutoReconnectOnce = false;
@@ -2604,7 +2662,8 @@ Page({
     this.sendEvent("room:create", {
       nickname: this.data.nickname || "玩家",
       avatar: this.data.avatarUrl || "",
-      config
+      config,
+      ...buildAccountAuthPayload()
     });
   },
 
@@ -2649,7 +2708,8 @@ Page({
     this.sendEvent("room:join", {
       roomId,
       nickname: this.data.nickname || "玩家",
-      avatar: this.data.avatarUrl || ""
+      avatar: this.data.avatarUrl || "",
+      ...buildAccountAuthPayload()
     });
   },
 
@@ -2666,47 +2726,37 @@ Page({
   },
 
   leaveRoom() {
-    // Best-effort notify server, then teardown locally and return to lobby.
-    this.debugClientEvent("room:leave", {
-      roomId: this.data.roomId,
-      playerId: this.data.playerId,
-      socketId: this.activeSocketId
+    if (this.leaveFinalized || this.pendingLeaveActionId) {
+      return;
+    }
+
+    if (!this.socketTask || !this.data.connected) {
+      this.finalizeLeaveRoom();
+      return;
+    }
+
+    const actionId = this.notifyServerLeave({
+      reason: "menu_leave",
+      finalizeOnSendFail: true
     });
-    if (this.socketTask && this.data.connected) {
-      try {
-        this.socketTask.send({
-          data: JSON.stringify({
-            event: "room:leave",
-            payload: {},
-            actionId: buildActionId()
-          }),
-          success: () => {},
-          fail: () => {}
+
+    if (!actionId) {
+      this.finalizeLeaveRoom();
+      return;
+    }
+
+    this.pendingLeaveActionId = actionId;
+    this.setData({ networkStatusText: "退出中" });
+    this.pendingLeaveTimer = setTimeout(() => {
+      if (this.pendingLeaveActionId === actionId && !this.leaveFinalized) {
+        this.debugClientEvent("room:leave_timeout", {
+          roomId: this.data.roomId,
+          playerId: this.data.playerId,
+          actionId
         });
-      } catch (error) {
-        // ignore
+        this.finalizeLeaveRoom();
       }
-    }
-
-    this.skipAutoReconnectOnce = true;
-    this.manualClose = true;
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-    if (this.socketTask) {
-      try {
-        this.socketTask.close({});
-      } catch (error) {
-        // ignore
-      }
-      this.stopHeartbeat();
-      this.socketTask = null;
-    }
-
-    this.clearSession();
-    this.resetRoomView();
-    wx.reLaunch({ url: "/pages/lobby/lobby" });
+    }, 1200);
   },
 
   startGame() {
@@ -3659,6 +3709,27 @@ Page({
     });
   },
 
+  ensureShareMenuVisible() {
+    if (!wx.showShareMenu || typeof wx.showShareMenu !== "function") {
+      return;
+    }
+
+    try {
+      wx.showShareMenu({
+        withShareTicket: true,
+        menus: ["shareAppMessage"]
+      });
+    } catch (error) {
+      try {
+        wx.showShareMenu({
+          withShareTicket: true
+        });
+      } catch (fallbackError) {
+        // ignore
+      }
+    }
+  },
+
   copyRoomId() {
     const roomId = String(this.data.roomId || "").trim();
     if (!roomId) {
@@ -3675,6 +3746,29 @@ Page({
         wx.showToast({ title: `房间号：${roomId}`, icon: "none" });
       }
     });
+  },
+
+  buildRoomShareMessage() {
+    const roomId = String(this.data.roomId || "").trim();
+    const nickname = safeDecodeComponent(this.data.nickname).trim() || "好友";
+
+    if (!roomId) {
+      return {
+        title: "在线摇骰子，来一局",
+        path: "/pages/lobby/lobby"
+      };
+    }
+
+    return {
+      title: `${nickname} 邀你加入房间 ${roomId}`,
+      path: buildRoomShareEntryUrl(roomId)
+    };
+  },
+
+  onTapShareRoom() {
+    if (!String(this.data.roomId || "").trim()) {
+      wx.showToast({ title: "房间创建后才可分享", icon: "none" });
+    }
   },
 
   openToolsMenu() {
@@ -3802,8 +3896,8 @@ Page({
   },
 
   openToolsDevMenu() {
-    const items = ["打开调试页"];
-    const actions = [() => wx.navigateTo({ url: "/pages/index/index" })];
+    const items = ["打开首页"];
+    const actions = [() => wx.switchTab({ url: "/pages/lobby/lobby" })];
 
     this.showActionSheetSafe({
       itemList: items,
@@ -3947,6 +4041,10 @@ Page({
       return;
     }
 
+    if (!this.actionEventMap) {
+      this.actionEventMap = {};
+    }
+
     const actionId = buildActionId();
     this.actionEventMap[actionId] = event;
 
@@ -3980,6 +4078,7 @@ Page({
         const roomId = payload.roomId || this.data.roomId;
         const playersRaw = payload.players || [];
         const waitingPlayersRaw = payload.waitingPlayers || [];
+        this.clearStoredSessionIfSelfMissing(roomId, playersRaw, waitingPlayersRaw);
         const roomConfig = payload.config || null;
         const playerCount = Array.isArray(playersRaw) ? playersRaw.length : 0;
         const validTargets = (this.data.selectedTargetIds || []).filter((id) => {
@@ -4269,6 +4368,11 @@ Page({
         const actionEvent = actionId ? this.actionEventMap[actionId] : "";
         if (actionId) {
           delete this.actionEventMap[actionId];
+        }
+
+        if (actionId && actionId === this.pendingLeaveActionId) {
+          this.finalizeLeaveRoom();
+          break;
         }
 
         if (payload.roomId || payload.playerId || payload.resumeToken) {
@@ -4800,6 +4904,116 @@ Page({
       seatRows: [],
       pendingActionText: ""
     });
+  },
+
+  clearPendingLeaveRequest() {
+    if (this.pendingLeaveTimer) {
+      clearTimeout(this.pendingLeaveTimer);
+      this.pendingLeaveTimer = null;
+    }
+    this.pendingLeaveActionId = "";
+  },
+
+  finalizeLeaveRoom() {
+    if (this.leaveFinalized) {
+      return;
+    }
+
+    this.leaveFinalized = true;
+    this.clearPendingLeaveRequest();
+    this.skipAutoReconnectOnce = true;
+    this.manualClose = true;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    if (this.socketTask) {
+      try {
+        this.socketTask.close({});
+      } catch (error) {
+        // ignore
+      }
+      this.stopHeartbeat();
+      this.socketTask = null;
+    }
+
+    this.clearSession();
+    this.resetRoomView();
+    wx.reLaunch({ url: "/pages/lobby/lobby" });
+  },
+
+  notifyServerLeave(options = {}) {
+    const {
+      reason = "manual_leave",
+      finalizeOnSendFail = false
+    } = options;
+
+    this.debugClientEvent("room:leave", {
+      roomId: this.data.roomId,
+      playerId: this.data.playerId,
+      socketId: this.activeSocketId,
+      reason
+    });
+
+    if (!this.socketTask || !this.data.connected) {
+      return "";
+    }
+
+    if (!this.actionEventMap) {
+      this.actionEventMap = {};
+    }
+
+    const actionId = buildActionId();
+    this.actionEventMap[actionId] = "room:leave";
+
+    try {
+      this.socketTask.send({
+        data: JSON.stringify({
+          event: "room:leave",
+          payload: {},
+          actionId
+        }),
+        success: () => {},
+        fail: () => {
+          delete this.actionEventMap[actionId];
+          if (finalizeOnSendFail) {
+            this.finalizeLeaveRoom();
+          }
+        }
+      });
+    } catch (error) {
+      delete this.actionEventMap[actionId];
+      if (finalizeOnSendFail) {
+        this.finalizeLeaveRoom();
+      }
+      return "";
+    }
+
+    return actionId;
+  },
+
+  clearStoredSessionIfSelfMissing(roomId, playersRaw, waitingPlayersRaw) {
+    const currentRoomId = String(roomId || this.data.roomId || "");
+    const currentPlayerId = String(this.data.playerId || "");
+    const currentResumeToken = String(this.data.resumeToken || "");
+
+    if (!currentRoomId || !currentPlayerId || !currentResumeToken || this.pendingRoomAction || this.pendingLeaveActionId) {
+      return;
+    }
+
+    const isInPlayers = Array.isArray(playersRaw) && playersRaw.some((player) => player.id === currentPlayerId);
+    const isInWaiting = Array.isArray(waitingPlayersRaw) && waitingPlayersRaw.some((player) => player.id === currentPlayerId);
+
+    if (isInPlayers || isInWaiting) {
+      return;
+    }
+
+    const cached = wx.getStorageSync(SESSION_KEY);
+    if (cached && cached.roomId === currentRoomId && cached.playerId === currentPlayerId) {
+      wx.removeStorageSync(SESSION_KEY);
+    }
   },
 
   persistSession(sessionLike) {

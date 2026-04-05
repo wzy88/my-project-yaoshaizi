@@ -1,11 +1,11 @@
 {
   "pages": [
     "pages/lobby/lobby",
+    "pages/index/index",
     "pages/me/me",
     "pages/rules/rules",
     "pages/create-room/create-room",
     "pages/room/room",
-    "pages/index/index",
     "pages/legal/privacy/privacy",
     "pages/legal/terms/terms"
   ],

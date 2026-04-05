@@ -1,15 +1,4 @@
-const { LEGAL_ACCEPT_KEY, NICKNAME_KEY } = require("../utils/constants");
-
-function safeDecodeComponent(raw) {
-  const value = String(raw || "");
-  if (!value) return "";
-  if (!/%[0-9a-fA-F]{2}/.test(value)) return value;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
+const { ACCOUNT_SESSION_KEY } = require("../utils/constants");
 
 Component({
   data: {
@@ -64,17 +53,20 @@ Component({
         return;
       }
 
-      const legalConsent = wx.getStorageSync(LEGAL_ACCEPT_KEY);
-      const legalAccepted = Boolean(legalConsent && legalConsent.accepted === true);
-      if (!legalAccepted) {
+      const accountSession = wx.getStorageSync(ACCOUNT_SESSION_KEY);
+      const accountReady = Boolean(
+        accountSession &&
+        accountSession.accountId &&
+        accountSession.sessionToken
+      );
+      if (!accountReady) {
         wx.switchTab({ url: "/pages/lobby/lobby" });
-        wx.showToast({ title: "请先在首页同意协议", icon: "none" });
+        wx.showToast({ title: "请先微信登录", icon: "none" });
         return;
       }
 
-      const nickname = safeDecodeComponent(wx.getStorageSync(NICKNAME_KEY)).trim();
       wx.navigateTo({
-        url: `/pages/create-room/create-room?nickname=${encodeURIComponent(nickname || "")}`
+        url: "/pages/create-room/create-room"
       });
     }
   }

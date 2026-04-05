@@ -23,16 +23,18 @@
   </view>
 
   <view class="panel-stack">
-    <view class="glass-card input-card">
-      <text class="field-label">玩家昵称</text>
-      <input
-        class="field-input"
-        value="{{nickname}}"
-        bindinput="onNicknameChange"
-        placeholder="例如 蜜蜂"
-        maxlength="12"
-        placeholder-class="field-placeholder"
-      />
+    <view class="glass-card profile-card">
+      <view class="profile-card__main">
+        <view class="profile-card__avatar">
+          <image wx:if="{{avatarUrl}}" class="profile-card__avatar-img" src="{{avatarUrl}}" mode="aspectFill"></image>
+          <text wx:else class="profile-card__avatar-text">{{nickname ? nickname.slice(0, 1) : '玩'}}</text>
+        </view>
+        <view class="profile-card__text">
+          <text class="profile-card__label">{{loggedIn ? '当前身份' : '微信登录后'}}</text>
+          <text class="profile-card__name">{{loggedIn ? (nickname || '玩家') : '自动带入微信头像昵称'}}</text>
+          <text class="profile-card__hint">{{loggedIn ? '昵称可在“我的”页修改，房间分享会自动带上你的微信资料。' : '点一下登录后就能直接创建房间、加入房间和分享房间。'}}</text>
+        </view>
+      </view>
     </view>
 
     <view class="glass-card join-card">
@@ -81,17 +83,21 @@
     </button>
   </view>
 
-  <view class="legal-mask" wx:if="{{showLegalModal}}">
-    <view class="legal-modal">
-      <view class="legal-modal__handle"></view>
-      <text class="legal-title">服务协议与隐私说明</text>
-      <text class="legal-desc">为保障你的权益，请先阅读并同意以下内容后继续使用。</text>
-      <view class="legal-links">
-        <text class="legal-link" bindtap="openPrivacyPage">《隐私政策》</text>
-        <text class="legal-link" bindtap="openTermsPage">《用户协议》</text>
+  <view class="login-gate" wx:if="{{showLoginGate}}">
+    <view class="login-gate__mask"></view>
+    <view class="login-gate__sheet">
+      <view class="login-gate__handle"></view>
+      <text class="login-gate__title">微信登录后继续</text>
+      <text class="login-gate__desc">点一次就能完成微信登录并进入大厅，头像昵称自动带入，协议确认也一起完成。</text>
+      <button class="login-gate__btn" loading="{{loginBusy}}" disabled="{{loginBusy}}" bindtap="onWechatLogin">
+        <text class="login-gate__btn-text">{{loginBusy ? '登录中...' : '微信登录并继续'}}</text>
+      </button>
+      <text class="login-gate__hint">{{loginHintText}}</text>
+      <view wx:if="{{connectionHintText}}" class="login-gate__connection">
+        <text class="login-gate__connection-text">{{connectionHintText}}</text>
+        <button class="login-gate__connection-btn" bindtap="openConnectionSettings">配置云托管</button>
       </view>
-      <button class="legal-btn legal-btn--primary" bindtap="acceptLegal">同意并继续</button>
-      <button class="legal-btn legal-btn--ghost" bindtap="declineLegal">暂不同意</button>
+      <text class="login-gate__agreement">点击登录即表示同意 <text class="login-gate__link" bindtap="openTermsPage">用户协议</text> 与 <text class="login-gate__link" bindtap="openPrivacyPage">隐私政策</text></text>
     </view>
   </view>
 </view>

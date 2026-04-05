@@ -1,0 +1,33 @@
+const { loginWechatAccount } = require("./account-api");
+const {
+  requestWechatLogin,
+  requestWechatUserProfile,
+  persistWechatProfile,
+  persistLegalConsent
+} = require("./wechat-auth");
+
+async function performWechatOneTapLogin() {
+  const userProfile = await requestWechatUserProfile();
+  const loginRes = await requestWechatLogin();
+  const accountSession = await loginWechatAccount({
+    code: loginRes.code,
+    nickname: userProfile.nickname,
+    avatarUrl: userProfile.avatarUrl
+  });
+  const nextProfile = accountSession && accountSession.profile ? accountSession.profile : {};
+  persistLegalConsent();
+  const storedProfile = persistWechatProfile({
+    nickname: String(nextProfile.nickname || userProfile.nickname || "").trim(),
+    avatarUrl: String(nextProfile.avatarUrl || userProfile.avatarUrl || "").trim(),
+    loginAt: loginRes.loginAt
+  });
+
+  return {
+    accountSession,
+    profile: storedProfile
+  };
+}
+
+module.exports = {
+  performWechatOneTapLogin
+};
