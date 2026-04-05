@@ -12,20 +12,27 @@ test("room page no longer embeds the legacy create or join entry screen", () => 
   assert.doesNotMatch(source, />创建 \/ 加入</);
 });
 
-test("room shell keeps only a centered room id label with the left menu button", () => {
+test("room shell keeps the room id centered while moving share into the left-top menu", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
   assert.doesNotMatch(wxml, /class="room-safe-panel"/);
   assert.match(wxml, /class="room-chrome-btn room-chrome-btn--menu" bindtap="onTapMore"/);
+  assert.match(wxml, /class="room-topbar-menu-popover"/);
+  assert.match(wxml, /class="room-topbar-menu-popover__item room-topbar-menu-popover__item--share" open-type="share" bindtap="onTapMenuShare"/);
+  assert.match(wxml, /class="room-topbar-menu-popover__text">邀请好友<\/text>/);
   assert.match(wxml, /class="room-topbar__room/);
   assert.match(wxml, /<text class="room-topbar__room-label">房间号:<\/text>/);
   assert.doesNotMatch(wxml, /class="room-topbar__toggle"/);
-  assert.doesNotMatch(wxml, /room-topbar__corner--right/);
+  assert.doesNotMatch(wxml, /class="room-topbar__corner room-topbar__corner--right"/);
+  assert.doesNotMatch(wxml, /class="room-self__share-btn"/);
   assert.match(wxss, /\.room-topbar__center\s*\{[\s\S]*position:\s*absolute/);
   assert.match(wxss, /\.room-topbar__center\s*\{[\s\S]*left:\s*0/);
   assert.match(wxss, /\.room-topbar__center\s*\{[\s\S]*right:\s*0/);
   assert.match(wxss, /\.room-topbar__center\s*\{[\s\S]*justify-content:\s*center/);
   assert.match(wxss, /\.room-topbar__toggle\s*\{[\s\S]*display:\s*none/);
+  assert.match(wxss, /\.room-topbar-menu-popover\s*\{/);
+  assert.match(wxss, /\.room-topbar-menu-popover__item--share\s*\{/);
+  assert.match(wxss, /\.room-topbar-menu-popover__text\s*\{/);
 });
 
 test("room shell gives the left menu button a dedicated hero style", () => {

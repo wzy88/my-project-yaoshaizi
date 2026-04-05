@@ -32,6 +32,7 @@ function instantiateRoomPage({
   const toasts = [];
   const modals = [];
   const reLaunches = [];
+  const hiddenShareMenus = [];
   let pageConfig = null;
 
   globalThis.getApp = () => ({
@@ -91,6 +92,9 @@ function instantiateRoomPage({
     reLaunch({ url }) {
       reLaunches.push(String(url || ""));
     },
+    hideShareMenu(options = {}) {
+      hiddenShareMenus.push(options);
+    },
     cloud: apiAvailability.cloud || null,
     env: apiAvailability.env || null,
     getFileSystemManager: apiAvailability.getFileSystemManager,
@@ -145,7 +149,7 @@ function instantiateRoomPage({
     }
   };
 
-  return { page, toasts, modals, reLaunches, storageState, cleanup };
+  return { page, toasts, modals, reLaunches, hiddenShareMenus, storageState, cleanup };
 }
 
 test("room page: roll uses the bundled audio asset while the other sfx keep the lighter generated profile", async () => {
@@ -1560,7 +1564,7 @@ test("room page: seating panel swaps two occupied seats", () => {
   }
 });
 
-test("room page: owner ready menu exposes seating setup and opens the seating panel", () => {
+test("room page: owner ready topbar menu exposes seating setup before settings and leave", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -1570,32 +1574,54 @@ test("room page: owner ready menu exposes seating setup and opens the seating pa
   });
 
   try {
-    let capturedItems = null;
     let opened = 0;
 
     page.setData({
       selfIsOwner: true,
       phase: "ready",
-      round: 0
+      round: 0,
+      roomId: "123456"
     });
-    page.showActionSheetSafe = ({ itemList, success }) => {
-      capturedItems = itemList;
-      success({ tapIndex: 0 });
-    };
     page.openSeatingPanel = () => {
       opened += 1;
     };
 
     page.onTapMore();
+    assert.equal(page.data.topbarMenuVisible, true);
 
-    assert.deepEqual(capturedItems, ["排位设置", "设置", "离开房间"]);
+    page.onTapMenuSeating();
+
+    assert.equal(page.data.topbarMenuVisible, false);
     assert.equal(opened, 1);
   } finally {
     cleanup();
   }
 });
 
-test("room page: non-owner menu skips seating setup", () => {
+test("room page: native top-right share menu is hidden so sharing stays in the left menu", () => {
+  const { page, hiddenShareMenus, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({});
+    page.onShow();
+
+    assert.equal(hiddenShareMenus.length >= 2, true);
+    assert.deepEqual(hiddenShareMenus[0], {
+      menus: ["shareAppMessage"]
+    });
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: non-owner topbar menu routes settings without showing seating", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -1605,19 +1631,15 @@ test("room page: non-owner menu skips seating setup", () => {
   });
 
   try {
-    let capturedItems = null;
     let toolsOpened = 0;
     let seatingOpened = 0;
 
     page.setData({
       selfIsOwner: false,
       phase: "ready",
-      round: 0
+      round: 0,
+      roomId: "123456"
     });
-    page.showActionSheetSafe = ({ itemList, success }) => {
-      capturedItems = itemList;
-      success({ tapIndex: 0 });
-    };
     page.openToolsMenu = () => {
       toolsOpened += 1;
     };
@@ -1626,8 +1648,11 @@ test("room page: non-owner menu skips seating setup", () => {
     };
 
     page.onTapMore();
+    assert.equal(page.data.topbarMenuVisible, true);
 
-    assert.deepEqual(capturedItems, ["设置", "离开房间"]);
+    page.onTapMenuSettings();
+
+    assert.equal(page.data.topbarMenuVisible, false);
     assert.equal(toolsOpened, 1);
     assert.equal(seatingOpened, 0);
   } finally {

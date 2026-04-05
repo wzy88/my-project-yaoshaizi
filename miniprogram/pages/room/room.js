@@ -1375,6 +1375,7 @@ Page({
     roomBottomFadeStyle: "",
     roomSelfStyle: "",
     callPhaseOverlayStyle: "",
+    topbarMenuVisible: false,
     callPanelVisible: false,
     canOpenAction: false,
     seatingVisible: false,
@@ -3664,68 +3665,52 @@ Page({
   },
 
   onTapMore() {
-    const isOwnerReady = Boolean(this.data.selfIsOwner && this.data.phase === "ready" && this.data.round === 0);
-    const itemList = [
-      isOwnerReady ? "排位设置" : "",
-      "设置",
-      "离开房间"
-    ].filter(Boolean);
-    this.showActionSheetSafe({
-      itemList,
-      success: (res) => {
-        const idx = res.tapIndex;
-
-        if (isOwnerReady) {
-          if (idx === 0) {
-            this.openSeatingPanel();
-            return;
-          }
-          if (idx === 1) {
-            this.openToolsMenu();
-            return;
-          }
-          if (idx === 2) {
-            this.leaveRoom();
-            return;
-          }
-        } else {
-          if (idx === 0) {
-            this.openToolsMenu();
-            return;
-          }
-          if (idx === 1) {
-            this.leaveRoom();
-            return;
-          }
-        }
-      },
-      fail: (err) => {
-        const msg = String(err && err.errMsg ? err.errMsg : "");
-        if (msg.includes("cancel")) {
-          return;
-        }
-        wx.showToast({ title: "菜单打开失败", icon: "none" });
-      }
+    this.setData({
+      topbarMenuVisible: !this.data.topbarMenuVisible
     });
   },
 
-  ensureShareMenuVisible() {
-    if (!wx.showShareMenu || typeof wx.showShareMenu !== "function") {
+  closeTopbarMenu() {
+    if (!this.data.topbarMenuVisible) {
       return;
     }
+    this.setData({ topbarMenuVisible: false });
+  },
 
-    try {
-      wx.showShareMenu({
-        withShareTicket: true,
-        menus: ["shareAppMessage"]
-      });
-    } catch (error) {
+  onTapMenuShare() {
+    this.closeTopbarMenu();
+    this.onTapShareRoom();
+  },
+
+  onTapMenuSettings() {
+    this.closeTopbarMenu();
+    this.openToolsMenu();
+  },
+
+  onTapMenuLeave() {
+    this.closeTopbarMenu();
+    this.leaveRoom();
+  },
+
+  onTapMenuSeating() {
+    this.closeTopbarMenu();
+    this.openSeatingPanel();
+  },
+
+  ensureShareMenuVisible() {
+    if (wx.hideShareMenu && typeof wx.hideShareMenu === "function") {
       try {
-        wx.showShareMenu({
-          withShareTicket: true
+        wx.hideShareMenu({
+          menus: ["shareAppMessage"]
         });
-      } catch (fallbackError) {
-        // ignore
+        return;
+      } catch (error) {
+        try {
+          wx.hideShareMenu();
+          return;
+        } catch (fallbackError) {
+          // ignore
+        }
       }
     }
   },
