@@ -8,11 +8,14 @@ const {
   SESSION_KEY,
   NICKNAME_KEY,
   AVATAR_URL_KEY,
+  PROFILE_NICKNAME_CUSTOMIZED_KEY,
   SFX_ENABLED_KEY,
   HAPTIC_ENABLED_KEY
 } = require("../../utils/constants");
 const { DEFAULT_3D_DIE_ASSET, SELF_DICE_PLACEHOLDER, getDieAsset } = require("../../utils/dice-assets");
 const { getStoredAccountSession } = require("../../utils/account-api");
+const { getStoredWechatProfile } = require("../../utils/wechat-auth");
+const { DEFAULT_PROFILE_AVATAR_ASSETS, normalizeBundledAvatarAsset } = require("../../utils/profile-defaults");
 const {
   DEFAULT_CONTAINER_WS_PATH,
   normalizeContainerConfig,
@@ -23,14 +26,6 @@ const {
   initMiniProgramCloud
 } = require("../../utils/cloud-container");
 const { isDevtoolsPlatform, getNavigationSafeArea } = require("../../utils/system-info");
-const ROOM_ASSETS = {
-  avatarA: "/assets/figma-room-v2/39b17e1f-9114-410f-85d5-2e5a189fbf74.svg",
-  avatarB: "/assets/figma-room-v2/7ca66ac8-3c55-4b22-ae77-b2bf38f68295.svg",
-  avatarC: "/assets/figma-room-v2/c34dc9c6-7896-4b4d-adbe-c1e0c86f2471.svg",
-  avatarD: "/assets/figma-room-v2/210fcfda-928e-4840-a3e3-173c823b96b8.svg",
-  avatarE: "/assets/figma-room-v2/fae378fc-f9e8-496b-a6c8-fee07102a3e1.svg",
-  avatarF: "/assets/figma-room-v2/bf7e06ef-5ad9-474e-b2b3-6bbd604fb91f.svg"
-};
 const ROOM_AUDIO_ASSETS = {
   roll: "/assets/audio/dice-roll.mp3",
   settlement: "/assets/audio/settlement.mp3",
@@ -105,14 +100,7 @@ function buildSettlementDiceItems(values, highlightValue = 0) {
   });
 }
 
-const FIGMA_DEFAULT_AVATARS = [
-  ROOM_ASSETS.avatarA,
-  ROOM_ASSETS.avatarB,
-  ROOM_ASSETS.avatarC,
-  ROOM_ASSETS.avatarD,
-  ROOM_ASSETS.avatarE,
-  ROOM_ASSETS.avatarF
-];
+const FIGMA_DEFAULT_AVATARS = DEFAULT_PROFILE_AVATAR_ASSETS;
 
 function getSeatAvatarFallback(index) {
   const size = FIGMA_DEFAULT_AVATARS.length || 1;
@@ -120,9 +108,16 @@ function getSeatAvatarFallback(index) {
   return FIGMA_DEFAULT_AVATARS[normalizedIndex] || "";
 }
 
+function normalizeRoomAvatarAsset(avatarSrc, fallbackIndex = 0) {
+  const normalized = String(avatarSrc || "").trim();
+  if (!normalized) {
+    return getSeatAvatarFallback(fallbackIndex);
+  }
+  return normalizeBundledAvatarAsset(normalized, `room-seat-${fallbackIndex}`);
+}
+
 function getSeatAvatarPresentation(avatarSrc, fallbackIndex) {
-  const fallback = getSeatAvatarFallback(fallbackIndex);
-  const resolved = String(avatarSrc || "").trim() || fallback;
+  const resolved = normalizeRoomAvatarAsset(avatarSrc, fallbackIndex);
   const isLocalAsset = resolved.startsWith("/assets/");
 
   return {
@@ -255,7 +250,7 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     return {
       playerId: id,
       name: displayName,
-      avatarUrl: player ? String(player.avatar || "") : "",
+      avatarUrl: getSeatAvatarPresentation(player ? player.avatar : "", Math.max(0, getSeatIndex(id) - 1)).src,
       avatarText: String(name || "玩").slice(0, 1),
       diceItems: buildSettlementDiceItems(dice, declaredPoint),
       kind,
@@ -1671,10 +1666,11 @@ Page({
       wx.removeStorageSync(SESSION_KEY);
     }
 
-    const cachedNickname = safeDecodeComponent(wx.getStorageSync(NICKNAME_KEY)).trim();
-    const cachedAvatarUrl = String(wx.getStorageSync(AVATAR_URL_KEY) || "").trim();
+    const profile = getStoredWechatProfile();
+    const cachedNickname = profile.nickname;
+    const cachedAvatarUrl = normalizeRoomAvatarAsset(profile.avatarUrl, 0);
     const optNickname = safeDecodeComponent(options.nickname).trim();
-    const nickname = optNickname || cachedNickname || `玩家${Math.floor(Math.random() * 1000)}`;
+    const nickname = optNickname || cachedNickname;
 
     this.setData({
       nickname,
@@ -1776,8 +1772,9 @@ Page({
       routeStack: this.getRouteStack()
     });
     this.ensureShareMenuVisible();
-    const nickname = safeDecodeComponent(wx.getStorageSync(NICKNAME_KEY)).trim();
-    const avatarUrl = String(wx.getStorageSync(AVATAR_URL_KEY) || "").trim();
+    const profile = getStoredWechatProfile();
+    const nickname = profile.nickname;
+    const avatarUrl = profile.avatarUrl;
 
     const nextNickname = nickname || this.data.nickname;
     const updates = {
@@ -2019,6 +2016,7 @@ Page({
       selfInitial: String(nickname || "玩家").slice(0, 1)
     });
     wx.setStorageSync(NICKNAME_KEY, nickname);
+    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, Boolean(nickname));
 
     if (this.data.connected && this.data.roomId) {
       this.sendEvent("player:update", {
@@ -3764,27 +3762,12 @@ Page({
       open: () => this.openToolsBasicMenu()
     });
 
-    const canOwnerTools = this.data.selfIsOwner && (this.data.phase === "ready" || this.data.phase === "ended");
-    if (canOwnerTools) {
-      sections.push({
-        label: "房主工具",
-        open: () => this.openToolsOwnerMenu()
-      });
-    }
-
     const config = this.data.roomConfig;
     const testMode = Boolean(config && config.testMode);
     if (this.data.selfIsOwner && testMode) {
       sections.push({
         label: "测试工具",
         open: () => this.openToolsTestMenu()
-      });
-    }
-
-    if (this.devtoolsMode) {
-      sections.push({
-        label: "开发工具",
-        open: () => this.openToolsDevMenu()
       });
     }
 
@@ -4014,6 +3997,7 @@ Page({
     });
   },
 
+
   sendEvent(event, payload, options = {}) {
     if (!this.data.legalAccepted) {
       wx.showToast({ title: "请先同意隐私协议", icon: "none" });
@@ -4077,7 +4061,10 @@ Page({
         const selfHasCalled = Boolean(self && self.currentCall);
         const selfRollLocked = Boolean(self && self.rollLocked);
         const selfRollCountThisRound = Number(self && self.rollCountThisRound) || 0;
-        const selfAvatarUrl = (self && self.avatar) ? self.avatar : (this.data.avatarUrl || "");
+        const selfAvatarUrl = normalizeRoomAvatarAsset(
+          self && self.avatar ? self.avatar : this.data.avatarUrl,
+          Math.max(0, Number(self && self.seatIndex || 1) - 1)
+        );
         const selfIsWaiting = waitingPlayersRaw.some((player) => player.id === this.data.playerId)
           && !playersRaw.some((player) => player.id === this.data.playerId);
         const dicePerPlayer = roomConfig && typeof roomConfig.dicePerPlayer === "number"
@@ -4593,11 +4580,13 @@ Page({
       return;
     }
 
+    let fallbackAvatar = "";
     const playersRaw = (this.data.playersRaw || []).map((player) => {
       if (String(player.id || "") !== playerId || !player.avatar) {
         return player;
       }
-      return { ...player, avatar: "" };
+      fallbackAvatar = getSeatAvatarFallback(Math.max(0, Number(player.seatIndex || 1) - 1));
+      return { ...player, avatar: fallbackAvatar };
     });
     const playersDecorated = this.buildPlayersDecorated(playersRaw);
 
@@ -4605,12 +4594,18 @@ Page({
       playersRaw,
       playersDecorated,
       ghostSeats: buildGhostSeats(playersDecorated, playersRaw.length),
-      ...(playerId === String(this.data.playerId || "") ? { selfAvatarUrl: "" } : {})
+      ...(playerId === String(this.data.playerId || "") ? { selfAvatarUrl: fallbackAvatar || getSeatAvatarFallback(0) } : {})
     });
   },
 
   onSelfAvatarError() {
-    this.setData({ selfAvatarUrl: "" });
+    const self = (this.data.playersRaw || []).find((player) => String(player.id || "") === String(this.data.playerId || ""));
+    const fallbackAvatar = getSeatAvatarFallback(Math.max(0, Number(self && self.seatIndex || 1) - 1));
+    wx.setStorageSync(AVATAR_URL_KEY, fallbackAvatar);
+    this.setData({
+      avatarUrl: fallbackAvatar,
+      selfAvatarUrl: fallbackAvatar
+    });
   },
 
   async ensureSfxFiles() {

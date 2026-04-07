@@ -12,13 +12,19 @@ async function performWechatOneTapLogin() {
   const accountSession = await loginWechatAccount({
     code: loginRes.code,
     nickname: userProfile.nickname,
-    avatarUrl: userProfile.avatarUrl
+    avatarUrl: userProfile.avatarUrl,
+    nicknameCustomized: Boolean(userProfile.nicknameCustomized)
   });
   const nextProfile = accountSession && accountSession.profile ? accountSession.profile : {};
   persistLegalConsent();
   const storedProfile = persistWechatProfile({
     nickname: String(nextProfile.nickname || userProfile.nickname || "").trim(),
     avatarUrl: String(nextProfile.avatarUrl || userProfile.avatarUrl || "").trim(),
+    nicknameCustomized: typeof nextProfile.nicknameCustomized === "boolean"
+      ? nextProfile.nicknameCustomized
+      : Boolean(userProfile.nicknameCustomized),
+    accountId: nextProfile.accountId,
+    displayId: nextProfile.displayId,
     loginAt: loginRes.loginAt
   });
 

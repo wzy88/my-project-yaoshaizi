@@ -1,4 +1,4 @@
-<view class="tab-shell">
+<view wx:if="{{!hidden}}" class="tab-shell">
   <view class="tab-inner">
     <view class="tab-item {{selected === 0 ? 'active' : ''}}" data-index="0" data-path="/pages/lobby/lobby" bindtap="onSwitchTab">
       <view class="tab-icon tab-icon--home">

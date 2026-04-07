@@ -12,6 +12,8 @@ module.exports = {
   SESSION_KEY: "diceSession",
   NICKNAME_KEY: "diceNicknameV1",
   AVATAR_URL_KEY: "diceAvatarUrlV1",
+  PROFILE_SEED_KEY: "diceProfileSeedV1",
+  PROFILE_NICKNAME_CUSTOMIZED_KEY: "diceProfileNicknameCustomizedV1",
   WECHAT_LOGIN_TS_KEY: "diceWechatLoginTsV1",
   ACCOUNT_SESSION_KEY: "diceAccountSessionV1",
   SFX_ENABLED_KEY: "diceSfxEnabledV1",

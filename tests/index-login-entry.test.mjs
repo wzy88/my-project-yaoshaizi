@@ -5,10 +5,12 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const indexModulePath = require.resolve("../miniprogram/pages/index/index.js");
 const backendRequestModulePath = require.resolve("../miniprogram/utils/backend-request.js");
+const { DEFAULT_PROFILE_AVATAR_ASSETS } = require("../miniprogram/utils/profile-defaults.js");
 const {
   LEGAL_ACCEPT_KEY,
   NICKNAME_KEY,
   AVATAR_URL_KEY,
+  PROFILE_NICKNAME_CUSTOMIZED_KEY,
   WECHAT_LOGIN_TS_KEY,
   ACCOUNT_SESSION_KEY
 } = require("../miniprogram/utils/constants.js");
@@ -26,12 +28,7 @@ function instantiateIndexPage({
     wsPath: "/ws"
   },
   showModalResponses = [],
-  backendRequestExportsOverride = null,
-  userProfileResponse = {
-    nickName: "阿伟",
-    avatarUrl: "https://example.com/avatar.png"
-  },
-  userProfileError = null
+  backendRequestExportsOverride = null
 } = {}) {
   const originalPage = globalThis.Page;
   const originalWx = globalThis.wx;
@@ -79,15 +76,6 @@ function instantiateIndexPage({
     login({ success }) {
       loginCalls += 1;
       success({ code: loginCode });
-    },
-    getUserProfile({ success, fail }) {
-      if (userProfileError) {
-        fail(userProfileError);
-        return;
-      }
-      success({
-        userInfo: userProfileResponse
-      });
     },
     redirectTo({ url }) {
       redirects.push(String(url || ""));
@@ -210,7 +198,7 @@ function instantiateIndexPage({
   };
 }
 
-test("index page: wechat login stores avatar nickname and resumes the shared room redirect", async () => {
+test("index page: wechat login stores a default avatar nickname and resumes the shared room redirect", async () => {
   const { page, storageState, redirects, tabSwitches, toasts, requests, cleanup } = instantiateIndexPage();
 
   try {
@@ -220,8 +208,8 @@ test("index page: wechat login stores avatar nickname and resumes the shared roo
 
     await page.onWechatLogin();
 
-    assert.equal(storageState[NICKNAME_KEY], "阿伟");
-    assert.equal(storageState[AVATAR_URL_KEY], "https://example.com/avatar.png");
+    assert.match(storageState[NICKNAME_KEY], /^玩家\d{3}$/);
+    assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(storageState[AVATAR_URL_KEY]), true);
     assert.equal(Number(storageState[WECHAT_LOGIN_TS_KEY]) > 0, true);
     assert.equal(storageState[ACCOUNT_SESSION_KEY].accountId, "acct_mock_1");
     assert.equal(storageState[LEGAL_ACCEPT_KEY].accepted, true);
@@ -229,6 +217,8 @@ test("index page: wechat login stores avatar nickname and resumes the shared roo
     assert.deepEqual(tabSwitches, []);
     assert.equal(requests[0].url, "http://127.0.0.1:3000/api/auth/wechat-login");
     assert.equal(requests[0].method, "POST");
+    assert.match(String(requests[0].data.nickname || ""), /^玩家\d{3}$/);
+    assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(String(requests[0].data.avatarUrl || "")), true);
     assert.equal(toasts.includes("登录成功"), true);
   } finally {
     cleanup();
@@ -329,6 +319,72 @@ test("index page: login page can save cloud container config directly", () => {
   }
 });
 
+test("index page: on load it prepares a stable default avatar and nickname before login", () => {
+  const { page, storageState, cleanup } = instantiateIndexPage();
+
+  try {
+    page.onLoad({});
+
+    assert.match(String(storageState[NICKNAME_KEY] || ""), /^玩家\d{3}$/);
+    assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(String(storageState[AVATAR_URL_KEY] || "")), true);
+    assert.equal(page.data.profileTitle, "准备开局");
+  } finally {
+    cleanup();
+  }
+});
+
+test("index page: logged-in legacy default profile is normalized back to the local bundled avatar set", () => {
+  const { page, storageState, cleanup } = instantiateIndexPage({
+    storage: {
+      [NICKNAME_KEY]: "玩家512",
+      [AVATAR_URL_KEY]: "https://example.com/legacy-avatar.png",
+      [WECHAT_LOGIN_TS_KEY]: Date.now(),
+      [ACCOUNT_SESSION_KEY]: {
+        accountId: "acct_mock_legacy",
+        displayId: "WX-LEGACY1",
+        sessionToken: "session-legacy-1",
+        loginAt: Date.now(),
+        authMode: "mock",
+        profile: {
+          accountId: "acct_mock_legacy",
+          displayId: "WX-LEGACY1",
+          nickname: "玩家512",
+          nicknameCustomized: false,
+          avatarUrl: "https://example.com/legacy-avatar.png"
+        }
+      }
+    }
+  });
+
+  try {
+    page.onLoad({});
+
+    assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(String(storageState[AVATAR_URL_KEY] || "")), true);
+    assert.equal(storageState[PROFILE_NICKNAME_CUSTOMIZED_KEY], false);
+    assert.notEqual(String(storageState[AVATAR_URL_KEY] || ""), "https://example.com/legacy-avatar.png");
+  } finally {
+    cleanup();
+  }
+});
+
+test("index page: removed bundled woman avatar is reassigned to one of the remaining defaults", () => {
+  const { page, storageState, cleanup } = instantiateIndexPage({
+    storage: {
+      [NICKNAME_KEY]: "玩家286",
+      [AVATAR_URL_KEY]: "/assets/figma-room-v2/avatar-woman.png"
+    }
+  });
+
+  try {
+    page.onLoad({});
+
+    assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(String(storageState[AVATAR_URL_KEY] || "")), true);
+    assert.notEqual(String(storageState[AVATAR_URL_KEY] || ""), "/assets/figma-room-v2/avatar-woman.png");
+  } finally {
+    cleanup();
+  }
+});
+
 test("index page: falls back cleanly when backend-request helper exports are stale", () => {
   const realBackendRequest = require(backendRequestModulePath);
   const { page, cleanup } = instantiateIndexPage({
@@ -342,24 +398,6 @@ test("index page: falls back cleanly when backend-request helper exports are sta
   try {
     assert.doesNotThrow(() => page.onLoad({}));
     assert.equal(page.data.connectionHintText, "未配置云托管服务，请先填写服务名，路径一般填 /ws");
-  } finally {
-    cleanup();
-  }
-});
-
-test("index page: surfaces a concise error when user denies wechat profile authorization", async () => {
-  const { page, toasts, cleanup } = instantiateIndexPage({
-    userProfileError: {
-      errMsg: "getUserProfile:fail auth deny"
-    }
-  });
-
-  try {
-    page.onLoad({});
-    await page.onWechatLogin();
-
-    assert.equal(toasts.includes("需要授权微信头像昵称后继续"), true);
-    assert.equal(page.data.loginHintText, "需要授权微信头像昵称后继续");
   } finally {
     cleanup();
   }

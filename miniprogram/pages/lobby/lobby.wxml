@@ -30,9 +30,9 @@
           <text wx:else class="profile-card__avatar-text">{{nickname ? nickname.slice(0, 1) : '玩'}}</text>
         </view>
         <view class="profile-card__text">
-          <text class="profile-card__label">{{loggedIn ? '当前身份' : '微信登录后'}}</text>
-          <text class="profile-card__name">{{loggedIn ? (nickname || '玩家') : '自动带入微信头像昵称'}}</text>
-          <text class="profile-card__hint">{{loggedIn ? '昵称可在“我的”页修改，房间分享会自动带上你的微信资料。' : '点一下登录后就能直接创建房间、加入房间和分享房间。'}}</text>
+          <text class="profile-card__label">{{loggedIn ? '当前身份' : '默认身份'}}</text>
+          <text class="profile-card__name">{{nickname || '玩家001'}}</text>
+          <text class="profile-card__hint">{{loggedIn ? '头像会直接用于房间展示，昵称可在“我的”页修改。' : '登录后会先用这套默认头像昵称进入，之后可在“我的”页修改。'}}</text>
         </view>
       </view>
     </view>
@@ -88,7 +88,7 @@
     <view class="login-gate__sheet">
       <view class="login-gate__handle"></view>
       <text class="login-gate__title">微信登录后继续</text>
-      <text class="login-gate__desc">点一次就能完成微信登录并进入大厅，头像昵称自动带入，协议确认也一起完成。</text>
+      <text class="login-gate__desc">登录后可创建房间、加入房间和邀请好友。</text>
       <button class="login-gate__btn" loading="{{loginBusy}}" disabled="{{loginBusy}}" bindtap="onWechatLogin">
         <text class="login-gate__btn-text">{{loginBusy ? '登录中...' : '微信登录并继续'}}</text>
       </button>

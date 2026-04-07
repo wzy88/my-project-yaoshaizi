@@ -3,6 +3,7 @@ const { ACCOUNT_SESSION_KEY } = require("../utils/constants");
 Component({
   data: {
     selected: 0,
+    hidden: false,
     tabs: [
       { pagePath: "/pages/lobby/lobby", text: "首页" },
       { pagePath: "/pages/me/me", text: "我的" }

@@ -1,10 +1,19 @@
 const { ACCOUNT_SESSION_KEY } = require("./constants");
 const { requestBackend } = require("./backend-request");
+const { ensureProfileDefaults } = require("./profile-defaults");
 
 function normalizeStoredSession(raw) {
   const source = raw && typeof raw === "object" ? raw : {};
-  const profile = source.profile && typeof source.profile === "object" ? source.profile : {};
+  const rawProfile = source.profile && typeof source.profile === "object" ? source.profile : {};
   const sessionToken = String(source.sessionToken || "").trim();
+  const hasProfileData = Object.keys(rawProfile).length > 0
+    || Boolean(source.accountId)
+    || Boolean(source.displayId);
+  const profile = hasProfileData
+    ? ensureProfileDefaults(rawProfile, {
+      seed: String(rawProfile.accountId || source.accountId || rawProfile.displayId || source.displayId || "").trim() || undefined
+    })
+    : {};
   const accountId = String(profile.accountId || source.accountId || "").trim();
   const displayId = String(profile.displayId || source.displayId || "").trim();
 
@@ -72,7 +81,8 @@ async function loginWechatAccount(payload) {
     data: {
       code: String(payload && payload.code || "").trim(),
       nickname: String(payload && payload.nickname || "").trim(),
-      avatarUrl: String(payload && payload.avatarUrl || "").trim()
+      avatarUrl: String(payload && payload.avatarUrl || "").trim(),
+      nicknameCustomized: Boolean(payload && payload.nicknameCustomized)
     }
   });
 
@@ -97,16 +107,20 @@ async function fetchMyAccountProfile() {
 
 async function syncMyAccountProfile(patch) {
   const session = getStoredAccountSession();
+  const payload = {
+    nickname: String(patch && patch.nickname || "").trim(),
+    avatarUrl: String(patch && patch.avatarUrl || "").trim()
+  };
+  if (typeof (patch && patch.nicknameCustomized) === "boolean") {
+    payload.nicknameCustomized = Boolean(patch.nicknameCustomized);
+  }
   const response = await requestBackend({
     path: "/api/account/profile",
     method: "PATCH",
     headers: {
       ...buildAuthHeaders(session)
     },
-    data: {
-      nickname: String(patch && patch.nickname || "").trim(),
-      avatarUrl: String(patch && patch.avatarUrl || "").trim()
-    }
+    data: payload
   });
 
   const data = response && response.data ? response.data : response;

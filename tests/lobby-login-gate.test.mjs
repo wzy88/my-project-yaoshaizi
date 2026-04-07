@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url);
 const lobbyModulePath = require.resolve("../miniprogram/pages/lobby/lobby.js");
 const loginFlowModulePath = require.resolve("../miniprogram/utils/wechat-login-flow.js");
 const backendRequestModulePath = require.resolve("../miniprogram/utils/backend-request.js");
+const { DEFAULT_PROFILE_AVATAR_ASSETS } = require("../miniprogram/utils/profile-defaults.js");
 const appJsonPath = path.join(process.cwd(), "miniprogram/app.json");
 const {
   NICKNAME_KEY,
@@ -40,6 +41,10 @@ function instantiateLobbyPage({
   const redirects = [];
   const switchTabs = [];
   const reLaunches = [];
+  const tabBarState = {
+    selected: -1,
+    hidden: false
+  };
   let pageConfig = null;
 
   if (loginFlowOverride) {
@@ -114,6 +119,13 @@ function instantiateLobbyPage({
     data: JSON.parse(JSON.stringify(pageConfig.data)),
     setData(updates) {
       this.data = { ...this.data, ...updates };
+    },
+    getTabBar() {
+      return {
+        setData(updates) {
+          Object.assign(tabBarState, updates || {});
+        }
+      };
     }
   };
   Object.assign(page, pageConfig);
@@ -160,6 +172,7 @@ function instantiateLobbyPage({
     redirects,
     switchTabs,
     reLaunches,
+    tabBarState,
     cleanup
   };
 }
@@ -170,12 +183,17 @@ test("app config starts from the lobby page instead of the standalone login page
 });
 
 test("lobby page keeps the user on the lobby and opens the inline login gate when not logged in", () => {
-  const { page, reLaunches, cleanup } = instantiateLobbyPage();
+  const { page, reLaunches, tabBarState, cleanup } = instantiateLobbyPage();
 
   try {
     page.onLoad({});
+    page.onShow();
     assert.equal(page.data.showLoginGate, true);
     assert.equal(page.data.loggedIn, false);
+    assert.match(page.data.nickname, /^玩家\d{3}$/);
+    assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(page.data.avatarUrl), true);
+    assert.equal(tabBarState.selected, 0);
+    assert.equal(tabBarState.hidden, true);
     assert.deepEqual(reLaunches, []);
   } finally {
     cleanup();
@@ -183,7 +201,7 @@ test("lobby page keeps the user on the lobby and opens the inline login gate whe
 });
 
 test("lobby page queues the intended destination before login and continues after one-tap login", async () => {
-  const { page, storageState, redirects, cleanup } = instantiateLobbyPage({
+  const { page, storageState, redirects, tabBarState, cleanup } = instantiateLobbyPage({
     loginFlowOverride: {
       async performWechatOneTapLogin() {
         storageState[NICKNAME_KEY] = "阿伟";
@@ -222,6 +240,7 @@ test("lobby page queues the intended destination before login and continues afte
 
     assert.equal(page.data.loggedIn, true);
     assert.equal(page.data.showLoginGate, false);
+    assert.equal(tabBarState.hidden, false);
     assert.deepEqual(redirects, ["/pages/create-room/create-room"]);
   } finally {
     cleanup();

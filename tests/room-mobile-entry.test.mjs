@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 const roomModulePath = require.resolve("../miniprogram/pages/room/room.js");
+const { DEFAULT_PROFILE_AVATAR_ASSETS } = require("../miniprogram/utils/profile-defaults.js");
 const {
   LEGAL_ACCEPT_KEY,
   CLOUD_ENV_ID_KEY,
@@ -11,6 +12,7 @@ const {
   CLOUD_WS_PATH_KEY,
   SESSION_KEY,
   NICKNAME_KEY,
+  AVATAR_URL_KEY,
   WS_URL_KEY
 } = require("../miniprogram/utils/constants.js");
 
@@ -734,6 +736,59 @@ test("room page: share payload routes through the lobby login gate into the curr
       payload.path,
       `/pages/lobby/lobby?redirect=${encodeURIComponent("/pages/room/room?mode=join&forceNew=1&roomId=123456")}`
     );
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: room avatars prefer bundled avatar art instead of nickname initials when no custom avatar is present", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "玩家360",
+      [AVATAR_URL_KEY]: DEFAULT_PROFILE_AVATAR_ASSETS[2]
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.data.playerId = "owner-a";
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "123456",
+        phase: "ready",
+        round: 0,
+        players: [
+          {
+            id: "owner-a",
+            nickname: "玩家360",
+            avatar: "",
+            isOwner: true,
+            onlineStatus: "online",
+            turnStatus: "active",
+            seatIndex: 1,
+            diceCupStatus: "closed",
+            rollLocked: false
+          },
+          {
+            id: "guest-b",
+            nickname: "对手玩家",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 2,
+            diceCupStatus: "closed",
+            rollLocked: false
+          }
+        ],
+        waitingPlayers: []
+      }
+    }));
+
+    assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(page.data.selfAvatarUrl), true);
+    assert.equal(page.data.playersDecorated.every((item) => String(item.displayAvatar || "").startsWith("/assets/figma-room-v2/")), true);
   } finally {
     cleanup();
   }
@@ -1660,6 +1715,39 @@ test("room page: non-owner topbar menu routes settings without showing seating",
   }
 });
 
+test("room page: tools menu exposes both sound and vibration toggles", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    let capturedItems = null;
+
+    page.devtoolsMode = true;
+    page.setData({
+      selfIsOwner: true,
+      phase: "ready",
+      round: 0,
+      roomConfig: {
+        testMode: false
+      }
+    });
+    page.showActionSheetSafe = ({ itemList }) => {
+      capturedItems = itemList;
+    };
+
+    page.openToolsMenu();
+
+    assert.deepEqual(capturedItems, ["关闭音效", "关闭震动"]);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: hitting the 5-roll cap makes further roll attempts a silent no-op", () => {
   const { page, toasts, cleanup } = instantiateRoomPage({
     storage: {
@@ -1748,6 +1836,17 @@ test("room page: private dice results wait for the roll audio window before stag
   });
 
   try {
+    const waitFor = async (predicate, timeoutMs = 200, stepMs = 5) => {
+      const deadline = Date.now() + timeoutMs;
+      while (Date.now() < deadline) {
+        if (predicate()) {
+          return true;
+        }
+        await new Promise((resolve) => setTimeout(resolve, stepMs));
+      }
+      return predicate();
+    };
+
     page.getSelfRollAudioDurationMs = () => 30;
     page.getSelfRollRevealStaggerMs = () => 12;
     page.getSelfRollSettleDurationMs = () => 24;
@@ -1781,7 +1880,7 @@ test("room page: private dice results wait for the roll audio window before stag
 
     await new Promise((resolve) => setTimeout(resolve, 56));
 
-    assert.equal(page.data.myDiceRevealing, false);
+    assert.equal(await waitFor(() => page.data.myDiceRevealing === false), true);
     assert.equal(page.data.myDiceJustRevealed, true);
     assert.deepEqual(page.data.privateDice, [1, 2, 3, 4, 5]);
     assert.deepEqual(page.data.roomSelfDiceFaces.map((item) => item.value), [1, 2, 3, 4, 5]);

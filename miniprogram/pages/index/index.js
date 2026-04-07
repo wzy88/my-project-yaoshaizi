@@ -136,7 +136,7 @@ Page({
 
     this.setData({
       timeText: buildTimeText(),
-      profileTitle: profile.nickname ? `欢迎回来，${profile.nickname}` : "准备开局",
+      profileTitle: profile.loggedIn ? `欢迎回来，${profile.nickname}` : "准备开局",
       pendingRedirectUrl: decodeRedirect(options.redirect),
       loginHintText: profile.loggedIn ? "登录状态有效，正在进入..." : "点一下就能用微信登录并进入大厅",
       ...buildConnectionState()
@@ -147,7 +147,7 @@ Page({
     const profile = getStoredWechatProfile();
     this.setData({
       timeText: buildTimeText(),
-      profileTitle: profile.nickname ? `欢迎回来，${profile.nickname}` : "准备开局",
+      profileTitle: profile.loggedIn ? `欢迎回来，${profile.nickname}` : "准备开局",
       ...buildConnectionState()
     });
 
@@ -235,7 +235,7 @@ Page({
 
     this.setData({
       loginBusy: true,
-      loginHintText: "正在获取微信资料并登录..."
+      loginHintText: "正在登录并生成默认资料..."
     });
 
     try {
@@ -243,7 +243,7 @@ Page({
       const profile = result && result.profile ? result.profile : getStoredWechatProfile();
       this.didAutoRoute = true;
       this.setData({
-        profileTitle: profile.nickname ? `欢迎回来，${profile.nickname}` : "准备开局",
+        profileTitle: profile.loggedIn ? `欢迎回来，${profile.nickname}` : "准备开局",
         loginHintText: "登录成功，正在进入..."
       });
       wx.showToast({ title: "登录成功", icon: "none" });

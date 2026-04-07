@@ -6,7 +6,7 @@ const {
   CLOUD_WS_PATH_KEY,
   SESSION_KEY,
   NICKNAME_KEY,
-  AVATAR_URL_KEY,
+  PROFILE_NICKNAME_CUSTOMIZED_KEY,
   WECHAT_LOGIN_TS_KEY,
   SFX_ENABLED_KEY,
   HAPTIC_ENABLED_KEY
@@ -14,9 +14,13 @@ const {
 const {
   getStoredAccountSession,
   fetchMyAccountProfile,
-  syncMyAccountProfile,
-  clearAccountSession
+  syncMyAccountProfile
 } = require("../../utils/account-api");
+const {
+  getStoredWechatProfile,
+  persistWechatProfile,
+  clearWechatProfile
+} = require("../../utils/wechat-auth");
 const {
   DEFAULT_CONTAINER_WS_PATH,
   normalizeContainerConfig,
@@ -27,17 +31,6 @@ const {
   initMiniProgramCloud
 } = require("../../utils/cloud-container");
 const { isDevtoolsPlatform } = require("../../utils/system-info");
-
-function safeDecodeComponent(raw) {
-  const value = String(raw || "");
-  if (!value) return "";
-  if (!/%[0-9a-fA-F]{2}/.test(value)) return value;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
 
 function buildWsHint(options, lastWsError = "") {
   const params = options && typeof options === "object"
@@ -73,12 +66,6 @@ function buildTimeText() {
   const hh = String(date.getHours()).padStart(2, "0");
   const mm = String(date.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
-}
-
-function buildRecordPermissionText(granted) {
-  if (granted === true) return "已授权";
-  if (granted === false) return "未授权";
-  return "未申请";
 }
 
 function formatShortDateTime(ts) {
@@ -140,7 +127,6 @@ Page({
     nickname: "",
     avatarUrl: "",
     initial: "玩",
-    recordPermissionText: "未申请",
     sfxEnabled: true,
     hapticEnabled: true,
     accountDisplayId: "",
@@ -181,22 +167,16 @@ Page({
     });
     app.globalData.containerConfig = containerConfig;
 
-    const nickname = safeDecodeComponent(wx.getStorageSync(NICKNAME_KEY)).trim();
-    let finalNickname = nickname;
-    if (!finalNickname) {
-      finalNickname = `玩家${Math.floor(Math.random() * 1000)}`;
-      wx.setStorageSync(NICKNAME_KEY, finalNickname);
-    }
-    const avatarUrl = String(wx.getStorageSync(AVATAR_URL_KEY) || "").trim();
+    const profile = getStoredWechatProfile();
     const storedSfx = wx.getStorageSync(SFX_ENABLED_KEY);
     const storedHaptic = wx.getStorageSync(HAPTIC_ENABLED_KEY);
     const sfxEnabled = storedSfx === "" || storedSfx == null ? true : Boolean(storedSfx);
     const hapticEnabled = storedHaptic === "" || storedHaptic == null ? true : Boolean(storedHaptic);
     this.setData({
       timeText: buildTimeText(),
-      nickname: finalNickname,
-      avatarUrl,
-      initial: String(finalNickname || "玩家").slice(0, 1),
+      nickname: profile.nickname,
+      avatarUrl: profile.avatarUrl,
+      initial: String(profile.nickname || "玩家").slice(0, 1),
       sfxEnabled,
       hapticEnabled,
       ...buildAccountData(getStoredAccountSession()),
@@ -214,24 +194,24 @@ Page({
       sessionRoomId: hasSession ? session.roomId : ""
     });
 
-    this.refreshRecordPermissionText();
     void this.refreshAccountProfile();
   },
 
   onShow() {
     this.setData({ timeText: buildTimeText() });
 
-    const latestNickname = safeDecodeComponent(wx.getStorageSync(NICKNAME_KEY)).trim();
-    if (latestNickname !== this.data.nickname) {
+    const profile = getStoredWechatProfile();
+    if (profile.nickname !== this.data.nickname || profile.avatarUrl !== this.data.avatarUrl) {
       this.setData({
-        nickname: latestNickname,
-        initial: String(latestNickname || "玩家").slice(0, 1)
+        nickname: profile.nickname,
+        avatarUrl: profile.avatarUrl,
+        initial: String(profile.nickname || "玩家").slice(0, 1)
       });
     }
 
     const tabBar = this.getTabBar && this.getTabBar();
     if (tabBar && tabBar.setData) {
-      tabBar.setData({ selected: 1 });
+      tabBar.setData({ selected: 1, hidden: false });
     }
 
     const session = wx.getStorageSync(SESSION_KEY);
@@ -243,7 +223,6 @@ Page({
       });
     }
 
-    this.refreshRecordPermissionText();
     this.setData(buildAccountData(getStoredAccountSession()));
     void this.refreshAccountProfile();
   },
@@ -255,6 +234,7 @@ Page({
       initial: String(nickname || "玩家").slice(0, 1)
     });
     wx.setStorageSync(NICKNAME_KEY, nickname);
+    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, Boolean(nickname));
   },
 
   async onNicknameCommit(event) {
@@ -269,6 +249,7 @@ Page({
       initial: String(inputValue || "玩家").slice(0, 1)
     });
     wx.setStorageSync(NICKNAME_KEY, inputValue);
+    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, true);
 
     const session = getStoredAccountSession();
     if (!session.loggedIn) {
@@ -276,7 +257,10 @@ Page({
     }
 
     try {
-      const latest = await syncMyAccountProfile({ nickname: inputValue });
+      const latest = await syncMyAccountProfile({
+        nickname: inputValue,
+        nicknameCustomized: true
+      });
       const nextNickname = String(latest && latest.profile && latest.profile.nickname || inputValue).trim() || inputValue;
       wx.setStorageSync(NICKNAME_KEY, nextNickname);
       this.setData({
@@ -284,42 +268,11 @@ Page({
         initial: String(nextNickname || "玩家").slice(0, 1),
         ...buildAccountData(latest)
       });
-      wx.showToast({ title: "昵称已更新", icon: "none" });
+      wx.showToast({ title: "昵称已保存", icon: "none" });
     } catch (error) {
       const message = error && error.message ? String(error.message) : "昵称同步失败";
       wx.showToast({ title: message, icon: "none" });
     }
-  },
-
-  syncWeChatProfile() {
-    if (!wx.getUserProfile) {
-      wx.showToast({ title: "当前基础库不支持", icon: "none" });
-      return;
-    }
-
-    wx.getUserProfile({
-      desc: "用于展示头像与昵称（可选）",
-      success: (res) => {
-        const userInfo = res && res.userInfo ? res.userInfo : {};
-        const avatarUrl = String(userInfo.avatarUrl || "").trim();
-        const nickName = String(userInfo.nickName || "").trim();
-        if (avatarUrl) {
-          wx.setStorageSync(AVATAR_URL_KEY, avatarUrl);
-        }
-        if (nickName) {
-          wx.setStorageSync(NICKNAME_KEY, nickName);
-        }
-        this.setData({
-          avatarUrl: avatarUrl || this.data.avatarUrl,
-          nickname: nickName || this.data.nickname,
-          initial: String(nickName || this.data.nickname || "玩家").slice(0, 1)
-        });
-        wx.showToast({ title: "已同步", icon: "none" });
-      },
-      fail: () => {
-        wx.showToast({ title: "未授权", icon: "none" });
-      }
-    });
   },
 
   onToggleSfx() {
@@ -332,41 +285,6 @@ Page({
     const next = !this.data.hapticEnabled;
     this.setData({ hapticEnabled: next });
     wx.setStorageSync(HAPTIC_ENABLED_KEY, next);
-  },
-
-  refreshRecordPermissionText() {
-    if (!wx.getSetting || typeof wx.getSetting !== "function") {
-      this.setData({ recordPermissionText: "未检查" });
-      return;
-    }
-
-    wx.getSetting({
-      success: (res) => {
-        const authSetting = res && res.authSetting ? res.authSetting : {};
-        this.setData({
-          recordPermissionText: buildRecordPermissionText(authSetting["scope.record"])
-        });
-      },
-      fail: () => {
-        this.setData({ recordPermissionText: "未检查" });
-      }
-    });
-  },
-
-  openRecordPermissionSettings() {
-    if (!wx.openSetting || typeof wx.openSetting !== "function") {
-      wx.showToast({ title: "请在系统设置中开启", icon: "none" });
-      return;
-    }
-
-    wx.openSetting({
-      success: () => {
-        this.refreshRecordPermissionText();
-      },
-      fail: () => {
-        wx.showToast({ title: "打开设置失败", icon: "none" });
-      }
-    });
   },
 
   async refreshAccountProfile() {
@@ -383,7 +301,15 @@ Page({
 
     try {
       const latest = await fetchMyAccountProfile();
+      const syncedProfile = persistWechatProfile({
+        nickname: latest && latest.profile && latest.profile.nickname,
+        avatarUrl: latest && latest.profile && latest.profile.avatarUrl,
+        loginAt: Number(wx.getStorageSync(WECHAT_LOGIN_TS_KEY)) || latest && latest.loginAt || Date.now()
+      });
       this.setData({
+        nickname: syncedProfile.nickname,
+        avatarUrl: syncedProfile.avatarUrl,
+        initial: String(syncedProfile.nickname || "玩家").slice(0, 1),
         ...buildAccountData(latest),
         accountLoading: false
       });
@@ -478,10 +404,7 @@ Page({
 
   logoutProfile() {
     wx.removeStorageSync(SESSION_KEY);
-    wx.removeStorageSync(NICKNAME_KEY);
-    wx.removeStorageSync(AVATAR_URL_KEY);
-    wx.removeStorageSync(WECHAT_LOGIN_TS_KEY);
-    clearAccountSession();
+    clearWechatProfile();
     this.setData({
       nickname: "",
       initial: "玩",

@@ -172,6 +172,7 @@ export interface AccountProfileDTO {
   displayId: string;
   provider: AccountProvider;
   nickname: string;
+  nicknameCustomized: boolean;
   avatarUrl: string;
   createdAt: number;
   lastLoginAt: number;

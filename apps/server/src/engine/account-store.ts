@@ -16,6 +16,7 @@ interface LoginInput {
   openId: string;
   unionId?: string;
   nickname: string;
+  nicknameCustomized?: boolean;
   avatarUrl: string;
   loginAt?: number;
   authMode: AccountLoginResultDTO["authMode"];
@@ -34,6 +35,7 @@ interface StoredAccountRecord {
   openId: string;
   unionId?: string;
   nickname: string;
+  nicknameCustomized: boolean;
   avatarUrl: string;
   createdAt: number;
   updatedAt: number;
@@ -51,6 +53,53 @@ interface StoredAccountData {
 const ACCOUNT_DIR = resolveDataPath("accounts");
 const ACCOUNT_FILE = path.join(ACCOUNT_DIR, "accounts.json");
 
+const LEGACY_PROFILE_AVATAR_ASSETS = [
+  "/assets/figma-room-v2/39b17e1f-9114-410f-85d5-2e5a189fbf74.svg",
+  "/assets/figma-room-v2/7ca66ac8-3c55-4b22-ae77-b2bf38f68295.svg",
+  "/assets/figma-room-v2/c34dc9c6-7896-4b4d-adbe-c1e0c86f2471.svg",
+  "/assets/figma-room-v2/210fcfda-928e-4840-a3e3-173c823b96b8.svg",
+  "/assets/figma-room-v2/fae378fc-f9e8-496b-a6c8-fee07102a3e1.svg",
+  "/assets/figma-room-v2/bf7e06ef-5ad9-474e-b2b3-6bbd604fb91f.svg"
+];
+
+const PREVIOUS_DEFAULT_PROFILE_AVATAR_ASSETS = [
+  "/assets/figma-room-v2/avatar-blossom.svg",
+  "/assets/figma-room-v2/avatar-butterfly.svg",
+  "/assets/figma-room-v2/avatar-hibiscus.svg",
+  "/assets/figma-room-v2/avatar-cat.svg",
+  "/assets/figma-room-v2/avatar-fox.svg",
+  "/assets/figma-room-v2/avatar-gamepad.svg"
+];
+
+const REMOVED_PROFILE_AVATAR_ASSETS = [
+  "/assets/figma-room-v2/avatar-woman.svg",
+  "/assets/figma-room-v2/avatar-woman.png"
+];
+
+const DEFAULT_PROFILE_AVATAR_ASSETS = [
+  "/assets/figma-room-v2/avatar-blossom.png",
+  "/assets/figma-room-v2/avatar-butterfly.png",
+  "/assets/figma-room-v2/avatar-hibiscus.png",
+  "/assets/figma-room-v2/avatar-cat.png",
+  "/assets/figma-room-v2/avatar-fox.png",
+  "/assets/figma-room-v2/avatar-gamepad.png"
+];
+
+function hashSeed(seed: unknown): number {
+  const source = String(seed || "").trim() || "dice-avatar";
+  let hash = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (hash * 131 + source.charCodeAt(index)) % 2147483647;
+  }
+  return Math.abs(hash);
+}
+
+function pickDefaultAvatar(seed: unknown): string {
+  const size = DEFAULT_PROFILE_AVATAR_ASSETS.length || 1;
+  const index = hashSeed(seed) % size;
+  return DEFAULT_PROFILE_AVATAR_ASSETS[index] || DEFAULT_PROFILE_AVATAR_ASSETS[0] || "";
+}
+
 function createEmptyStats(): AccountStatsDTO {
   return {
     totalRounds: 0,
@@ -67,8 +116,36 @@ function normalizeNickname(value: unknown): string {
   return String(value || "").trim() || "玩家";
 }
 
-function normalizeAvatarUrl(value: unknown): string {
-  return String(value || "").trim();
+function inferNicknameCustomized(value: unknown): boolean {
+  const nickname = normalizeNickname(value);
+  return !/^玩家\d{3}$/.test(nickname) && nickname !== "玩家";
+}
+
+function normalizeAvatarUrl(value: unknown, seed: unknown = ""): string {
+  const avatarUrl = String(value || "").trim();
+  if (!avatarUrl) {
+    return "";
+  }
+
+  if (DEFAULT_PROFILE_AVATAR_ASSETS.includes(avatarUrl)) {
+    return avatarUrl;
+  }
+
+  if (REMOVED_PROFILE_AVATAR_ASSETS.includes(avatarUrl)) {
+    return pickDefaultAvatar(seed);
+  }
+
+  const previousDefaultIndex = PREVIOUS_DEFAULT_PROFILE_AVATAR_ASSETS.indexOf(avatarUrl);
+  if (previousDefaultIndex >= 0) {
+    return DEFAULT_PROFILE_AVATAR_ASSETS[previousDefaultIndex] || avatarUrl;
+  }
+
+  const legacyIndex = LEGACY_PROFILE_AVATAR_ASSETS.indexOf(avatarUrl);
+  if (legacyIndex >= 0) {
+    return DEFAULT_PROFILE_AVATAR_ASSETS[legacyIndex % DEFAULT_PROFILE_AVATAR_ASSETS.length] || avatarUrl;
+  }
+
+  return avatarUrl;
 }
 
 function createAccountId(): string {
@@ -153,7 +230,7 @@ function normalizeStoredAccountRecord(raw: unknown): StoredAccountRecord | null 
   const displayId = String(source.displayId || "").trim();
   const openId = String(source.openId || "").trim();
   const nickname = normalizeNickname(source.nickname);
-  const avatarUrl = normalizeAvatarUrl(source.avatarUrl);
+  const avatarUrl = normalizeAvatarUrl(source.avatarUrl, `${accountId}:${displayId}:${openId}:${nickname}`);
   const createdAt = Number(source.createdAt) || 0;
   const updatedAt = Number(source.updatedAt) || createdAt || Date.now();
   const lastLoginAt = Number(source.lastLoginAt) || updatedAt;
@@ -169,6 +246,9 @@ function normalizeStoredAccountRecord(raw: unknown): StoredAccountRecord | null 
     openId,
     unionId: String(source.unionId || "").trim() || undefined,
     nickname,
+    nicknameCustomized: typeof source.nicknameCustomized === "boolean"
+      ? source.nicknameCustomized
+      : inferNicknameCustomized(nickname),
     avatarUrl,
     createdAt,
     updatedAt,
@@ -185,6 +265,7 @@ function toPublicProfile(record: StoredAccountRecord): AccountProfileDTO {
     displayId: record.displayId,
     provider: record.provider,
     nickname: record.nickname,
+    nicknameCustomized: Boolean(record.nicknameCustomized),
     avatarUrl: record.avatarUrl,
     createdAt: record.createdAt,
     lastLoginAt: record.lastLoginAt,
@@ -204,7 +285,8 @@ export class AccountStore {
     const data = await this.readData();
     const now = Number(input.loginAt) || Date.now();
     const nickname = normalizeNickname(input.nickname);
-    const avatarUrl = normalizeAvatarUrl(input.avatarUrl);
+    const nicknameCustomized = Boolean(input.nicknameCustomized && nickname);
+    const avatarUrl = normalizeAvatarUrl(input.avatarUrl, `${input.openId}:${input.unionId || ""}:${nickname}`);
 
     let account = this.findByWeChatIdentity(data.accounts, input.openId, input.unionId);
     if (!account) {
@@ -216,6 +298,7 @@ export class AccountStore {
         openId: String(input.openId || "").trim(),
         unionId: String(input.unionId || "").trim() || undefined,
         nickname,
+        nicknameCustomized,
         avatarUrl,
         createdAt: now,
         updatedAt: now,
@@ -231,7 +314,13 @@ export class AccountStore {
     if (input.unionId) {
       account.unionId = String(input.unionId || "").trim() || account.unionId;
     }
-    account.nickname = nickname;
+    if (nicknameCustomized) {
+      account.nickname = nickname;
+      account.nicknameCustomized = true;
+    } else if (!account.nicknameCustomized) {
+      account.nickname = nickname;
+      account.nicknameCustomized = false;
+    }
     account.avatarUrl = avatarUrl;
     account.lastLoginAt = now;
     account.updatedAt = now;
@@ -279,7 +368,7 @@ export class AccountStore {
     return toPublicProfile(account);
   }
 
-  async syncProfile(accountId: string, patch: { nickname?: string; avatarUrl?: string }): Promise<AccountProfileDTO | null> {
+  async syncProfile(accountId: string, patch: { nickname?: string; avatarUrl?: string; nicknameCustomized?: boolean }): Promise<AccountProfileDTO | null> {
     await this.ensureReady();
 
     const normalizedAccountId = String(accountId || "").trim();
@@ -294,9 +383,15 @@ export class AccountStore {
     }
 
     const nextNickname = String(patch.nickname || "").trim();
-    const nextAvatarUrl = String(patch.avatarUrl || "").trim();
+    const nextAvatarUrl = normalizeAvatarUrl(
+      patch.avatarUrl,
+      `${account.accountId}:${account.displayId}:${account.openId}:${account.nickname}`
+    );
     if (nextNickname) {
       account.nickname = nextNickname;
+      account.nicknameCustomized = typeof patch.nicknameCustomized === "boolean"
+        ? Boolean(patch.nicknameCustomized)
+        : true;
     }
     if (nextAvatarUrl) {
       account.avatarUrl = nextAvatarUrl;

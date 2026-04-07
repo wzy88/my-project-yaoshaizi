@@ -1,7 +1,6 @@
 const app = getApp();
 const {
   SESSION_KEY,
-  NICKNAME_KEY,
   WS_URL_KEY,
   CLOUD_ENV_ID_KEY,
   CLOUD_SERVICE_KEY,
@@ -20,17 +19,6 @@ const {
   getStoredWechatProfile,
   navigateAfterWechatLogin
 } = require("../../utils/wechat-auth");
-
-function safeDecodeComponent(raw) {
-  const value = String(raw || "");
-  if (!value) return "";
-  if (!/%[0-9a-fA-F]{2}/.test(value)) return value;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
 
 function buildTimeText() {
   const date = new Date();
@@ -131,6 +119,18 @@ function buildConnectionState() {
   };
 }
 
+function syncLobbyTabBar(page) {
+  const tabBar = page.getTabBar && page.getTabBar();
+  if (!tabBar || !tabBar.setData) {
+    return;
+  }
+
+  tabBar.setData({
+    selected: 0,
+    hidden: Boolean(page.data.showLoginGate)
+  });
+}
+
 Page({
   data: {
     timeText: "10:21",
@@ -142,7 +142,7 @@ Page({
     loggedIn: false,
     showLoginGate: false,
     loginBusy: false,
-    loginHintText: "点一下就能微信登录并继续组局",
+    loginHintText: "登录后就能直接组局",
     backendReady: false,
     connectionHintText: "",
     pendingRedirectUrl: "/pages/lobby/lobby",
@@ -160,11 +160,7 @@ Page({
 
   onShow() {
     const profile = this.refreshLobbyState();
-
-    const tabBar = this.getTabBar && this.getTabBar();
-    if (tabBar && tabBar.setData) {
-      tabBar.setData({ selected: 0 });
-    }
+    syncLobbyTabBar(this);
 
     if (
       profile.loggedIn &&
@@ -179,25 +175,23 @@ Page({
 
   refreshLobbyState(extra = {}) {
     const profile = getStoredWechatProfile();
-    const fallbackNickname = safeDecodeComponent(wx.getStorageSync(NICKNAME_KEY)).trim();
-    const nickname = profile.nickname || fallbackNickname || "玩家";
-    wx.setStorageSync(NICKNAME_KEY, nickname);
-
     const session = wx.getStorageSync(SESSION_KEY);
     const hasSession = Boolean(session && session.roomId && session.playerId && session.resumeToken);
 
     this.setData({
       timeText: buildTimeText(),
-      nickname,
+      nickname: profile.nickname || "玩家001",
       avatarUrl: String(profile.avatarUrl || "").trim(),
       loggedIn: profile.loggedIn,
       showLoginGate: !profile.loggedIn,
-      loginHintText: profile.loggedIn ? "已登录，现在可以直接组局" : "点一下就能微信登录并继续组局",
+      loginHintText: profile.loggedIn ? "已登录，现在可以直接组局" : "登录后就能直接组局",
       hasSession,
       sessionRoomId: hasSession ? session.roomId : "",
       ...buildConnectionState(),
       ...extra
     });
+
+    syncLobbyTabBar(this);
 
     return profile;
   },
@@ -207,7 +201,7 @@ Page({
     this.setData({
       showLoginGate: true,
       pendingRedirectUrl: decodeRedirect(redirectUrl),
-      loginHintText: "点一下就能微信登录并继续组局",
+      loginHintText: "登录后就能继续当前操作",
       ...buildConnectionState()
     });
     return false;
@@ -351,7 +345,7 @@ Page({
 
     this.setData({
       loginBusy: true,
-      loginHintText: "正在获取微信资料并登录..."
+      loginHintText: "正在登录并生成默认资料..."
     });
 
     try {
@@ -369,6 +363,7 @@ Page({
         pendingRedirectUrl: shouldStayOnLobby ? "/pages/lobby/lobby" : nextRedirectUrl,
         ...buildConnectionState()
       });
+      syncLobbyTabBar(this);
       wx.showToast({ title: "登录成功", icon: "none" });
 
       if (!shouldStayOnLobby) {

@@ -141,6 +141,7 @@ async function handleHttpRequest(
     if (method === "POST" && pathname === "/api/auth/wechat-login") {
       const body = await readJsonBody(req);
       const nickname = String(body.nickname || "").trim();
+      const nicknameCustomized = Boolean(body.nicknameCustomized);
       const avatarUrl = String(body.avatarUrl || "").trim();
       const code = String(body.code || "").trim();
 
@@ -164,6 +165,7 @@ async function handleHttpRequest(
         openId: identity.openId,
         unionId: identity.unionId,
         nickname,
+        nicknameCustomized,
         avatarUrl,
         loginAt: Date.now(),
         authMode: identity.authMode
@@ -199,6 +201,9 @@ async function handleHttpRequest(
 
       const body = await readJsonBody(req);
       const nickname = String(body.nickname || "").trim();
+      const nicknameCustomized = typeof body.nicknameCustomized === "boolean"
+        ? Boolean(body.nicknameCustomized)
+        : undefined;
       const avatarUrl = String(body.avatarUrl || "").trim();
       if (!nickname && !avatarUrl) {
         sendJson(res, 400, { ok: false, message: "profile patch required" });
@@ -207,6 +212,7 @@ async function handleHttpRequest(
 
       const nextProfile = await accountStore.syncProfile(profile.accountId, {
         nickname,
+        nicknameCustomized,
         avatarUrl
       });
       if (!nextProfile) {

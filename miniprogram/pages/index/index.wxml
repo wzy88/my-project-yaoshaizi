@@ -22,7 +22,7 @@
     <text class="title">摇骰子</text>
     <text class="sub">在线组局 · 直接开玩</text>
     <text class="hero-tag">{{profileTitle || '准备开局'}}</text>
-    <text class="desc">微信登录后就能直接创建房间、邀请好友进群玩，头像昵称自动带入，之后可在“我的”里改昵称。</text>
+    <text class="desc">微信登录后就能直接创建房间、邀请好友进群玩，先用默认头像昵称进入，之后可在“我的”里改昵称。</text>
 
     <view class="benefit-list">
       <view class="benefit-item">

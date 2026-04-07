@@ -368,3 +368,70 @@ test("account binding smoke: wechat login keeps a stable account and round stats
     await rm(dataDir, { recursive: true, force: true });
   }
 });
+
+test("account binding smoke: a customized nickname survives later default-profile logins for the same wechat identity", { timeout: 20000 }, async () => {
+  const dataDir = await mkdtemp(path.join(os.tmpdir(), "dice-account-custom-nickname-"));
+  const server = startServerProcess(dataDir);
+
+  try {
+    const { httpUrl } = await server.waitForUrls();
+
+    const firstLogin = await postJson(`${httpUrl}/api/auth/wechat-login`, {
+      code: "same-user",
+      nickname: "玩家318",
+      nicknameCustomized: false,
+      avatarUrl: "/assets/figma-room-v2/avatar-blossom.svg"
+    });
+    assert.equal(firstLogin.status, 200);
+    assert.equal(String(firstLogin.json.data.profile.avatarUrl || "").endsWith(".png"), true);
+
+    const patched = await patchJson(`${httpUrl}/api/account/profile`, {
+      nickname: "春树",
+      nicknameCustomized: true
+    }, {
+      "x-dice-account-id": firstLogin.json.data.profile.accountId,
+      "x-dice-session-token": firstLogin.json.data.sessionToken
+    });
+    assert.equal(patched.status, 200);
+    assert.equal(patched.json.data.nickname, "春树");
+    assert.equal(patched.json.data.nicknameCustomized, true);
+
+    const laterDefaultLogin = await postJson(`${httpUrl}/api/auth/wechat-login`, {
+      code: "same-user",
+      nickname: "玩家402",
+      nicknameCustomized: false,
+      avatarUrl: "/assets/figma-room-v2/avatar-butterfly.svg"
+    });
+    assert.equal(laterDefaultLogin.status, 200);
+    assert.equal(laterDefaultLogin.json.data.profile.accountId, firstLogin.json.data.profile.accountId);
+    assert.equal(laterDefaultLogin.json.data.profile.nickname, "春树");
+    assert.equal(laterDefaultLogin.json.data.profile.nicknameCustomized, true);
+    assert.equal(String(laterDefaultLogin.json.data.profile.avatarUrl || "").endsWith(".png"), true);
+  } finally {
+    await server.stop();
+    await rm(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("account binding smoke: removed bundled woman avatar is reassigned during login", { timeout: 20000 }, async () => {
+  const dataDir = await mkdtemp(path.join(os.tmpdir(), "dice-account-removed-avatar-"));
+  const server = startServerProcess(dataDir);
+
+  try {
+    const { httpUrl } = await server.waitForUrls();
+
+    const login = await postJson(`${httpUrl}/api/auth/wechat-login`, {
+      code: "removed-default-avatar",
+      nickname: "玩家518",
+      nicknameCustomized: false,
+      avatarUrl: "/assets/figma-room-v2/avatar-woman.svg"
+    });
+
+    assert.equal(login.status, 200);
+    assert.equal(String(login.json.data.profile.avatarUrl || "").endsWith(".png"), true);
+    assert.notEqual(String(login.json.data.profile.avatarUrl || ""), "/assets/figma-room-v2/avatar-woman.png");
+  } finally {
+    await server.stop();
+    await rm(dataDir, { recursive: true, force: true });
+  }
+});
