@@ -15,8 +15,8 @@ const {
 const FIXED_RUNTIME_CONNECTION = Object.freeze({
   wsUrl: "",
   containerConfig: Object.freeze({
-    envId: "test-5gz3z9msd3e7502f",
-    service: "express-rw1k",
+    envId: "prod-5gy76rw610720f84",
+    service: "express-6ihy",
     wsPath: "/ws"
   })
 });
