@@ -27,6 +27,7 @@ function instantiateIndexPage({
     service: "",
     wsPath: "/ws"
   },
+  cloudApi = null,
   showModalResponses = [],
   backendRequestExportsOverride = null
 } = {}) {
@@ -143,7 +144,7 @@ function instantiateIndexPage({
       });
     },
     navigateTo() {},
-    cloud: {
+    cloud: cloudApi || {
       init() {}
     }
   };
@@ -255,7 +256,7 @@ test("index page: an already logged-in user auto-enters the lobby on show", () =
   }
 });
 
-test("index page: blocks login with a clear cloud-config hint when backend target is missing", async () => {
+test("index page: blocks login with a product-style service hint when backend target is missing", async () => {
   const {
     page,
     toasts,
@@ -273,47 +274,13 @@ test("index page: blocks login with a clear cloud-config hint when backend targe
 
   try {
     page.onLoad({});
-    assert.equal(page.data.connectionHintText, "未配置云托管服务，请先填写服务名，路径一般填 /ws");
+    assert.equal(page.data.connectionHintText, "当前服务暂不可用，请联系开发同学检查服务配置");
 
     await page.onWechatLogin();
 
     assert.equal(getLoginCalls(), 0);
     assert.deepEqual(requests, []);
-    assert.equal(toasts.includes("请先配置云托管"), true);
-  } finally {
-    cleanup();
-  }
-});
-
-test("index page: login page can save cloud container config directly", () => {
-  const {
-    page,
-    storageState,
-    showModals,
-    cleanup
-  } = instantiateIndexPage({
-    appWsUrl: "",
-    showModalResponses: [
-      { confirm: true, content: "dice-prod" },
-      { confirm: true, content: "prod-env-1" },
-      { confirm: true, content: "ws" }
-    ]
-  });
-
-  try {
-    page.onLoad({});
-    page.openConnectionSettings();
-
-    assert.deepEqual(showModals.map((item) => item.title), [
-      "云托管服务名",
-      "云托管环境ID",
-      "WebSocket 路径"
-    ]);
-    assert.equal(storageState.diceCloudServiceV1, "dice-prod");
-    assert.equal(storageState.diceCloudEnvIdV1, "prod-env-1");
-    assert.equal(storageState.diceCloudWsPathV1, "/ws");
-    assert.equal(page.data.connectionHintText, "");
-    assert.equal(page.data.backendReady, true);
+    assert.equal(toasts.includes("当前服务暂不可用，请联系开发同学检查服务配置"), true);
   } finally {
     cleanup();
   }
@@ -397,7 +364,7 @@ test("index page: falls back cleanly when backend-request helper exports are sta
 
   try {
     assert.doesNotThrow(() => page.onLoad({}));
-    assert.equal(page.data.connectionHintText, "未配置云托管服务，请先填写服务名，路径一般填 /ws");
+    assert.equal(page.data.connectionHintText, "当前服务暂不可用，请联系开发同学检查服务配置");
   } finally {
     cleanup();
   }
@@ -419,12 +386,47 @@ test("index page: translates legacy 404 login responses into a deploy hint", asy
     await page.onWechatLogin();
 
     assert.equal(
-      toasts.includes("当前后端服务里没有微信登录接口，请确认服务名或地址正确，并重新部署最新后端"),
+      toasts.includes("当前服务还未部署完整，请联系开发同学检查微信登录接口"),
       true
     );
     assert.equal(
       page.data.loginHintText,
-      "当前后端服务里没有微信登录接口，请确认服务名或地址正确，并重新部署最新后端"
+      "当前服务还未部署完整，请联系开发同学检查微信登录接口"
+    );
+  } finally {
+    cleanup();
+  }
+});
+
+test("index page: invalid cloud host errors are translated into a config hint", async () => {
+  const { page, toasts, cleanup } = instantiateIndexPage({
+    appWsUrl: "",
+    appContainerConfig: {
+      envId: "prod-env-1",
+      service: "dice-prod",
+      wsPath: "/ws"
+    },
+    cloudApi: {
+      init() {},
+      callContainer({ fail }) {
+        fail({
+          errMsg: "invalid host. For more information, please refer to https://docs.cloudbase.net/error-code/service/INVALID_HOST"
+        });
+      }
+    }
+  });
+
+  try {
+    page.onLoad({});
+    await page.onWechatLogin();
+
+    assert.equal(
+      page.data.loginHintText,
+      "当前服务连接配置异常，请联系开发同学检查云托管服务名和环境绑定"
+    );
+    assert.equal(
+      toasts.includes("当前服务连接配置异常，请联系开发同学检查云托管服务名和环境绑定"),
+      true
     );
   } finally {
     cleanup();

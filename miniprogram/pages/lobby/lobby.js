@@ -1,18 +1,7 @@
 const app = getApp();
-const {
-  SESSION_KEY,
-  WS_URL_KEY,
-  CLOUD_ENV_ID_KEY,
-  CLOUD_SERVICE_KEY,
-  CLOUD_WS_PATH_KEY
-} = require("../../utils/constants");
+const { SESSION_KEY } = require("../../utils/constants");
 const { LOBBY_FLOAT_DICE_ASSETS, LOBBY_CREATE_DIE_ASSET } = require("../../utils/dice-assets");
-const {
-  DEFAULT_CONTAINER_WS_PATH,
-  normalizeContainerConfig,
-  hasContainerService,
-  initMiniProgramCloud
-} = require("../../utils/cloud-container");
+const { resolveContainerConfig, hasContainerService } = require("../../utils/cloud-container");
 const backendRequest = require("../../utils/backend-request");
 const { performWechatOneTapLogin } = require("../../utils/wechat-login-flow");
 const {
@@ -47,24 +36,8 @@ function getRuntimeConnectionCompat() {
 
   const globalData = app && app.globalData ? app.globalData : {};
   return {
-    wsUrl: String(
-      globalData.wsUrl ||
-      (globalThis.wx && typeof globalThis.wx.getStorageSync === "function"
-        ? globalThis.wx.getStorageSync(WS_URL_KEY)
-        : "") ||
-      ""
-    ).trim(),
-    containerConfig: normalizeContainerConfig(globalData.containerConfig || {
-      envId: globalThis.wx && typeof globalThis.wx.getStorageSync === "function"
-        ? globalThis.wx.getStorageSync(CLOUD_ENV_ID_KEY)
-        : "",
-      service: globalThis.wx && typeof globalThis.wx.getStorageSync === "function"
-        ? globalThis.wx.getStorageSync(CLOUD_SERVICE_KEY)
-        : "",
-      wsPath: globalThis.wx && typeof globalThis.wx.getStorageSync === "function"
-        ? globalThis.wx.getStorageSync(CLOUD_WS_PATH_KEY)
-        : ""
-    })
+    wsUrl: String(globalData.wsUrl || "").trim(),
+    containerConfig: resolveContainerConfig(globalData.containerConfig || {})
   };
 }
 
@@ -77,7 +50,7 @@ function hasBackendConnectionCompat(connection) {
     ? connection
     : getRuntimeConnectionCompat();
   const wsUrl = String(source.wsUrl || "").trim();
-  const containerConfig = normalizeContainerConfig(source.containerConfig || {});
+  const containerConfig = resolveContainerConfig(source.containerConfig || {});
   if (hasContainerService(containerConfig)) {
     return true;
   }
@@ -97,17 +70,17 @@ function buildMissingBackendMessageCompat(connection) {
     ? connection
     : getRuntimeConnectionCompat();
   const wsUrl = String(source.wsUrl || "").trim();
-  const containerConfig = normalizeContainerConfig(source.containerConfig || {});
+  const containerConfig = resolveContainerConfig(source.containerConfig || {});
 
   if (!hasContainerService(containerConfig) && !wsUrl) {
-    return "未配置云托管服务，请先填写服务名，路径一般填 /ws";
+    return "当前服务暂不可用，请联系开发同学检查服务配置";
   }
 
   if (wsUrl && !/^wss?:\/\//i.test(wsUrl)) {
-    return "调试地址格式不正确，请使用 ws:// 或 wss://";
+    return "当前服务连接地址异常，请联系开发同学检查部署配置";
   }
 
-  return "未配置后端服务地址";
+  return "当前服务暂不可用，请稍后再试";
 }
 
 function buildConnectionState() {
@@ -271,66 +244,6 @@ Page({
     wx.navigateTo({ url: "/pages/legal/terms/terms" });
   },
 
-  openConnectionSettings() {
-    const runtimeConnection = getRuntimeConnectionCompat();
-    const currentConfig = normalizeContainerConfig(runtimeConnection.containerConfig);
-
-    wx.showModal({
-      title: "云托管服务名",
-      editable: true,
-      placeholderText: "例如 dice-prod",
-      content: currentConfig.service || "",
-      success: (serviceRes) => {
-        if (!serviceRes.confirm) return;
-
-        const nextService = String(serviceRes.content || "").trim();
-        if (!nextService) {
-          wx.showToast({ title: "服务名不能为空", icon: "none" });
-          return;
-        }
-
-        wx.showModal({
-          title: "云托管环境ID",
-          editable: true,
-          placeholderText: "可留空，默认当前绑定环境",
-          content: currentConfig.envId || "",
-          success: (envRes) => {
-            if (!envRes.confirm) return;
-
-            const nextEnvId = String(envRes.content || "").trim();
-            wx.showModal({
-              title: "WebSocket 路径",
-              editable: true,
-              placeholderText: DEFAULT_CONTAINER_WS_PATH,
-              content: currentConfig.wsPath || DEFAULT_CONTAINER_WS_PATH,
-              success: (pathRes) => {
-                if (!pathRes.confirm) return;
-
-                const nextConfig = normalizeContainerConfig({
-                  envId: nextEnvId,
-                  service: nextService,
-                  wsPath: pathRes.content
-                });
-                const initResult = initMiniProgramCloud(nextConfig);
-
-                app.globalData.containerConfig = nextConfig;
-                wx.setStorageSync(CLOUD_ENV_ID_KEY, nextConfig.envId);
-                wx.setStorageSync(CLOUD_SERVICE_KEY, nextConfig.service);
-                wx.setStorageSync(CLOUD_WS_PATH_KEY, nextConfig.wsPath);
-                this.setData(buildConnectionState());
-
-                wx.showToast({
-                  title: initResult.ok ? "云托管已保存" : "已保存，真机再试",
-                  icon: "none"
-                });
-              }
-            });
-          }
-        });
-      }
-    });
-  },
-
   async onWechatLogin() {
     if (this.data.loginBusy) {
       return;
@@ -339,7 +252,10 @@ Page({
     const connectionState = buildConnectionState();
     this.setData(connectionState);
     if (!connectionState.backendReady) {
-      wx.showToast({ title: "请先配置云托管", icon: "none" });
+      wx.showToast({
+        title: connectionState.connectionHintText || "当前服务暂不可用，请稍后再试",
+        icon: "none"
+      });
       return;
     }
 

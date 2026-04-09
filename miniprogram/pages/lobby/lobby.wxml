@@ -95,7 +95,6 @@
       <text class="login-gate__hint">{{loginHintText}}</text>
       <view wx:if="{{connectionHintText}}" class="login-gate__connection">
         <text class="login-gate__connection-text">{{connectionHintText}}</text>
-        <button class="login-gate__connection-btn" bindtap="openConnectionSettings">配置云托管</button>
       </view>
       <text class="login-gate__agreement">点击登录即表示同意 <text class="login-gate__link" bindtap="openTermsPage">用户协议</text> 与 <text class="login-gate__link" bindtap="openPrivacyPage">隐私政策</text></text>
     </view>

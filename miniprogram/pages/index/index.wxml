@@ -47,7 +47,6 @@
     <text class="login-hint">{{loginHintText}}</text>
     <view wx:if="{{connectionHintText}}" class="connection-panel">
       <text class="connection-panel__text">{{connectionHintText}}</text>
-      <button class="connection-panel__btn" bindtap="openConnectionSettings">配置云托管</button>
     </view>
     <text class="agreement">点击登录即表示同意 <text class="link" bindtap="openTermsPage">用户协议</text> 与 <text class="link" bindtap="openPrivacyPage">隐私政策</text></text>
   </view>

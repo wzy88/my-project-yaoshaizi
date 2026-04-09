@@ -120,7 +120,13 @@
         </view>
 
         <view wx:if="{{!callPanelVisible}}" class="room-shell__bottom-fade" style="{{roomBottomFadeStyle}}">
-          <view class="room-fab {{canPrimaryAction ? '' : 'is-disabled'}}" bindtap="onHudPrimaryAction">
+          <view
+            class="room-fab {{canPrimaryAction ? '' : 'is-disabled'}}"
+            bindtap="onHudPrimaryAction"
+            hover-class="{{canPrimaryAction ? 'room-fab--pressing' : 'none'}}"
+            hover-start-time="0"
+            hover-stay-time="70"
+          >
             <image class="room-fab__icon-image" src="/assets/figma-room-v2/die-cube-gold.svg" mode="aspectFit"></image>
             <text wx:if="{{phase === 'rolling' && canPrimaryAction && !selfHasDice}}" class="room-fab__label">摇一摇</text>
             <text wx:else class="room-fab__label">{{primaryActionText}}</text>
@@ -170,6 +176,9 @@
               class="call-phase-panel__count {{item.value === callCount ? 'is-active' : ''}} {{item.isTail ? 'is-tail' : ''}} {{callForcedOpen ? 'is-disabled' : ''}}"
               data-value="{{item.value}}"
               bindtap="onSelectCallCountOption"
+              hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__count--pressing'}}"
+              hover-start-time="0"
+              hover-stay-time="60"
             >
               <view class="call-phase-panel__count-sheen"></view>
               <text class="call-phase-panel__count-text">{{item.label}}</text>
@@ -184,6 +193,9 @@
               class="call-phase-panel__point-option {{item.value === callPoint ? 'is-active' : ''}} {{callForcedOpen ? 'is-disabled' : ''}}"
               data-value="{{item.value}}"
               bindtap="onSelectCallPointOption"
+              hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__point-option--pressing'}}"
+              hover-start-time="0"
+              hover-stay-time="60"
             >
               <view class="call-phase-panel__point-option-sheen"></view>
               <image class="call-phase-panel__point-option-die" src="{{item.asset}}" mode="aspectFit"></image>
@@ -192,19 +204,45 @@
         </view>
 
         <view class="call-phase-panel__actions">
-          <view class="call-phase-panel__value-box" data-mode="count" bindtap="toggleCallSelectorMode">
+          <view
+            class="call-phase-panel__value-box"
+            data-mode="count"
+            bindtap="toggleCallSelectorMode"
+            hover-class="call-phase-panel__box--pressing"
+            hover-start-time="0"
+            hover-stay-time="60"
+          >
             <text class="call-phase-panel__value-text">{{callCount}}</text>
           </view>
           <text class="call-phase-panel__unit">个</text>
-          <view class="call-phase-panel__point-box {{callForcedOpen ? 'is-disabled' : ''}}" data-mode="point" bindtap="toggleCallSelectorMode">
+          <view
+            class="call-phase-panel__point-box {{callForcedOpen ? 'is-disabled' : ''}}"
+            data-mode="point"
+            bindtap="toggleCallSelectorMode"
+            hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__box--pressing'}}"
+            hover-start-time="0"
+            hover-stay-time="60"
+          >
             <block wx:for="{{callPointOptionItems}}" wx:key="value">
               <image wx:if="{{item.value === callPoint}}" class="call-phase-panel__point-die" src="{{item.asset}}" mode="aspectFit"></image>
             </block>
           </view>
-          <view class="call-phase-panel__btn call-phase-panel__btn--ghost {{canOpenAction ? '' : 'is-disabled'}}" bindtap="openDice">
+          <view
+            class="call-phase-panel__btn call-phase-panel__btn--ghost {{canOpenAction ? '' : 'is-disabled'}}"
+            bindtap="openDice"
+            hover-class="{{canOpenAction ? 'call-phase-panel__btn--pressing' : 'none'}}"
+            hover-start-time="0"
+            hover-stay-time="60"
+          >
             <text class="call-phase-panel__btn-text call-phase-panel__btn-text--ghost">开牌</text>
           </view>
-          <view class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen ? 'is-disabled' : ''}}" bindtap="makeCallWithInput">
+          <view
+            class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen ? 'is-disabled' : ''}}"
+            bindtap="makeCallWithInput"
+            hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__btn--pressing'}}"
+            hover-start-time="0"
+            hover-stay-time="60"
+          >
             <text class="call-phase-panel__btn-text">叫点</text>
           </view>
         </view>
@@ -329,7 +367,7 @@
           </view>
         </view>
         <view wx:if="{{settlementCanContinue}}" class="sheet-actions">
-          <view class="dock-btn dock-btn--settlement" bindtap="onSettlementContinue">
+          <view class="dock-btn dock-btn--settlement" bindtap="onSettlementContinue" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
             <text class="dock-btn__label">继续({{settlementContinueSec || 0}}s)</text>
           </view>
         </view>
@@ -382,7 +420,7 @@
           <text>• 点击同意后继续进入游戏。</text>
         </view>
         <view class="sheet-actions">
-          <view class="dock-btn dock-btn--gold" bindtap="acceptLegal">
+          <view class="dock-btn dock-btn--gold" bindtap="acceptLegal" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
             <text class="dock-btn__label">同意并继续</text>
           </view>
         </view>

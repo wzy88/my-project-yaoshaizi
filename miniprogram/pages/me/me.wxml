@@ -132,25 +132,6 @@
       </view>
     </view>
 
-    <view class="section">
-      <text class="section-title">云托管设置</text>
-      <view class="card-block">
-        <view class="row row--multiline" bindtap="openWsConfig">
-          <view class="row-main">
-            <text class="row-label">当前配置</text>
-            <text class="row-sub">{{connectionSummaryText || '点击配置云托管'}}</text>
-          </view>
-          <text class="row-arrow">›</text>
-        </view>
-        <view class="row" bindtap="openWsConfig">
-          <text class="row-label">云托管服务</text>
-          <text class="row-arrow">›</text>
-        </view>
-      </view>
-      <text class="section-hint">{{wsHintText}}</text>
-      <text class="section-hint">推荐优先配置正式云托管服务；本地或测试地址仅用于开发联调。</text>
-    </view>
-
     <view class="logout-wrap">
       <button class="logout-btn" bindtap="logoutProfile">退出登录</button>
     </view>

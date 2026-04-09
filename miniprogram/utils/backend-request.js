@@ -1,13 +1,8 @@
 const {
-  WS_URL_KEY,
-  CLOUD_ENV_ID_KEY,
-  CLOUD_SERVICE_KEY,
-  CLOUD_WS_PATH_KEY
-} = require("./constants");
-const {
   resolveContainerConfig,
   hasContainerService
 } = require("./cloud-container");
+const { resolveRuntimeConnection } = require("./runtime-backend-config");
 
 function getRuntimeApp() {
   if (typeof getApp === "function") {
@@ -22,24 +17,10 @@ function getRuntimeApp() {
 
 function getRuntimeConnection() {
   const app = getRuntimeApp();
-  const globalData = app && app.globalData ? app.globalData : {};
-  const wsUrl = String(
-    globalData.wsUrl ||
-    (globalThis.wx && typeof globalThis.wx.getStorageSync === "function" ? globalThis.wx.getStorageSync(WS_URL_KEY) : "") ||
-    ""
-  ).trim();
-  const containerConfig = resolveContainerConfig(
-    globalData.containerConfig || {
-      envId: globalThis.wx && typeof globalThis.wx.getStorageSync === "function" ? globalThis.wx.getStorageSync(CLOUD_ENV_ID_KEY) : "",
-      service: globalThis.wx && typeof globalThis.wx.getStorageSync === "function" ? globalThis.wx.getStorageSync(CLOUD_SERVICE_KEY) : "",
-      wsPath: globalThis.wx && typeof globalThis.wx.getStorageSync === "function" ? globalThis.wx.getStorageSync(CLOUD_WS_PATH_KEY) : ""
-    }
-  );
-
-  return {
-    wsUrl,
-    containerConfig
-  };
+  return resolveRuntimeConnection({
+    appGlobalData: app && app.globalData ? app.globalData : {},
+    includeLegacyStorage: true
+  });
 }
 
 function hasBackendConnection(raw) {
@@ -59,14 +40,14 @@ function buildMissingBackendMessage(raw) {
   const containerConfig = resolveContainerConfig(source.containerConfig || {});
 
   if (!hasContainerService(containerConfig) && !wsUrl) {
-    return "未配置云托管服务，请先填写服务名，路径一般填 /ws";
+    return "当前服务暂不可用，请联系开发同学检查服务配置";
   }
 
   if (wsUrl && !/^wss?:\/\//i.test(wsUrl)) {
-    return "调试地址格式不正确，请使用 ws:// 或 wss://";
+    return "当前服务连接地址异常，请联系开发同学检查部署配置";
   }
 
-  return "未配置后端服务地址";
+  return "当前服务暂不可用，请稍后再试";
 }
 
 function deriveHttpBaseUrl(wsUrl, wsPath) {
@@ -116,11 +97,11 @@ function resolveBackendErrorMessage({ statusCode, data, errMsg, path }) {
   }
 
   if (normalizedPath === "/api/auth/wechat-login") {
-    return "当前后端服务里没有微信登录接口，请确认服务名或地址正确，并重新部署最新后端";
+    return "当前服务还未部署完整，请联系开发同学检查微信登录接口";
   }
 
   if (normalizedPath === "/api/account/me" || normalizedPath === "/api/account/profile") {
-    return "当前后端服务里没有账号接口，请确认服务名或地址正确，并重新部署最新后端";
+    return "当前服务还未部署完整，请联系开发同学检查账号接口";
   }
 
   return defaultMessage;
@@ -143,6 +124,14 @@ function normalizeResponse(res, requestContext = {}) {
   error.statusCode = statusCode;
   error.responseData = data;
   throw error;
+}
+
+function resolveContainerFailMessage(errorLike) {
+  const rawMessage = errorLike && errorLike.errMsg ? String(errorLike.errMsg) : "云托管请求失败";
+  if (/INVALID_HOST/i.test(rawMessage)) {
+    return "当前服务连接配置异常，请联系开发同学检查云托管服务名和环境绑定";
+  }
+  return rawMessage;
 }
 
 function requestByCallContainer({ path, method, data, headers, containerConfig }) {
@@ -169,8 +158,7 @@ function requestByCallContainer({ path, method, data, headers, containerConfig }
         }
       },
       fail: (error) => {
-        const message = error && error.errMsg ? String(error.errMsg) : "云托管请求失败";
-        reject(new Error(message));
+        reject(new Error(resolveContainerFailMessage(error)));
       }
     });
   });
@@ -246,5 +234,6 @@ module.exports = {
   getRuntimeConnection,
   hasBackendConnection,
   buildMissingBackendMessage,
-  resolveBackendErrorMessage
+  resolveBackendErrorMessage,
+  resolveContainerFailMessage
 };

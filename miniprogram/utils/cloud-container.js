@@ -52,7 +52,7 @@ function hasContainerService(raw) {
 function buildContainerSummary(raw) {
   const config = normalizeContainerConfig(raw);
   if (!config.service) {
-    return "未配置云托管";
+    return "当前服务未就绪";
   }
 
   const parts = [config.service, config.wsPath];

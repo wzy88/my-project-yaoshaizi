@@ -32,7 +32,6 @@ const ROOM_AUDIO_ASSETS = {
   primary: "/assets/audio/primary-action.mp3",
   roundStart: "/assets/audio/round-start.mp3"
 };
-
 function buildAccountAuthPayload() {
   const session = getStoredAccountSession();
   if (!session.loggedIn) {
@@ -147,6 +146,23 @@ function resolveSeatCupToneClass(player) {
 
 function buildActionId() {
   return `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+}
+
+function buildCallEventKey(call, fallbackBy = "") {
+  if (!call || typeof call !== "object") {
+    return "";
+  }
+
+  const by = String(call.by || fallbackBy || "");
+  const count = Number(call.count);
+  const point = Number(call.point);
+  const ts = Number(call.ts) || 0;
+
+  if (!by || !Number.isInteger(count) || count <= 0 || !Number.isInteger(point) || point < 1 || point > 6 || ts <= 0) {
+    return "";
+  }
+
+  return `${by}_${count}_${point}_${ts}`;
 }
 
 function normalizeHistoryItems(items) {
@@ -664,6 +680,7 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
     const isLatestCall = latestCallerId && String(player.id || "") === latestCallerId;
     const callCount = player.currentCall ? String(Number(player.currentCall.count) || "") : "";
     const callPoint = player.currentCall ? String(Number(player.currentCall.point) || "") : "";
+    const callKey = buildCallEventKey(player.currentCall, player.id);
     const isSelf = String(player.id || "") === String(selfPlayerId || "");
     const isHeroSlot = geometry.slotClass === "slot-top";
     const avatarPresentation = getSeatAvatarPresentation(player.avatar, slotIndex);
@@ -695,6 +712,7 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
       isLatestCall,
       callCount,
       callPoint,
+      callKey,
       callPointAsset: getDieAsset(callPoint),
       canSelect: player.id !== selfPlayerId,
       selected: selectedSet.has(player.id)
@@ -1169,7 +1187,7 @@ function buildWsHint(options, lastWsError = "") {
   }
 
   if (!url) {
-    return "请先配置云托管服务名，或填写调试地址";
+    return "当前服务暂不可用，请联系开发同学检查连接配置";
   }
 
   const matched = url.match(/^wss?:\/\/([^/:?#]+)/i);
@@ -1458,6 +1476,7 @@ Page({
 	    this.turnCountdownTimer = null;
 	    this.turnCountdownKey = "";
 	    this.turnDeadlineTs = 0;
+    this.suppressCallAttention = false;
 	    this.lastAutoRollRound = 0;
     this.hasReceivedRoomState = false;
     this.lastRoundStartSfxKey = "";
@@ -1694,24 +1713,15 @@ Page({
       });
     }
 
-    const cachedWsUrl = wx.getStorageSync(WS_URL_KEY);
-    if (cachedWsUrl && typeof cachedWsUrl === "string") {
-      this.setData({ wsUrl: cachedWsUrl.trim() });
-      app.globalData.wsUrl = cachedWsUrl.trim();
-    }
-
-    const containerConfig = resolveContainerConfig({
-      envId: wx.getStorageSync(CLOUD_ENV_ID_KEY),
-      service: wx.getStorageSync(CLOUD_SERVICE_KEY),
-      wsPath: wx.getStorageSync(CLOUD_WS_PATH_KEY)
-    });
+    const runtimeWsUrl = String(app && app.globalData ? app.globalData.wsUrl || "" : "").trim();
+    const containerConfig = resolveContainerConfig(app && app.globalData ? app.globalData.containerConfig : null);
     this.setData({
+      wsUrl: runtimeWsUrl,
       containerEnvId: containerConfig.envId,
       containerService: containerConfig.service,
       containerWsPath: containerConfig.wsPath,
       connectionSummaryText: buildContainerSummary(containerConfig)
     });
-    app.globalData.containerConfig = containerConfig;
 
     const legalConsent = wx.getStorageSync(LEGAL_ACCEPT_KEY);
     const legalAccepted = Boolean(legalConsent && legalConsent.accepted === true);
@@ -1969,7 +1979,6 @@ Page({
     this.stopHeartbeat();
     this.clearMyDiceTimers();
     this.resetSelfRollTransientState();
-
     if (!this.leaveFinalized && this.data.roomId && this.data.playerId && this.data.resumeToken) {
       wx.removeStorageSync(SESSION_KEY);
     }
@@ -2107,6 +2116,7 @@ Page({
       const max = this.getMaxCallCount();
       const forcedOpen = Boolean(last && Number(last.count) === max && Number(last.point) === 6);
       if (!forcedOpen) {
+        this.haptic("light");
         this.openCallPanel();
         return;
       }
@@ -2173,7 +2183,7 @@ Page({
     this.setData({
       connected: false,
       connecting: false,
-      networkStatusText: "待配置",
+      networkStatusText: "服务异常",
       lastWsError: ""
     });
     this.refreshWsHint("");
@@ -2473,6 +2483,7 @@ Page({
         pendingAction: this.pendingRoomAction ? this.pendingRoomAction.kind : "",
         connectionMode: connectionMeta.connectionMode || "direct"
       });
+      this.suppressCallAttention = Boolean(this.hasReceivedRoomState);
 
       if (this.flushPendingRoomAction()) {
         return;
@@ -3195,12 +3206,9 @@ Page({
     this.setData({
       callSelectorMode: "",
       callPanelExpanded: false,
-      primaryActionText: "叫牌"
+      primaryActionText: "叫牌",
+      callPanelVisible: false
     });
-
-    if (this.data.callPanelVisible) {
-      this.setData({ callPanelVisible: false });
-    }
   },
 
   quickCall() {
@@ -4054,8 +4062,6 @@ Page({
           return playersRaw.some((player) => player.id === id && player.id !== this.data.playerId);
         });
         const roomDirection = roomConfig && (roomConfig.direction === "ccw" ? "ccw" : "cw");
-        const playersDecorated = decoratePlayers(playersRaw, this.data.playerId, validTargets, payload.lastCall, roomDirection);
-        const ghostSeats = buildGhostSeats(playersDecorated, playersRaw.length);
         const self = playersRaw.find((player) => player.id === this.data.playerId);
         const selfIsOwner = Boolean(self && self.isOwner);
         const selfHasCalled = Boolean(self && self.currentCall);
@@ -4101,7 +4107,8 @@ Page({
         }
 
         let callTimeline = Array.isArray(this.data.callTimeline) ? this.data.callTimeline : [];
-        let lastCallKey = String(this.data.lastCallKey || "");
+        const previousLastCallKey = String(this.data.lastCallKey || "");
+        let lastCallKey = previousLastCallKey;
         const roundChanged = incomingRound !== this.data.round;
         if (roundChanged) {
           this.clearMyDiceTimers();
@@ -4115,6 +4122,7 @@ Page({
         }
 
         let lastByLabel = "-";
+        const incomingCallKey = buildCallEventKey(lastCallObj);
         if (lastCallObj) {
           const byPlayer = playersRaw.find((p) => p.id === lastCallObj.by);
           const byNameShort = byPlayer
@@ -4123,8 +4131,7 @@ Page({
           const bySeat = byPlayer ? byPlayer.seatIndex : 0;
           lastByLabel = `${bySeat ? `${bySeat}号` : ""}${byNameShort}`;
 
-          const key = `${lastCallObj.by}_${lastCallObj.count}_${lastCallObj.point}_${lastCallObj.ts}`;
-          if (key !== lastCallKey) {
+          if (incomingCallKey && incomingCallKey !== lastCallKey) {
             callTimeline = [{
               ts: lastCallObj.ts,
               by: lastCallObj.by,
@@ -4134,9 +4141,26 @@ Page({
               count: lastCallObj.count,
               point: lastCallObj.point
             }, ...callTimeline].slice(0, 20);
-            lastCallKey = key;
+            lastCallKey = incomingCallKey;
           }
         }
+
+        const shouldPlayCallAttention = Boolean(
+          incomingCallKey
+          && incomingCallKey !== previousLastCallKey
+          && this.hasReceivedRoomState
+          && phase === "calling"
+          && !this.suppressCallAttention
+        );
+
+        const playersDecorated = decoratePlayers(
+          playersRaw,
+          this.data.playerId,
+          validTargets,
+          payload.lastCall,
+          roomDirection
+        );
+        const ghostSeats = buildGhostSeats(playersDecorated, playersRaw.length);
 
         const startActionEnabled = Boolean(selfIsOwner && phase === "ready" && playerCount >= 2);
         const startActionText = selfIsOwner ? "开始" : "等待房主";
@@ -4295,9 +4319,22 @@ Page({
         });
 
         this.hasReceivedRoomState = true;
+        this.suppressCallAttention = false;
         if (shouldPlayRoundStartSfx) {
           this.lastRoundStartSfxKey = roundStartSfxKey;
           this.playSfx("roundStart");
+        }
+        if (shouldPlayCallAttention) {
+          if (String(lastCallObj && lastCallObj.by || "") !== String(this.data.playerId || "")) {
+            this.playSfx("call");
+          }
+          if (
+            String(payload.currentPlayerId || "") === String(this.data.playerId || "")
+            && String(lastCallObj && lastCallObj.by || "") !== String(this.data.playerId || "")
+            && !selfIsWaiting
+          ) {
+            this.haptic("light");
+          }
         }
 
         break;
@@ -4561,7 +4598,11 @@ Page({
   },
 
   updateSelectedTargets(nextIds) {
-    const playersDecorated = this.buildPlayersDecorated(this.data.playersRaw, nextIds, this.data.lastCallObj);
+    const playersDecorated = this.buildPlayersDecorated(
+      this.data.playersRaw,
+      nextIds,
+      this.data.lastCallObj
+    );
     this.setData({
       selectedTargetIds: nextIds,
       playersDecorated,
@@ -4569,7 +4610,11 @@ Page({
     });
   },
 
-  buildPlayersDecorated(playersRaw, selectedTargetIds = this.data.selectedTargetIds, lastCall = this.data.lastCallObj) {
+  buildPlayersDecorated(
+    playersRaw,
+    selectedTargetIds = this.data.selectedTargetIds,
+    lastCall = this.data.lastCallObj
+  ) {
     const roomDirection = this.data.roomConfig && this.data.roomConfig.direction === "ccw" ? "ccw" : "cw";
     return decoratePlayers(playersRaw, this.data.playerId, selectedTargetIds, lastCall, roomDirection);
   },
@@ -4814,6 +4859,7 @@ Page({
     this.latestRoundSummary = null;
     this.hasReceivedRoomState = false;
     this.lastRoundStartSfxKey = "";
+    this.suppressCallAttention = false;
 
     this.pendingVoiceFileId = "";
     this.clearPendingRoomAction();
@@ -5019,6 +5065,7 @@ Page({
     this.clearPendingRoomAction();
     this.clearMyDiceTimers();
     this.resetSelfRollTransientState();
+    this.suppressCallAttention = false;
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
     this.latestRoundSummary = null;

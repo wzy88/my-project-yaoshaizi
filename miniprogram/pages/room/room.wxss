@@ -851,6 +851,12 @@
 
 .dock-btn {
   flex: 1;
+  transition: transform 90ms ease-out, opacity 90ms ease-out, filter 90ms ease-out;
+}
+
+.dock-btn--pressing {
+  transform: scale(0.982);
+  filter: brightness(0.98);
 }
 
 .join-server-card {
@@ -4806,6 +4812,15 @@ button.room-topbar-menu-popover__item::after {
   box-shadow: 0 12rpx 24rpx rgba(0, 0, 0, 0.45), inset 0 4rpx 8rpx rgba(255, 255, 255, 0.18);
 }
 
+.seat__bubble.latest {
+  border-color: rgba(255, 214, 102, 0.92);
+  box-shadow:
+    0 12rpx 24rpx rgba(0, 0, 0, 0.45),
+    0 0 0 2rpx rgba(255, 214, 102, 0.24),
+    0 0 20rpx rgba(255, 214, 102, 0.2),
+    inset 0 4rpx 8rpx rgba(255, 255, 255, 0.2);
+}
+
 .seat__bubble::after {
   content: "";
   position: absolute;
@@ -4815,6 +4830,11 @@ button.room-topbar-menu-popover__item::after {
   border-left: 2rpx solid rgba(100, 255, 140, 0.4);
   border-bottom: 2rpx solid rgba(100, 255, 140, 0.4);
   border-radius: 6rpx;
+}
+
+.seat__bubble.latest::after {
+  border-left-color: rgba(255, 214, 102, 0.92);
+  border-bottom-color: rgba(255, 214, 102, 0.92);
 }
 
 .seat__bubble--slot-top::after {
@@ -5031,6 +5051,13 @@ button.room-topbar-menu-popover__item::after {
   border: 1.15rpx solid #ffe088;
   box-shadow: 0 14.93rpx 52.24rpx rgba(233, 195, 73, 0.5), inset 0 3.73rpx 0 rgba(255, 245, 140, 0.4), inset 0 -3.73rpx 0 rgba(0, 0, 0, 0.2);
   pointer-events: auto;
+  transition: transform 90ms ease-out, filter 90ms ease-out, box-shadow 90ms ease-out;
+}
+
+.room-fab--pressing {
+  transform: scale(0.968);
+  filter: brightness(0.98);
+  box-shadow: 0 9rpx 28rpx rgba(233, 195, 73, 0.42), inset 0 3.2rpx 0 rgba(255, 245, 140, 0.36), inset 0 -3.2rpx 0 rgba(0, 0, 0, 0.2);
 }
 
 .room-fab.is-disabled {
@@ -5085,7 +5112,8 @@ button.room-topbar-menu-popover__item::after {
   border-top-right-radius: 36rpx;
   background: linear-gradient(180deg, rgba(18, 23, 31, 0.98) 0%, rgba(15, 19, 27, 0.98) 100%);
   box-shadow: 0 -20rpx 80rpx rgba(0, 0, 0, 0.55);
-  animation: call-phase-panel-rise 240ms ease-out;
+  transform-origin: center bottom;
+  animation: call-phase-panel-rise 140ms cubic-bezier(0.22, 0.9, 0.32, 1);
 }
 
 .call-phase-panel__counts {
@@ -5114,6 +5142,7 @@ button.room-topbar-menu-popover__item::after {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out, opacity 80ms ease-out;
 }
 
 .call-phase-panel__count.is-active {
@@ -5175,6 +5204,7 @@ button.room-topbar-menu-popover__item::after {
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out, opacity 80ms ease-out;
 }
 
 .call-phase-panel__point-option.is-active {
@@ -5228,6 +5258,7 @@ button.room-topbar-menu-popover__item::after {
   align-items: center;
   justify-content: center;
   position: relative;
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out, opacity 80ms ease-out;
 }
 
 .call-phase-panel__point-box.is-disabled {
@@ -5260,6 +5291,7 @@ button.room-topbar-menu-popover__item::after {
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out, opacity 80ms ease-out, filter 80ms ease-out;
 }
 
 .call-phase-panel__btn--ghost {
@@ -5291,6 +5323,26 @@ button.room-topbar-menu-popover__item::after {
   font-size: 26rpx;
   line-height: 39rpx;
   color: rgba(225, 100, 160, 0.9);
+}
+
+.call-phase-panel__count--pressing,
+.call-phase-panel__point-option--pressing,
+.call-phase-panel__box--pressing,
+.call-phase-panel__btn--pressing {
+  transform: scale(0.982);
+}
+
+.call-phase-panel__count--pressing,
+.call-phase-panel__point-option--pressing {
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.44);
+}
+
+.call-phase-panel__box--pressing {
+  box-shadow: 0 0 20rpx rgba(233, 195, 73, 0.18);
+}
+
+.call-phase-panel__btn--pressing {
+  filter: brightness(0.985);
 }
 
 .room-self__dice-cup.is-rolling {
@@ -5343,7 +5395,7 @@ button.room-topbar-menu-popover__item::after {
 @keyframes call-phase-panel-rise {
   0% {
     opacity: 0;
-    transform: translateY(48rpx);
+    transform: translateY(24rpx) scaleY(0.988);
   }
 
   100% {

@@ -7,13 +7,9 @@ const roomModulePath = require.resolve("../miniprogram/pages/room/room.js");
 const { DEFAULT_PROFILE_AVATAR_ASSETS } = require("../miniprogram/utils/profile-defaults.js");
 const {
   LEGAL_ACCEPT_KEY,
-  CLOUD_ENV_ID_KEY,
-  CLOUD_SERVICE_KEY,
-  CLOUD_WS_PATH_KEY,
   SESSION_KEY,
   NICKNAME_KEY,
-  AVATAR_URL_KEY,
-  WS_URL_KEY
+  AVATAR_URL_KEY
 } = require("../miniprogram/utils/constants.js");
 
 function instantiateRoomPage({
@@ -123,6 +119,9 @@ function instantiateRoomPage({
     if (page.clockTimer) {
       clearInterval(page.clockTimer);
     }
+    if (page.callAttentionTimer) {
+      clearTimeout(page.callAttentionTimer);
+    }
     delete require.cache[roomModulePath];
     if (typeof originalPage === "undefined") {
       delete globalThis.Page;
@@ -152,6 +151,64 @@ function instantiateRoomPage({
   };
 
   return { page, toasts, modals, reLaunches, hiddenShareMenus, storageState, cleanup };
+}
+
+function buildRoomStatePayload({ currentPlayerId = "P1", lastCall = null } = {}) {
+  const callerCurrentCall = lastCall
+    ? {
+        count: lastCall.count,
+        point: lastCall.point,
+        by: lastCall.by,
+        ts: lastCall.ts
+      }
+    : undefined;
+
+  return {
+    roomId: "778899",
+    phase: "calling",
+    round: 1,
+    currentPlayerId,
+    config: {
+      direction: "cw",
+      wildcardOneEnabled: true,
+      openMode: "single",
+      dicePerPlayer: 5,
+      minOpeningCount: 1,
+      testMode: false
+    },
+    players: [
+      {
+        id: "P1",
+        nickname: "甲方",
+        avatar: "",
+        isOwner: true,
+        onlineStatus: "online",
+        turnStatus: currentPlayerId === "P1" ? "active" : "idle",
+        seatIndex: 1,
+        diceCupStatus: "closed",
+        rollLocked: true,
+        rollCountThisRound: 1,
+        ...(callerCurrentCall ? { currentCall: callerCurrentCall } : {})
+      },
+      {
+        id: "P2",
+        nickname: "乙方",
+        avatar: "",
+        isOwner: false,
+        onlineStatus: "online",
+        turnStatus: currentPlayerId === "P2" ? "active" : "idle",
+        seatIndex: 2,
+        diceCupStatus: "closed",
+        rollLocked: true,
+        rollCountThisRound: 1
+      }
+    ],
+    waitingPlayers: [],
+    ...(lastCall ? { lastCall } : {}),
+    networkHealth: "good",
+    version: 1,
+    serverTs: 1710000000000
+  };
 }
 
 test("room page: roll uses the bundled audio asset while the other sfx keep the lighter generated profile", async () => {
@@ -206,7 +263,119 @@ test("room page: roll uses the bundled audio asset while the other sfx keep the 
   }
 });
 
-test("room page: mobile join keeps the pending action and waits for manual config when defaults are empty", () => {
+test("room page: initial room sync with an existing call does not replay attention feedback", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    }
+  });
+
+  try {
+    const sfx = [];
+    const haptics = [];
+    page.playSfx = (kind) => sfx.push(kind);
+    page.haptic = (kind) => haptics.push(kind);
+    page.resetTurnCountdown = () => {};
+    page.clearTurnCountdown = () => {};
+    page.setData({ playerId: "P2" });
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P2",
+        lastCall: { count: 5, point: 3, by: "P1", ts: 1710000000123 }
+      })
+    }));
+
+    assert.deepEqual(sfx, []);
+    assert.deepEqual(haptics, []);
+    assert.equal(page.data.lastCallKey, "P1_5_3_1710000000123");
+    assert.equal(page.data.playersDecorated.find((player) => player.id === "P1").bubbleClass.includes("latest"), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: accepted remote calls trigger attention sfx, gold latest-call border, and turn haptic", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    }
+  });
+
+  try {
+    const sfx = [];
+    const haptics = [];
+    page.playSfx = (kind) => sfx.push(kind);
+    page.haptic = (kind) => haptics.push(kind);
+    page.resetTurnCountdown = () => {};
+    page.clearTurnCountdown = () => {};
+    page.setData({ playerId: "P2" });
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({ currentPlayerId: "P1" })
+    }));
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P2",
+        lastCall: { count: 5, point: 3, by: "P1", ts: 1710000000456 }
+      })
+    }));
+
+    assert.deepEqual(sfx, ["call"]);
+    assert.deepEqual(haptics, ["light"]);
+    assert.equal(page.data.lastCallKey, "P1_5_3_1710000000456");
+    assert.equal(page.data.playersDecorated.find((player) => player.id === "P1").bubbleClass.includes("latest"), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: self call confirmations keep the gold latest-call border but skip duplicate attention audio", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    }
+  });
+
+  try {
+    const sfx = [];
+    const haptics = [];
+    page.playSfx = (kind) => sfx.push(kind);
+    page.haptic = (kind) => haptics.push(kind);
+    page.resetTurnCountdown = () => {};
+    page.clearTurnCountdown = () => {};
+    page.setData({ playerId: "P1" });
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({ currentPlayerId: "P1" })
+    }));
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P2",
+        lastCall: { count: 6, point: 4, by: "P1", ts: 1710000000789 }
+      })
+    }));
+
+    assert.deepEqual(sfx, []);
+    assert.deepEqual(haptics, []);
+    assert.equal(page.data.lastCallKey, "P1_6_4_1710000000789");
+    assert.equal(page.data.playersDecorated.find((player) => player.id === "P1").bubbleClass.includes("latest"), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: mobile join keeps the pending action when the bundled runtime target is missing", () => {
   const { page, toasts, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -228,7 +397,7 @@ test("room page: mobile join keeps the pending action and waits for manual confi
     assert.equal(page.data.containerEnvId, "");
     assert.equal(page.data.containerService, "");
     assert.equal(page.data.containerWsPath, "/ws");
-    assert.equal(page.data.networkStatusText, "待配置");
+    assert.equal(page.data.networkStatusText, "服务异常");
     assert.equal(toasts.includes("请先改成局域网IP或wss地址"), false);
   } finally {
     cleanup();
@@ -250,7 +419,7 @@ test("room page: default room id display uses the six hyphen placeholder", () =>
   }
 });
 
-test("room page: accepting legal on mobile join keeps the pending action until a real connection target is configured", () => {
+test("room page: accepting legal on mobile join keeps the pending action until a bundled runtime target is available", () => {
   const { page, toasts, storageState, cleanup } = instantiateRoomPage({
     storage: {
       [NICKNAME_KEY]: "手机玩家"
@@ -271,7 +440,7 @@ test("room page: accepting legal on mobile join keeps the pending action until a
     assert.equal(page.data.pendingActionText, "连接成功后将自动加入房间 654321");
     assert.equal(page.data.containerEnvId, "");
     assert.equal(page.data.containerService, "");
-    assert.equal(page.data.networkStatusText, "待配置");
+    assert.equal(page.data.networkStatusText, "服务异常");
     assert.deepEqual(storageState[LEGAL_ACCEPT_KEY].accepted, true);
     assert.equal(toasts.includes("请先改成局域网IP或wss地址"), false);
   } finally {
@@ -318,11 +487,13 @@ test("room page: cloud container config bypasses loopback ws validation on mobil
   const { page, toasts, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
-      [NICKNAME_KEY]: "手机玩家",
-      [WS_URL_KEY]: "ws://127.0.0.1:3000/ws",
-      [CLOUD_ENV_ID_KEY]: "dice-test-123",
-      [CLOUD_SERVICE_KEY]: "express-rw1k",
-      [CLOUD_WS_PATH_KEY]: "/ws"
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://127.0.0.1:3000/ws",
+    appContainerConfig: {
+      envId: "dice-test-123",
+      service: "express-rw1k",
+      wsPath: "/ws"
     },
     apiAvailability: {
       cloud: {
@@ -431,10 +602,12 @@ test("room page: cloud container connect failure surfaces the underlying error d
   const { page, toasts, modals, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
-      [NICKNAME_KEY]: "手机玩家",
-      [CLOUD_ENV_ID_KEY]: "dice-test-123",
-      [CLOUD_SERVICE_KEY]: "express-rw1k",
-      [CLOUD_WS_PATH_KEY]: "/ws"
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appContainerConfig: {
+      envId: "dice-test-123",
+      service: "express-rw1k",
+      wsPath: "/ws"
     },
     apiAvailability: {
       cloud: {
@@ -465,10 +638,12 @@ test("room page: cloud container connect failure uses a friendly fallback when t
   const { page, modals, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
-      [NICKNAME_KEY]: "手机玩家",
-      [CLOUD_ENV_ID_KEY]: "dice-test-123",
-      [CLOUD_SERVICE_KEY]: "express-rw1k",
-      [CLOUD_WS_PATH_KEY]: "/ws"
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appContainerConfig: {
+      envId: "dice-test-123",
+      service: "express-rw1k",
+      wsPath: "/ws"
     },
     apiAvailability: {
       cloud: {
@@ -2060,7 +2235,7 @@ test("room page: hud primary button keeps the rolling cue instead of reusing the
   }
 });
 
-test("room page: opening the call panel from the hud primary button stays silent", () => {
+test("room page: opening the call panel from the hud primary button stays audio silent but gives immediate haptic feedback", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -2071,8 +2246,12 @@ test("room page: opening the call panel from the hud primary button stays silent
 
   try {
     const sfxCalls = [];
+    const haptics = [];
     page.playSfx = (kind) => {
       sfxCalls.push(kind);
+    };
+    page.haptic = (kind) => {
+      haptics.push(kind);
     };
     page.setData({
       phase: "calling",
@@ -2090,6 +2269,7 @@ test("room page: opening the call panel from the hud primary button stays silent
     assert.equal(page.data.callPanelVisible, true);
     assert.equal(page.data.callPanelExpanded, true);
     assert.deepEqual(sfxCalls, []);
+    assert.deepEqual(haptics, ["light"]);
   } finally {
     cleanup();
   }

@@ -13,8 +13,10 @@ test("room call panel switches between count and point selectors", () => {
 
   assert.match(roomWxml, /wx:if="\{\{callSelectorMode !== 'point'\}\}" class="call-phase-panel__counts"/);
   assert.match(roomWxml, /wx:if="\{\{callSelectorMode === 'point'\}\}" class="call-phase-panel__points"/);
-  assert.match(roomWxml, /class="call-phase-panel__value-box" data-mode="count" bindtap="toggleCallSelectorMode"/);
-  assert.match(roomWxml, /class="call-phase-panel__point-box \{\{callForcedOpen \? 'is-disabled' : ''\}\}" data-mode="point" bindtap="toggleCallSelectorMode"/);
+  assert.match(roomWxml, /class="call-phase-panel__value-box"[\s\S]*hover-class="call-phase-panel__box--pressing"/);
+  assert.match(roomWxml, /class="call-phase-panel__point-box \{\{callForcedOpen \? 'is-disabled' : ''\}\}"[\s\S]*hover-class="\{\{callForcedOpen \? 'none' : 'call-phase-panel__box--pressing'\}\}"/);
+  assert.match(roomWxml, /class="call-phase-panel__count \{\{item\.value === callCount \? 'is-active' : ''\}\} \{\{item\.isTail \? 'is-tail' : ''\}\} \{\{callForcedOpen \? 'is-disabled' : ''\}\}"[\s\S]*hover-class="\{\{callForcedOpen \? 'none' : 'call-phase-panel__count--pressing'\}\}"/);
+  assert.match(roomWxml, /class="call-phase-panel__point-option \{\{item\.value === callPoint \? 'is-active' : ''\}\} \{\{callForcedOpen \? 'is-disabled' : ''\}\}"[\s\S]*hover-class="\{\{callForcedOpen \? 'none' : 'call-phase-panel__point-option--pressing'\}\}"/);
   assert.match(roomWxml, /bindtap="onSelectCallPointOption"/);
   assert.match(roomWxml, /item\.value === callPoint/);
   assert.doesNotMatch(roomWxml, /bindtap="onTapCallPointPicker"/);
@@ -36,10 +38,13 @@ test("room call panel opens manually during calling and supports overlay close",
   assert.match(roomJs, /const callPanelVisible = isMyCallingTurn \? Boolean\(this\.data\.callPanelVisible\) : false;/);
   assert.doesNotMatch(roomJs, /const callPanelVisible = isMyCallingTurn;/);
   assert.match(roomJs, /primaryActionText = callForcedOpen \? "开牌" : "叫牌";/);
-  assert.match(roomJs, /if \(!forcedOpen\) \{\s*this\.openCallPanel\(\);\s*return;\s*\}/);
+  assert.match(roomJs, /if \(!forcedOpen\) \{\s*this\.haptic\("light"\);\s*this\.openCallPanel\(\);\s*return;\s*\}/);
   assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*top:\s*0/);
   assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*display:\s*flex/);
   assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*align-items:\s*flex-end/);
+  assert.match(roomWxml, /class="room-fab \{\{canPrimaryAction \? '' : 'is-disabled'\}\}"[\s\S]*hover-class="\{\{canPrimaryAction \? 'room-fab--pressing' : 'none'\}\}"/);
+  assert.match(roomWxss, /\.room-fab--pressing\s*\{/);
+  assert.match(roomWxss, /\.call-phase-panel__btn--pressing\s*\{/);
 });
 
 test("room call panel stays content-sized instead of reserving an empty lower half", () => {
@@ -49,4 +54,5 @@ test("room call panel stays content-sized instead of reserving an empty lower ha
   assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*padding:\s*0 16rpx 0/);
   assert.match(roomWxss, /\.call-phase-panel\s*\{[\s\S]*padding:\s*24rpx 24rpx calc\(92rpx \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*rgba\(15, 19, 27, 0\.98\) 100%/);
+  assert.match(roomWxss, /\.call-phase-panel\s*\{[\s\S]*animation:\s*call-phase-panel-rise 140ms cubic-bezier\(0\.22, 0\.9, 0\.32, 1\)/);
 });

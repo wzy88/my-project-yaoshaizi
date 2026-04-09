@@ -71,4 +71,11 @@ test("room call signals stay on seats while self last-call hints stay removed", 
   assert.doesNotMatch(roomJs, /\bshowDebug\b/);
   assert.doesNotMatch(roomJs, /调试日志/);
   assert.doesNotMatch(roomJs, /\bselfLastCallText\b/);
+  assert.match(roomJs, /\bbuildCallEventKey\b/);
+  assert.match(roomWxss, /\.seat__bubble\.latest\s*\{/);
+  assert.match(roomWxss, /\.seat__bubble\.latest::after\s*\{/);
+  assert.doesNotMatch(roomJs, /\bcallAttentionKey\b/);
+  assert.doesNotMatch(roomJs, /\barmCallAttentionClear\b/);
+  assert.doesNotMatch(roomWxss, /\.seat__bubble\.fresh\s*\{/);
+  assert.doesNotMatch(roomWxss, /@keyframes room-call-bubble-pulse/);
 });
