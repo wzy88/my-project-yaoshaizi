@@ -49,16 +49,6 @@
       </view>
     </view>
 
-    <view class="toggle-card" wx:if="{{devtoolsMode}}" data-field="testMode" bindtap="onToggleField">
-      <view class="toggle-copy">
-        <text class="toggle-title">测试模式</text>
-        <text class="toggle-sub">仅开发工具环境显示</text>
-      </view>
-      <view class="toggle-pill {{testMode ? 'is-on' : ''}}">
-        <view class="toggle-pill__thumb"></view>
-      </view>
-    </view>
-
     <text class="panel-note">默认每人 5 颗骰子，按当前规则创建后会直接进入房间。</text>
 
     <button class="create-btn" bindtap="createAndEnter">创建并进入</button>

@@ -22,6 +22,12 @@ test("create room page keeps player count, spectator, and room lock controls dis
   assert.match(wxml, /class="toggle-card is-disabled"/);
   assert.doesNotMatch(wxml, /data-field="allowSpectator" bindtap="onToggleField"/);
   assert.doesNotMatch(wxml, /data-field="lockRoom" bindtap="onToggleField"/);
+  assert.doesNotMatch(wxml, /测试模式/);
+  assert.doesNotMatch(wxml, /wx:if="\{\{devtoolsMode\}\}"/);
+  assert.doesNotMatch(script, /\btestMode:\s*false/);
+  assert.doesNotMatch(script, /\bdevtoolsMode:\s*false/);
+  assert.doesNotMatch(script, /isDevtoolsPlatform/);
+  assert.match(script, /&testMode=0&playerCount=/);
 
   assert.match(wxss, /\.chip\.is-disabled\s*\{/);
   assert.match(wxss, /\.toggle-card\.is-disabled\s*\{/);

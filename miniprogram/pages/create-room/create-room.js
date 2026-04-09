@@ -1,5 +1,4 @@
 const { NICKNAME_KEY } = require("../../utils/constants");
-const { isDevtoolsPlatform } = require("../../utils/system-info");
 
 function safeDecodeComponent(raw) {
   const value = String(raw || "");
@@ -19,9 +18,7 @@ Page({
     playerCount: 8,
     allowSpectator: false,
     lockRoom: false,
-    wildcardOneEnabled: true,
-    testMode: false,
-    devtoolsMode: false
+    wildcardOneEnabled: true
   },
 
   onLoad(options) {
@@ -29,8 +26,7 @@ Page({
     const cachedNickname = safeDecodeComponent(wx.getStorageSync(NICKNAME_KEY)).trim();
     const nickname = optNickname || cachedNickname;
     this.setData({
-      nickname: nickname || `玩家${Math.floor(Math.random() * 1000)}`,
-      devtoolsMode: isDevtoolsPlatform()
+      nickname: nickname || `玩家${Math.floor(Math.random() * 1000)}`
     });
   },
 
@@ -52,7 +48,7 @@ Page({
     const minOpeningCount = 5;
 
     wx.navigateTo({
-      url: `/pages/room/room?mode=create&forceNew=1&nickname=${encodeURIComponent(this.data.nickname || "")}&direction=${direction}&wildcardOneEnabled=${this.data.wildcardOneEnabled ? "1" : "0"}&dicePerPlayer=${dicePerPlayer}&minOpeningCount=${minOpeningCount}&testMode=${this.data.testMode ? "1" : "0"}&playerCount=${this.data.playerCount}&allowSpectator=${this.data.allowSpectator ? "1" : "0"}&lockRoom=${this.data.lockRoom ? "1" : "0"}`
+      url: `/pages/room/room?mode=create&forceNew=1&nickname=${encodeURIComponent(this.data.nickname || "")}&direction=${direction}&wildcardOneEnabled=${this.data.wildcardOneEnabled ? "1" : "0"}&dicePerPlayer=${dicePerPlayer}&minOpeningCount=${minOpeningCount}&testMode=0&playerCount=${this.data.playerCount}&allowSpectator=${this.data.allowSpectator ? "1" : "0"}&lockRoom=${this.data.lockRoom ? "1" : "0"}`
     });
   },
 

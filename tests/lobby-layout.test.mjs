@@ -10,6 +10,8 @@ test("lobby status chrome keeps only the signal indicator on the right", () => {
   const wxml = fs.readFileSync(lobbyWxmlPath, "utf8");
   const wxss = fs.readFileSync(lobbyWxssPath, "utf8");
 
+  assert.match(wxml, /<text class="hero-title">满上，<\/text>/);
+  assert.match(wxml, /<text class="hero-title">来一局<\/text>/);
   assert.match(wxml, /class="status-right"/);
   assert.match(wxml, /class="status-signal"/);
   assert.doesNotMatch(wxml, /class="status-pill"/);
