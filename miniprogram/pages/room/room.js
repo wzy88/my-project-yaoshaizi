@@ -347,7 +347,7 @@ function getSeatGeometry(seatIndex, seatCount = 8) {
   return { x: seatX, y: seatY, bx: bubbleX, by: bubbleY };
 }
 
-function getStitchSeatLayout(playerCount) {
+function getStitchSeatLayout() {
   const figmaShellSlots = [
     { x: 187.5, y: 168, bx: 240, by: 180, cupX: 187.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" },
     { x: 42, y: 290, bx: 84, by: 250, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" },
@@ -359,86 +359,41 @@ function getStitchSeatLayout(playerCount) {
     { x: 187.5, y: 804, bx: 187.5, by: 736, cupX: 187.5, cupY: 734, cupAlign: "top", slotClass: "slot-bottom" }
   ];
 
-  const layouts = {
-    1: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        1: [7]
-      },
-      slots: figmaShellSlots
-    },
-    2: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        2: [0, 7]
-      },
-      slots: figmaShellSlots
-    },
-    3: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        3: [0, 1, 7]
-      },
-      slots: figmaShellSlots
-    },
-    4: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        4: [0, 1, 2, 7]
-      },
-      slots: figmaShellSlots
-    },
-    5: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        5: [0, 1, 2, 3, 7]
-      },
-      slots: figmaShellSlots
-    },
-    6: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        6: [0, 1, 2, 3, 4, 7]
-      },
-      slots: figmaShellSlots
-    },
-    7: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        7: [0, 1, 2, 3, 4, 5, 7]
-      },
-      slots: figmaShellSlots
-    },
-    8: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        8: [0, 1, 2, 3, 4, 5, 6, 7]
-      },
-      slots: figmaShellSlots
-    }
+  return {
+    selfSlotIndex: 7,
+    // Clockwise ring order matching the fixed 8-seat shell:
+    // top -> upper-right -> mid-right -> lower-right -> bottom -> lower-left -> mid-left -> upper-left
+    ringSlotIndices: [0, 2, 4, 6, 7, 5, 3, 1],
+    slots: figmaShellSlots
   };
-
-  return layouts[Math.max(1, Math.min(8, Number(playerCount) || 1))] || layouts[8];
 }
 
-function rotatePlayersForDisplay(sortedPlayers, selfPlayerId, targetIndex) {
-  const list = Array.isArray(sortedPlayers) ? sortedPlayers : [];
-  const desiredIndex = Number(targetIndex);
-  if (!list.length || !Number.isInteger(desiredIndex) || desiredIndex < 0 || desiredIndex >= list.length) {
-    return list;
-  }
+function buildSeatSlotIndexMap(selfSeatIndex = 1, direction = "cw") {
+  const layout = getStitchSeatLayout();
+  const normalizedSelfSeat = Math.max(1, Math.min(8, Number(selfSeatIndex) || 1));
+  const seatRing = String(direction || "").toLowerCase() === "ccw"
+    ? [1, 8, 7, 6, 5, 4, 3, 2]
+    : [1, 2, 3, 4, 5, 6, 7, 8];
+  const selfRingIndex = seatRing.indexOf(normalizedSelfSeat);
+  const selfSlotRingIndex = layout.ringSlotIndices.indexOf(layout.selfSlotIndex);
+  const startIndex = selfRingIndex >= 0 && selfSlotRingIndex >= 0
+    ? (selfRingIndex - selfSlotRingIndex + seatRing.length) % seatRing.length
+    : 0;
+  const seatToSlotIndex = new Map();
 
-  const selfIndex = list.findIndex((player) => String(player.id || "") === String(selfPlayerId || ""));
-  if (selfIndex < 0) {
-    return list;
-  }
+  layout.ringSlotIndices.forEach((slotIndex, ringIndex) => {
+    const seatIndex = seatRing[(startIndex + ringIndex) % seatRing.length];
+    seatToSlotIndex.set(seatIndex, slotIndex);
+  });
 
-  const startIndex = (selfIndex - desiredIndex + list.length) % list.length;
-  return Array.from({ length: list.length }, (_, idx) => list[(startIndex + idx) % list.length]);
+  return {
+    layout,
+    seatToSlotIndex
+  };
 }
 
-function buildGhostSeats(playersDecorated, playerCount) {
-  const layout = getStitchSeatLayout(playerCount);
+function buildGhostSeats(playersDecorated) {
+  const layout = getStitchSeatLayout();
   if (!layout || !Array.isArray(layout.slots)) {
     return [];
   }
@@ -550,15 +505,6 @@ function buildSuggestedCallState(lastCall, minOpeningCount, maxCallCount, curren
   };
 }
 
-function getOccupiedSlotIndices(layout, playerCount) {
-  if (!layout || !layout.occupiedSlotIndicesMap) {
-    return [];
-  }
-
-  const count = Math.max(1, Math.min(8, Number(playerCount) || 0));
-  return layout.occupiedSlotIndicesMap[count] || layout.occupiedSlotIndicesMap[8] || [];
-}
-
 function safeDecodeComponent(raw) {
   const value = String(raw || "");
   if (!value) return "";
@@ -625,22 +571,16 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
   const sorted = [...(playersRaw || [])].sort((a, b) => a.seatIndex - b.seatIndex);
   const selectedSet = new Set(selectedTargetIds || []);
   const latestCallerId = latestCall && typeof latestCall === "object" ? String(latestCall.by || "") : "";
-  const layout = getStitchSeatLayout(sorted.length);
-  const occupiedSlotIndices = getOccupiedSlotIndices(layout, sorted.length);
+  const selfPlayer = sorted.find((player) => String(player.id || "") === String(selfPlayerId || ""));
+  const selfSeatIndex = Number(selfPlayer && selfPlayer.seatIndex) || 1;
+  const { layout, seatToSlotIndex } = buildSeatSlotIndexMap(selfSeatIndex, direction);
   const glowClasses = ["glow-gold", "glow-violet", "glow-gold", "glow-amber", "glow-gold", "glow-violet", "glow-gold"];
-  const sourcePlayers = String(direction || "").toLowerCase() === "ccw"
-    ? [...sorted].reverse()
-    : sorted;
-  const targetOrderIndex = occupiedSlotIndices.indexOf(layout ? layout.selfSlotIndex : -1);
-  const orderedPlayers = layout
-    ? rotatePlayersForDisplay(sourcePlayers, selfPlayerId, targetOrderIndex >= 0 ? targetOrderIndex : sorted.length - 1)
-    : sourcePlayers;
   const seatCount = layout ? layout.slots.length : 8;
 
-  return orderedPlayers.map((player, displayIndex) => {
+  return sorted.map((player, displayIndex) => {
     const rawSeat = Number(player.seatIndex);
     const seatIndex = Number.isInteger(rawSeat) ? Math.max(1, Math.min(seatCount, rawSeat)) : 1;
-    const slotIndex = layout ? occupiedSlotIndices[displayIndex] : displayIndex;
+    const slotIndex = layout ? seatToSlotIndex.get(seatIndex) : displayIndex;
     const geometry = layout ? layout.slots[slotIndex] : getSeatGeometry(seatIndex, seatCount);
     const { x: seatX, y: seatY, bx: bubbleX, by: bubbleY } = geometry;
 
@@ -1794,12 +1734,24 @@ Page({
       this.setData(updates);
     }
 
+    if (this.selfRollInterruptedOnHide || this.data.myDiceRolling || this.data.myDiceRevealing) {
+      this.recoverSelfRollUiAfterInterruption();
+      this.selfRollInterruptedOnHide = false;
+    }
+
     if (this.data.connected && this.data.roomId) {
       this.sendEvent("player:update", {
         nickname: nextNickname || "",
         avatar: avatarUrl || "",
         ...buildAccountAuthPayload()
       }, { silentLog: true });
+    } else if (
+      this.data.roomId
+      && !this.data.connecting
+      && !this.manualClose
+      && !this.pendingLeaveActionId
+    ) {
+      this.connectSocket();
     }
 
     this.startShakeListener();
@@ -1817,6 +1769,10 @@ Page({
     });
     this.stopShakeListener();
     this.clearTurnCountdown();
+    if (this.data.myDiceRolling || this.data.myDiceRevealing) {
+      this.selfRollInterruptedOnHide = true;
+      this.clearMyDiceTimers();
+    }
   },
 
   startShakeListener() {
@@ -2836,6 +2792,35 @@ Page({
     this.pendingPrivateDice = [];
     this.selfRollRevealCount = 0;
     this.selfRollAudioGatePassed = false;
+  },
+
+  recoverSelfRollUiAfterInterruption() {
+    const expected = this.data.roomConfig && typeof this.data.roomConfig.dicePerPlayer === "number"
+      ? this.data.roomConfig.dicePerPlayer
+      : 5;
+    const storedPrivateDice = Array.isArray(this.data.privateDice) ? this.data.privateDice : [];
+    const fallbackPendingDice = Array.isArray(this.pendingPrivateDice) ? this.pendingPrivateDice : [];
+    const stableDice = storedPrivateDice.length === expected
+      ? storedPrivateDice.slice(0, expected)
+      : (fallbackPendingDice.length === expected ? fallbackPendingDice.slice(0, expected) : []);
+    const hasStableDice = stableDice.length === expected;
+    const shouldShowDice = hasStableDice
+      && !this.data.selfIsWaiting
+      && this.data.phase !== "ended"
+      && (this.data.myDiceVisible || this.data.myDiceRolling || this.data.myDiceRevealing);
+
+    this.clearMyDiceTimers();
+    this.resetSelfRollTransientState();
+    this.setData({
+      privateDice: hasStableDice ? stableDice : storedPrivateDice,
+      selfHasDice: this.data.selfIsWaiting ? false : hasStableDice,
+      myDiceVisible: shouldShowDice,
+      myDicePeekVisible: hasStableDice && !shouldShowDice && !this.data.selfIsWaiting && this.data.phase !== "ended",
+      myDiceRolling: false,
+      myDiceRevealing: false,
+      myDiceJustRevealed: false,
+      roomSelfDiceFaces: hasStableDice ? buildDiceFaceItems(stableDice) : buildSelfDiceDisplayItems()
+    });
   },
 
   getSelfRollAudioDurationMs() {
@@ -4150,7 +4135,7 @@ Page({
           payload.lastCall,
           roomDirection
         );
-        const ghostSeats = buildGhostSeats(playersDecorated, playersRaw.length);
+        const ghostSeats = buildGhostSeats(playersDecorated);
 
         const startActionEnabled = Boolean(selfIsOwner && phase === "ready" && playerCount >= 2);
         const startActionText = selfIsOwner ? "开始" : "等待房主";
@@ -4596,7 +4581,7 @@ Page({
     this.setData({
       selectedTargetIds: nextIds,
       playersDecorated,
-      ghostSeats: buildGhostSeats(playersDecorated, this.data.playersRaw.length)
+      ghostSeats: buildGhostSeats(playersDecorated)
     });
   },
 
@@ -4628,7 +4613,7 @@ Page({
     this.setData({
       playersRaw,
       playersDecorated,
-      ghostSeats: buildGhostSeats(playersDecorated, playersRaw.length),
+      ghostSeats: buildGhostSeats(playersDecorated),
       ...(playerId === String(this.data.playerId || "") ? { selfAvatarUrl: fallbackAvatar || getSeatAvatarFallback(0) } : {})
     });
   },

@@ -927,6 +927,549 @@ test("room page: share payload points directly to the current room entry", () =>
   }
 });
 
+test("room page: onShow reconnects an existing room session after a temporary disconnect", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    let connectCalls = 0;
+    page.connectSocket = () => {
+      connectCalls += 1;
+    };
+    page.manualClose = false;
+    page.pendingLeaveActionId = "";
+    page.setData({
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: false,
+      phase: "ready",
+      myDiceRolling: false,
+      myDiceRevealing: false
+    });
+
+    page.onShow();
+
+    assert.equal(connectCalls, 1);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: socket open rejoins the cached room when no pending action remains", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  const listeners = {};
+  const socketTask = {
+    onOpen(handler) {
+      listeners.open = handler;
+    },
+    onClose(handler) {
+      listeners.close = handler;
+    },
+    onError(handler) {
+      listeners.error = handler;
+    },
+    onMessage(handler) {
+      listeners.message = handler;
+    },
+    send() {},
+    close() {}
+  };
+
+  try {
+    const sent = [];
+    page.debugClientEvent = () => {};
+    page.refreshWsHint = () => {};
+    page.startHeartbeat = () => {};
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    globalThis.wx.connectSocket = () => socketTask;
+
+    page.setData({
+      wsUrl: "ws://192.168.1.23:3000/ws",
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: false
+    });
+
+    page.connectSocket();
+    assert.equal(typeof listeners.open, "function");
+
+    listeners.open();
+
+    assert.deepEqual(sent, [
+      {
+        event: "room:rejoin",
+        payload: {
+          roomId: "123456",
+          playerId: "player-a",
+          resumeToken: "resume-token"
+        }
+      }
+    ]);
+    assert.equal(page.data.connected, true);
+    assert.equal(page.data.connecting, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: scheduleReconnect waits 2 seconds and does not queue duplicate retries", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    }
+  });
+
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+
+  try {
+    let connectCalls = 0;
+    let scheduledDelay = 0;
+    let timerCount = 0;
+
+    page.connectSocket = () => {
+      connectCalls += 1;
+    };
+    page.debugClientEvent = () => {};
+    page.manualClose = false;
+
+    globalThis.setTimeout = (fn, delay) => {
+      timerCount += 1;
+      scheduledDelay = Number(delay) || 0;
+      fn();
+      return timerCount;
+    };
+    globalThis.clearTimeout = () => {};
+
+    page.scheduleReconnect();
+    page.scheduleReconnect();
+
+    assert.equal(scheduledDelay, 2000);
+    assert.equal(timerCount, 1);
+    assert.equal(connectCalls, 1);
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+    cleanup();
+  }
+});
+
+test("room page: onShow does not duplicate reconnect while a reconnect is already in progress", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    let connectCalls = 0;
+    page.connectSocket = () => {
+      connectCalls += 1;
+    };
+    page.manualClose = false;
+    page.pendingLeaveActionId = "";
+    page.setData({
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: true,
+      myDiceRolling: false,
+      myDiceRevealing: false
+    });
+
+    page.onShow();
+
+    assert.equal(connectCalls, 0);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: socket close followed by socket error still schedules only one reconnect", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  const listeners = {};
+  const socketTask = {
+    onOpen(handler) {
+      listeners.open = handler;
+    },
+    onClose(handler) {
+      listeners.close = handler;
+    },
+    onError(handler) {
+      listeners.error = handler;
+    },
+    onMessage(handler) {
+      listeners.message = handler;
+    },
+    send() {},
+    close() {}
+  };
+
+  try {
+    let reconnectSchedules = 0;
+    page.debugClientEvent = () => {};
+    page.refreshWsHint = () => {};
+    page.stopHeartbeat = () => {};
+    page.scheduleReconnect = () => {
+      reconnectSchedules += 1;
+    };
+    globalThis.wx.connectSocket = () => socketTask;
+
+    page.setData({
+      wsUrl: "ws://192.168.1.23:3000/ws",
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: false
+    });
+
+    page.connectSocket();
+    assert.equal(typeof listeners.close, "function");
+    assert.equal(typeof listeners.error, "function");
+
+    listeners.close({ code: 1006, reason: "network lost" });
+    listeners.error({ errMsg: "network lost" });
+
+    assert.equal(reconnectSchedules, 1);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: cold-start resume reconnects and rejoins the cached room session", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [SESSION_KEY]: {
+        roomId: "123456",
+        playerId: "player-a",
+        resumeToken: "resume-token"
+      }
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  const listeners = {};
+  const sent = [];
+  const socketTask = {
+    onOpen(handler) {
+      listeners.open = handler;
+    },
+    onClose(handler) {
+      listeners.close = handler;
+    },
+    onError(handler) {
+      listeners.error = handler;
+    },
+    onMessage(handler) {
+      listeners.message = handler;
+    },
+    send({ data }) {
+      sent.push(JSON.parse(data));
+    },
+    close() {}
+  };
+
+  try {
+    page.debugClientEvent = () => {};
+    page.refreshWsHint = () => {};
+    page.startHeartbeat = () => {};
+    globalThis.wx.connectSocket = () => socketTask;
+
+    page.onLoad({ resume: "1" });
+
+    assert.equal(page.data.roomId, "123456");
+    assert.equal(page.data.playerId, "player-a");
+    assert.equal(page.data.resumeToken, "resume-token");
+    assert.equal(typeof listeners.open, "function");
+
+    listeners.open();
+
+    assert.equal(page.data.connected, true);
+    assert.equal(page.data.connecting, false);
+    assert.deepEqual(sent, [
+      {
+        event: "room:rejoin",
+        payload: {
+          roomId: "123456",
+          playerId: "player-a",
+          resumeToken: "resume-token"
+        },
+        actionId: sent[0].actionId
+      }
+    ]);
+    assert.equal(page.actionEventMap[sent[0].actionId], "room:rejoin");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: failed rejoin ack clears the cached session and resets the room shell", () => {
+  const { page, storageState, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [SESSION_KEY]: {
+        roomId: "123456",
+        playerId: "player-a",
+        resumeToken: "resume-token"
+      }
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({
+      roomId: "123456",
+      displayRoomId: "123456",
+      joinRoomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      pendingActionText: "恢复中"
+    });
+    page.actionEventMap = {
+      "rejoin-1": "room:rejoin"
+    };
+
+    page.handleServerPacket(JSON.stringify({
+      event: "action:ack",
+      payload: {
+        ok: false,
+        actionId: "rejoin-1",
+        code: "ROOM_NOT_FOUND",
+        reason: "房间不存在"
+      }
+    }));
+
+    assert.equal(storageState[SESSION_KEY], undefined);
+    assert.equal(page.data.roomId, "");
+    assert.equal(page.data.playerId, "");
+    assert.equal(page.data.resumeToken, "");
+    assert.equal(page.data.displayRoomId, "------");
+    assert.equal(page.data.pendingActionText, "");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: socket close during a pending leave finalizes the leave instead of reconnecting", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  const listeners = {};
+  const socketTask = {
+    onOpen(handler) {
+      listeners.open = handler;
+    },
+    onClose(handler) {
+      listeners.close = handler;
+    },
+    onError(handler) {
+      listeners.error = handler;
+    },
+    onMessage(handler) {
+      listeners.message = handler;
+    },
+    send() {},
+    close() {}
+  };
+
+  try {
+    let finalizeCalls = 0;
+    let reconnectSchedules = 0;
+    page.debugClientEvent = () => {};
+    page.refreshWsHint = () => {};
+    page.stopHeartbeat = () => {};
+    page.finalizeLeaveRoom = () => {
+      finalizeCalls += 1;
+    };
+    page.scheduleReconnect = () => {
+      reconnectSchedules += 1;
+    };
+    globalThis.wx.connectSocket = () => socketTask;
+
+    page.pendingLeaveActionId = "leave-1";
+    page.setData({
+      wsUrl: "ws://192.168.1.23:3000/ws",
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: false
+    });
+
+    page.connectSocket();
+    listeners.close({ code: 1006, reason: "network lost" });
+
+    assert.equal(finalizeCalls, 1);
+    assert.equal(reconnectSchedules, 0);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: socket error during a pending leave finalizes the leave instead of reconnecting", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  const listeners = {};
+  const socketTask = {
+    onOpen(handler) {
+      listeners.open = handler;
+    },
+    onClose(handler) {
+      listeners.close = handler;
+    },
+    onError(handler) {
+      listeners.error = handler;
+    },
+    onMessage(handler) {
+      listeners.message = handler;
+    },
+    send() {},
+    close() {}
+  };
+
+  try {
+    let finalizeCalls = 0;
+    let reconnectSchedules = 0;
+    page.debugClientEvent = () => {};
+    page.refreshWsHint = () => {};
+    page.stopHeartbeat = () => {};
+    page.showConnectionFailure = () => {};
+    page.finalizeLeaveRoom = () => {
+      finalizeCalls += 1;
+    };
+    page.scheduleReconnect = () => {
+      reconnectSchedules += 1;
+    };
+    globalThis.wx.connectSocket = () => socketTask;
+
+    page.pendingLeaveActionId = "leave-1";
+    page.setData({
+      wsUrl: "ws://192.168.1.23:3000/ws",
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: false
+    });
+
+    page.connectSocket();
+    listeners.error({ errMsg: "network lost" });
+
+    assert.equal(finalizeCalls, 1);
+    assert.equal(reconnectSchedules, 0);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: finalizing leave clears any queued reconnect retry", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [SESSION_KEY]: {
+        roomId: "123456",
+        playerId: "player-a",
+        resumeToken: "resume-token"
+      }
+    }
+  });
+
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+
+  try {
+    let connectCalls = 0;
+    let closeCalls = 0;
+    let timerIdSeq = 0;
+    const queuedReconnects = new Map();
+
+    globalThis.setTimeout = (fn, delay) => {
+      const timerId = `timer-${++timerIdSeq}`;
+      queuedReconnects.set(timerId, { fn, delay });
+      return timerId;
+    };
+    globalThis.clearTimeout = (timerId) => {
+      queuedReconnects.delete(timerId);
+    };
+
+    page.debugClientEvent = () => {};
+    page.connectSocket = () => {
+      connectCalls += 1;
+    };
+    page.socketTask = {
+      close() {
+        closeCalls += 1;
+      }
+    };
+    page.setData({
+      roomId: "123456",
+      displayRoomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token"
+    });
+
+    page.scheduleReconnect();
+    assert.equal(queuedReconnects.size, 1);
+
+    page.finalizeLeaveRoom();
+
+    assert.equal(queuedReconnects.size, 0);
+    assert.equal(connectCalls, 0);
+    assert.equal(closeCalls, 1);
+    assert.equal(page.data.roomId, "");
+    assert.equal(page.data.playerId, "");
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+    cleanup();
+  }
+});
+
 test("room page: stale direct ws fallbacks no longer expose ws or local network jargon on join", () => {
   const { page, toasts, cleanup } = instantiateRoomPage({
     platform: "android",
@@ -1651,6 +2194,144 @@ test("room page: seating panel keeps all 8 seats after room state refresh", () =
   }
 });
 
+test("room page: three-player seat swaps change the actual on-table slot instead of keeping a compact layout", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.data.playerId = "owner-a";
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "123456",
+        phase: "ready",
+        round: 0,
+        currentPlayerId: "owner-a",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false
+        },
+        players: [
+          {
+            id: "owner-a",
+            nickname: "房主",
+            avatar: "",
+            isOwner: true,
+            onlineStatus: "online",
+            turnStatus: "active",
+            seatIndex: 1,
+            diceCupStatus: "closed",
+            rollLocked: false
+          },
+          {
+            id: "guest-b",
+            nickname: "二号位玩家",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 2,
+            diceCupStatus: "closed",
+            rollLocked: false
+          },
+          {
+            id: "guest-c",
+            nickname: "五号位玩家",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 5,
+            diceCupStatus: "closed",
+            rollLocked: false
+          }
+        ],
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 1,
+        serverTs: Date.now()
+      }
+    }));
+
+    const before = page.data.playersDecorated.find((item) => item.id === "guest-b");
+    assert.equal(before.visualSlotIndex, 5);
+    assert.equal(before.seatSlotClass, "slot-lower-left");
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "123456",
+        phase: "ready",
+        round: 0,
+        currentPlayerId: "owner-a",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false
+        },
+        players: [
+          {
+            id: "owner-a",
+            nickname: "房主",
+            avatar: "",
+            isOwner: true,
+            onlineStatus: "online",
+            turnStatus: "active",
+            seatIndex: 1,
+            diceCupStatus: "closed",
+            rollLocked: false
+          },
+          {
+            id: "guest-b",
+            nickname: "四号位玩家",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 4,
+            diceCupStatus: "closed",
+            rollLocked: false
+          },
+          {
+            id: "guest-c",
+            nickname: "五号位玩家",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 5,
+            diceCupStatus: "closed",
+            rollLocked: false
+          }
+        ],
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 2,
+        serverTs: Date.now()
+      }
+    }));
+
+    const after = page.data.playersDecorated.find((item) => item.id === "guest-b");
+    assert.equal(after.visualSlotIndex, 1);
+    assert.equal(after.seatSlotClass, "slot-upper-left");
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: seating panel moves the selected player into an empty seat", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -2206,6 +2887,139 @@ test("room page: private dice results wait for the roll audio window before stag
     assert.equal(page.data.roomSelfDiceFaces.every((item) => item.revealed), true);
 
     await new Promise((resolve) => setTimeout(resolve, 40));
+
+    assert.equal(page.data.myDiceJustRevealed, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: returning from background settles an interrupted self-roll animation", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: true,
+      connecting: false,
+      phase: "rolling",
+      selfIsWaiting: false,
+      myDiceVisible: true,
+      myDiceRolling: true,
+      myDiceRevealing: false,
+      privateDice: [1, 2, 3, 4, 5],
+      roomConfig: {
+        dicePerPlayer: 5
+      }
+    });
+
+    page.roomSelfRollingTimer = setInterval(() => {}, 1000);
+    page.myDiceAutoPeekTimer = setTimeout(() => {}, 1000);
+    page.onHide();
+
+    assert.equal(Boolean(page.selfRollInterruptedOnHide), true);
+    assert.equal(page.roomSelfRollingTimer, null);
+    assert.equal(page.myDiceAutoPeekTimer, null);
+
+    page.onShow();
+
+    assert.equal(page.data.myDiceRolling, false);
+    assert.equal(page.data.myDiceRevealing, false);
+    assert.equal(page.data.myDiceVisible, true);
+    assert.deepEqual(page.data.roomSelfDiceFaces.map((item) => item.value), [1, 2, 3, 4, 5]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: returning from background can rebuild stable dice from pending private results", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.pendingPrivateDice = [6, 5, 4, 3, 2];
+    page.setData({
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: true,
+      connecting: false,
+      phase: "rolling",
+      selfIsWaiting: false,
+      myDiceVisible: true,
+      myDiceRolling: true,
+      myDiceRevealing: false,
+      privateDice: [],
+      roomConfig: {
+        dicePerPlayer: 5
+      }
+    });
+
+    page.roomSelfRollingTimer = setInterval(() => {}, 1000);
+    page.onHide();
+    page.onShow();
+
+    assert.equal(page.data.myDiceRolling, false);
+    assert.equal(page.data.myDiceRevealing, false);
+    assert.equal(page.data.myDiceVisible, true);
+    assert.deepEqual(page.data.privateDice, [6, 5, 4, 3, 2]);
+    assert.deepEqual(page.data.roomSelfDiceFaces.map((item) => item.value), [6, 5, 4, 3, 2]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: direct private dice restore reveals stable dice immediately when no roll animation is active", async () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.getSelfRollSettleDurationMs = () => 12;
+    page.setData({
+      phase: "rolling",
+      selfIsWaiting: false,
+      myDiceVisible: false,
+      myDiceRolling: false,
+      myDiceRevealing: false,
+      roomConfig: {
+        dicePerPlayer: 5
+      }
+    });
+
+    page.handleServerPacket(JSON.stringify({
+      event: "dice:privateResult",
+      payload: {
+        dice: [2, 4, 6, 1, 3]
+      }
+    }));
+
+    assert.equal(page.data.myDiceRolling, false);
+    assert.equal(page.data.myDiceRevealing, false);
+    assert.equal(page.data.myDiceVisible, true);
+    assert.equal(page.data.myDiceJustRevealed, true);
+    assert.deepEqual(page.data.privateDice, [2, 4, 6, 1, 3]);
+    assert.deepEqual(page.data.roomSelfDiceFaces.map((item) => item.value), [2, 4, 6, 1, 3]);
+    assert.equal(page.data.roomSelfDiceFaces.every((item) => item.revealed), true);
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
 
     assert.equal(page.data.myDiceJustRevealed, false);
   } finally {
