@@ -10,7 +10,8 @@ const {
   LEGAL_VERSION,
   SESSION_KEY,
   NICKNAME_KEY,
-  AVATAR_URL_KEY
+  AVATAR_URL_KEY,
+  PROFILE_NICKNAME_CUSTOMIZED_KEY
 } = require("../miniprogram/utils/constants.js");
 
 function instantiateRoomPage({
@@ -433,7 +434,7 @@ test("room page: default room id display uses the six hyphen placeholder", () =>
 test("room page: accepting legal on mobile join keeps the pending action until a bundled runtime target is available", () => {
   const { page, toasts, storageState, cleanup } = instantiateRoomPage({
     storage: {
-      [NICKNAME_KEY]: "手机玩家"
+      [NICKNAME_KEY]: "阿伟玩家"
     }
   });
 
@@ -459,6 +460,51 @@ test("room page: accepting legal on mobile join keeps the pending action until a
   }
 });
 
+test("room page: accepting legal blocks an invalid nickname before entering", () => {
+  const { page, toasts, storageState, cleanup } = instantiateRoomPage({
+    storage: {}
+  });
+
+  try {
+    page.onLoad({ mode: "join", roomId: "654321" });
+    page.setData({ nickname: "A" });
+
+    page.acceptLegal();
+
+    assert.equal(page.data.legalAccepted, false);
+    assert.equal(page.data.showLegalModal, true);
+    assert.equal(storageState[LEGAL_ACCEPT_KEY], undefined);
+    assert.equal(toasts.includes("昵称需为2-12个字"), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: entry confirm can refresh to another generated nickname before first join", () => {
+  const { page, storageState, cleanup } = instantiateRoomPage({
+    storage: {}
+  });
+
+  const originalDateNow = Date.now;
+  const originalMathRandom = Math.random;
+
+  try {
+    Date.now = () => 1712345678901;
+    Math.random = () => 0.2468;
+    page.setData({ nickname: "玩家111" });
+
+    page.refreshEntryNickname();
+
+    assert.match(page.data.nickname, /^玩家\d{3}$/);
+    assert.notEqual(page.data.nickname, "玩家111");
+    assert.equal(storageState[NICKNAME_KEY], page.data.nickname);
+    assert.equal(storageState[PROFILE_NICKNAME_CUSTOMIZED_KEY], false);
+  } finally {
+    Date.now = originalDateNow;
+    Math.random = originalMathRandom;
+    cleanup();
+  }
+});
 test("room page: invalid automatic join ids do not queue a pending join", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {

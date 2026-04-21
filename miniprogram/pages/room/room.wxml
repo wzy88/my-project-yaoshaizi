@@ -376,14 +376,41 @@
   <view wx:if="{{showLegalModal}}" class="room-mask">
     <view class="room-sheet room-sheet--legal">
       <view class="sheet-head">
-        <text class="sheet-title">隐私与协议</text>
-      </view>
-      <view class="sheet-body">
-        <view class="legal-copy">
-          <text>• 我们仅使用昵称、头像和房间对局数据提供游戏服务。</text>
-          <text>• 房间信息只用于对局同步。</text>
-          <text>• 点击同意后继续进入游戏。</text>
+        <view class="entry-sheet__headline">
+          <text class="entry-sheet__eyebrow">首次进入</text>
+          <text class="sheet-title">开始前确认一下</text>
+          <text class="entry-sheet__desc">确认昵称后就能继续，进房后也能再修改。</text>
         </view>
+      </view>
+      <view class="sheet-body sheet-body--entry">
+        <view wx:if="{{joinRoomId || roomId}}" class="entry-room-card">
+          <text class="entry-room-card__eyebrow">即将进入房间</text>
+          <text class="entry-room-card__value">{{joinRoomId || roomId || displayRoomId || '------'}}</text>
+          <text class="entry-room-card__hint">固定 8 个座位，空位显示空杯，有人进来才会显示头像。</text>
+        </view>
+        <view class="join-field">
+          <view class="entry-field__head">
+            <text class="join-field__label">你的昵称</text>
+            <text class="entry-field__action" bindtap="refreshEntryNickname">换一个</text>
+          </view>
+          <input
+            class="join-input"
+            value="{{nickname}}"
+            maxlength="12"
+            placeholder="例如 阿伟"
+            bindinput="onNicknameChange"
+            bindblur="onNicknameCommit"
+            bindconfirm="onNicknameCommit"
+            confirm-type="done"
+          />
+          <text class="entry-field__hint">默认昵称也能直接玩，不喜欢的话现在改一下就行。</text>
+        </view>
+        <text class="entry-agreement">
+          点击继续即表示同意
+          <text class="entry-agreement__link" bindtap="openTermsPage">《用户协议》</text>
+          与
+          <text class="entry-agreement__link" bindtap="openPrivacyPage">《隐私政策》</text>
+        </text>
         <view class="sheet-actions">
           <view class="dock-btn dock-btn--gold" bindtap="acceptLegal" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
             <text class="dock-btn__label">同意并继续</text>

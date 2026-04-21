@@ -16,7 +16,13 @@ const {
 const { DEFAULT_3D_DIE_ASSET, SELF_DICE_PLACEHOLDER, getDieAsset } = require("../../utils/dice-assets");
 const { getStoredAccountSession } = require("../../utils/account-api");
 const { getStoredWechatProfile } = require("../../utils/wechat-auth");
-const { DEFAULT_PROFILE_AVATAR_ASSETS, normalizeBundledAvatarAsset } = require("../../utils/profile-defaults");
+const {
+  DEFAULT_PROFILE_AVATAR_ASSETS,
+  buildDefaultNickname,
+  looksLikeGeneratedNickname,
+  normalizeBundledAvatarAsset
+} = require("../../utils/profile-defaults");
+const { validateNickname } = require("../../utils/nickname-validator");
 const {
   DEFAULT_CONTAINER_WS_PATH,
   normalizeContainerConfig,
@@ -1967,21 +1973,65 @@ Page({
 	  },
 
   onNicknameChange(event) {
-    const nickname = event.detail.value.trim();
+    const nickname = String(event && event.detail && event.detail.value || "");
     this.setData({
       nickname,
       selfInitial: String(nickname || "玩家").slice(0, 1)
     });
-    wx.setStorageSync(NICKNAME_KEY, nickname);
-    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, Boolean(nickname));
+  },
+
+  onNicknameCommit(event) {
+    const inputValue = String(event && event.detail && event.detail.value || this.data.nickname || "");
+    this.commitNicknameInput(inputValue);
+  },
+
+  commitNicknameInput(raw, options = {}) {
+    const { showToastOnError = true } = options;
+    const validation = validateNickname(raw);
+    if (!validation.ok) {
+      const fallback = String(raw || "");
+      this.setData({
+        nickname: fallback,
+        selfInitial: String(fallback || "玩家").slice(0, 1)
+      });
+      if (showToastOnError) {
+        wx.showToast({ title: validation.message, icon: "none" });
+      }
+      return false;
+    }
+
+    const nextNickname = validation.value;
+    const customized = !looksLikeGeneratedNickname(nextNickname);
+    this.applyNicknameLocal(nextNickname, { customized });
+    return true;
+  },
+
+  applyNicknameLocal(nickname, options = {}) {
+    const nextNickname = String(nickname || "").trim();
+    const customized = typeof options.customized === "boolean"
+      ? options.customized
+      : (nextNickname ? !looksLikeGeneratedNickname(nextNickname) : false);
+
+    this.setData({
+      nickname: nextNickname,
+      selfInitial: String(nextNickname || "玩家").slice(0, 1)
+    });
+    wx.setStorageSync(NICKNAME_KEY, nextNickname);
+    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, customized);
 
     if (this.data.connected && this.data.roomId) {
       this.sendEvent("player:update", {
-        nickname,
+        nickname: nextNickname,
         avatar: this.data.avatarUrl || "",
         ...buildAccountAuthPayload()
       }, { silentLog: true });
     }
+  },
+
+  refreshEntryNickname() {
+    const seed = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+    const nextNickname = buildDefaultNickname(seed);
+    this.applyNicknameLocal(nextNickname, { customized: false });
   },
 
   onJoinRoomIdChange(event) {
@@ -5162,6 +5212,10 @@ Page({
   },
 
   acceptLegal() {
+    if (!this.commitNicknameInput(this.data.nickname)) {
+      return;
+    }
+
     const payload = {
       accepted: true,
       version: LEGAL_VERSION,
