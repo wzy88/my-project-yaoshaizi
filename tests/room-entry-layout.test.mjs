@@ -127,12 +127,20 @@ test("room shell uses a more even seven-seat outer ring layout", () => {
   const scriptPath = path.join(process.cwd(), "miniprogram/pages/room/room.js");
   const source = fs.readFileSync(scriptPath, "utf8");
   assert.match(source, /\{ x: 187\.5, y: 168, bx: 240, by: 180, cupX: 187\.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" \}/);
-  assert.match(source, /\{ x: 42, y: 290, bx: 84, by: 250, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" \}/);
-  assert.match(source, /\{ x: 333, y: 290, bx: 291, by: 250, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" \}/);
-  assert.match(source, /\{ x: 30, y: 420, bx: 78, by: 380, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" \}/);
-  assert.match(source, /\{ x: 345, y: 420, bx: 297, by: 380, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" \}/);
-  assert.match(source, /\{ x: 44, y: 556, bx: 92, by: 516, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" \}/);
-  assert.match(source, /\{ x: 331, y: 556, bx: 283, by: 516, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" \}/);
+  assert.match(source, /\{ x: 42, y: 290, bx: 118, by: 236, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" \}/);
+  assert.match(source, /\{ x: 333, y: 290, bx: 257, by: 236, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" \}/);
+  assert.match(source, /\{ x: 30, y: 396, bx: 126, by: 340, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" \}/);
+  assert.match(source, /\{ x: 345, y: 396, bx: 249, by: 340, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" \}/);
+  assert.match(source, /\{ x: 44, y: 526, bx: 136, by: 470, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" \}/);
+  assert.match(source, /\{ x: 331, y: 526, bx: 239, by: 470, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" \}/);
+});
+
+test("side seats pull the avatar group inward and scale it below the top and bottom seats", () => {
+  const source = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(source, /\.seat--slot-upper-left,\s*\.seat--slot-mid-left,\s*\.seat--slot-lower-left\s*\{[\s\S]*margin-left:\s*20rpx/);
+  assert.match(source, /\.seat--slot-upper-right,\s*\.seat--slot-mid-right,\s*\.seat--slot-lower-right\s*\{[\s\S]*margin-left:\s*-20rpx/);
+  assert.match(source, /\.seat--slot-upper-left \.seat__avatar-shell,[\s\S]*\.seat--slot-lower-right \.seat__avatar-shell\s*\{[\s\S]*width:\s*70rpx[\s\S]*height:\s*70rpx/);
+  assert.match(source, /\.seat--slot-upper-left \.seat__avatar,[\s\S]*\.seat--slot-lower-right \.seat__avatar\s*\{[\s\S]*width:\s*58rpx[\s\S]*height:\s*58rpx/);
 });
 
 test("room page does not rely on external room-view helper at runtime", () => {

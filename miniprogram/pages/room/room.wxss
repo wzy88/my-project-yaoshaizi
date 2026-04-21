@@ -4854,6 +4854,18 @@ button.room-topbar-menu-popover__item::after {
   border-color: #f09040;
 }
 
+.seat--slot-upper-left,
+.seat--slot-mid-left,
+.seat--slot-lower-left {
+  margin-left: 20rpx;
+}
+
+.seat--slot-upper-right,
+.seat--slot-mid-right,
+.seat--slot-lower-right {
+  margin-left: -20rpx;
+}
+
 .seat__avatar-shell {
   width: 120rpx;
   height: 120rpx;
@@ -4861,6 +4873,18 @@ button.room-topbar-menu-popover__item::after {
   background: rgba(22, 28, 36, 0.8);
   border-width: 5rpx;
   box-shadow: inset 0 4rpx 16rpx rgba(0, 0, 0, 0.6);
+}
+
+.seat--slot-upper-left .seat__avatar-shell,
+.seat--slot-upper-right .seat__avatar-shell,
+.seat--slot-mid-left .seat__avatar-shell,
+.seat--slot-mid-right .seat__avatar-shell,
+.seat--slot-lower-left .seat__avatar-shell,
+.seat--slot-lower-right .seat__avatar-shell {
+  width: 70rpx;
+  height: 70rpx;
+  border-radius: 35rpx;
+  border-width: 4rpx;
 }
 
 .seat__avatar-stage {
@@ -4872,18 +4896,56 @@ button.room-topbar-menu-popover__item::after {
   height: 104rpx;
 }
 
+.seat--slot-upper-left .seat__avatar,
+.seat--slot-upper-right .seat__avatar,
+.seat--slot-mid-left .seat__avatar,
+.seat--slot-mid-right .seat__avatar,
+.seat--slot-lower-left .seat__avatar,
+.seat--slot-lower-right .seat__avatar {
+  width: 58rpx;
+  height: 58rpx;
+}
+
 .seat__avatar--fit {
   width: 92rpx;
   height: 92rpx;
+}
+
+.seat--slot-upper-left .seat__avatar--fit,
+.seat--slot-upper-right .seat__avatar--fit,
+.seat--slot-mid-left .seat__avatar--fit,
+.seat--slot-mid-right .seat__avatar--fit,
+.seat--slot-lower-left .seat__avatar--fit,
+.seat--slot-lower-right .seat__avatar--fit {
+  width: 52rpx;
+  height: 52rpx;
 }
 
 .seat__name-row {
   margin-top: 8rpx;
 }
 
+.seat--slot-upper-left .seat__name-row,
+.seat--slot-upper-right .seat__name-row,
+.seat--slot-mid-left .seat__name-row,
+.seat--slot-mid-right .seat__name-row,
+.seat--slot-lower-left .seat__name-row,
+.seat--slot-lower-right .seat__name-row {
+  margin-top: 6rpx;
+}
+
 .seat__name {
   font-size: 24rpx;
   color: #e5e2e1;
+}
+
+.seat--slot-upper-left .seat__name,
+.seat--slot-upper-right .seat__name,
+.seat--slot-mid-left .seat__name,
+.seat--slot-mid-right .seat__name,
+.seat--slot-lower-left .seat__name,
+.seat--slot-lower-right .seat__name {
+  max-width: 124rpx;
 }
 
 .seat__bubble {

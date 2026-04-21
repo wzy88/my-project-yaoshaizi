@@ -356,12 +356,12 @@ function getSeatGeometry(seatIndex, seatCount = 8) {
 function getStitchSeatLayout() {
   const figmaShellSlots = [
     { x: 187.5, y: 168, bx: 240, by: 180, cupX: 187.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" },
-    { x: 42, y: 290, bx: 84, by: 250, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" },
-    { x: 333, y: 290, bx: 291, by: 250, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" },
-    { x: 30, y: 420, bx: 78, by: 380, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" },
-    { x: 345, y: 420, bx: 297, by: 380, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" },
-    { x: 44, y: 556, bx: 92, by: 516, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" },
-    { x: 331, y: 556, bx: 283, by: 516, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" },
+    { x: 42, y: 290, bx: 118, by: 236, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" },
+    { x: 333, y: 290, bx: 257, by: 236, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" },
+    { x: 30, y: 396, bx: 126, by: 340, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" },
+    { x: 345, y: 396, bx: 249, by: 340, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" },
+    { x: 44, y: 526, bx: 136, by: 470, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" },
+    { x: 331, y: 526, bx: 239, by: 470, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" },
     { x: 187.5, y: 804, bx: 187.5, by: 736, cupX: 187.5, cupY: 734, cupAlign: "top", slotClass: "slot-bottom" }
   ];
 
