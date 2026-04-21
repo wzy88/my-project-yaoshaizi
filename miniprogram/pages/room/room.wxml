@@ -170,9 +170,18 @@
 
     <view wx:if="{{callPanelVisible}}" class="call-phase-overlay" style="{{callPhaseOverlayStyle}}" bindtap="closeCallPanel">
       <view class="call-phase-panel" catchtap="noop">
-        <view wx:if="{{callSelectorMode !== 'point'}}" class="call-phase-panel__counts">
+        <scroll-view
+          wx:if="{{callSelectorMode !== 'point'}}"
+          class="call-phase-panel__counts-scroll"
+          scroll-x="true"
+          enable-flex="true"
+          show-scrollbar="false"
+          scroll-into-view="{{'call-count-option-' + callCount}}"
+        >
+        <view class="call-phase-panel__counts">
           <block wx:for="{{callCountOptions}}" wx:key="value">
             <view
+              id="call-count-option-{{item.value}}"
               class="call-phase-panel__count {{item.value === callCount ? 'is-active' : ''}} {{item.isTail ? 'is-tail' : ''}} {{callForcedOpen ? 'is-disabled' : ''}}"
               data-value="{{item.value}}"
               bindtap="onSelectCallCountOption"
@@ -186,6 +195,7 @@
             </view>
           </block>
         </view>
+        </scroll-view>
 
         <view wx:if="{{callSelectorMode === 'point'}}" class="call-phase-panel__points">
           <block wx:for="{{callPointOptionItems}}" wx:key="value">
@@ -249,14 +259,12 @@
       </view>
     </view>
 
-      <view wx:if="{{historyVisible || voiceVisible || chatVisible}}" class="room-drawer-overlay">
+      <view wx:if="{{historyVisible}}" class="room-drawer-overlay">
         <view class="room-social__tabs">
           <view class="room-social__tab {{historyVisible ? 'is-active' : ''}}" bindtap="toggleHistory">战绩</view>
-          <view class="room-social__tab {{voiceVisible ? 'is-active' : ''}}" bindtap="toggleVoiceList">语音</view>
-          <view class="room-social__tab {{chatVisible ? 'is-active' : ''}}" bindtap="toggleChatList">聊天</view>
         </view>
 
-        <scroll-view wx:if="{{historyVisible}}" class="room-social__scroll" scroll-y="true">
+        <scroll-view class="room-social__scroll" scroll-y="true">
           <block wx:if="{{historyItems.length}}">
             <block wx:for="{{historyItems}}" wx:key="round">
               <view class="drawer-card">
@@ -268,48 +276,6 @@
           </block>
           <view wx:else class="drawer-empty">暂无战绩</view>
         </scroll-view>
-
-        <scroll-view wx:elif="{{voiceVisible}}" class="room-social__scroll" scroll-y="true">
-          <block wx:if="{{voiceItems.length}}">
-            <block wx:for="{{voiceItems}}" wx:key="fileId">
-              <view class="drawer-card drawer-card--voice" data-id="{{item.fileId}}" bindtap="onTapVoiceItem">
-                <view class="drawer-card__row">
-                  <text class="drawer-card__title">{{item.nicknameShort}}</text>
-                  <text class="drawer-card__meta">{{item.timeText}} · {{item.durationText}}</text>
-                </view>
-                <text class="drawer-card__body drawer-card__body--light">{{playingVoiceId === item.fileId ? playingVoiceTip : voiceTipText}}</text>
-              </view>
-            </block>
-          </block>
-          <view wx:else class="drawer-empty">暂无语音</view>
-        </scroll-view>
-
-        <view wx:elif="{{chatVisible}}" class="room-social__chat">
-          <scroll-view class="room-social__scroll room-social__scroll--chat" scroll-y="true">
-            <block wx:if="{{chatItems.length}}">
-              <block wx:for="{{chatItems}}" wx:key="id">
-                <view class="drawer-card drawer-card--chat {{item.isSelf ? 'is-self' : ''}}">
-                  <view class="drawer-card__row">
-                    <text class="drawer-card__title">{{item.nicknameShort}}</text>
-                    <text class="drawer-card__meta">{{item.timeText}}</text>
-                  </view>
-                  <text class="drawer-card__body">{{item.text}}</text>
-                </view>
-              </block>
-            </block>
-            <view wx:else class="drawer-empty">暂无聊天</view>
-          </scroll-view>
-          <view class="room-social__composer">
-            <input class="room-social__input" value="{{chatDraft}}" placeholder="说点什么..." bindinput="onChatDraftChange" />
-            <view class="room-social__send" bindtap="sendChat">
-              <text class="room-social__send-text">发送</text>
-            </view>
-          </view>
-        </view>
-
-        <view wx:else class="room-social__empty">
-          <view class="drawer-empty">选择一个频道</view>
-        </view>
       </view>
   </view>
 
@@ -390,7 +356,6 @@
         <view class="seat-direction">
           <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'cw' ? 'is-active' : ''}}" data-dir="cw" bindtap="onSeatingSelectDirection">顺时针</view>
           <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'ccw' ? 'is-active' : ''}}" data-dir="ccw" bindtap="onSeatingSelectDirection">逆时针</view>
-          <view class="seat-direction__item seat-direction__item--ghost" bindtap="clearSeatingSelection">清空</view>
         </view>
 
         <view class="seat-grid">
@@ -415,7 +380,7 @@
       </view>
       <view class="sheet-body">
         <view class="legal-copy">
-          <text>• 语音识别仅在叫牌时使用。</text>
+          <text>• 我们仅使用昵称、头像和房间对局数据提供游戏服务。</text>
           <text>• 房间信息只用于对局同步。</text>
           <text>• 点击同意后继续进入游戏。</text>
         </view>

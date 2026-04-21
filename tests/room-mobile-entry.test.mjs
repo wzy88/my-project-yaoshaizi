@@ -7,6 +7,7 @@ const roomModulePath = require.resolve("../miniprogram/pages/room/room.js");
 const { DEFAULT_PROFILE_AVATAR_ASSETS } = require("../miniprogram/utils/profile-defaults.js");
 const {
   LEGAL_ACCEPT_KEY,
+  LEGAL_VERSION,
   SESSION_KEY,
   NICKNAME_KEY,
   AVATAR_URL_KEY
@@ -27,6 +28,16 @@ function instantiateRoomPage({
   const originalRequirePlugin = globalThis.requirePlugin;
 
   const storageState = { ...storage };
+  if (
+    storageState[LEGAL_ACCEPT_KEY]
+    && storageState[LEGAL_ACCEPT_KEY].accepted === true
+    && !storageState[LEGAL_ACCEPT_KEY].version
+  ) {
+    storageState[LEGAL_ACCEPT_KEY] = {
+      ...storageState[LEGAL_ACCEPT_KEY],
+      version: LEGAL_VERSION
+    };
+  }
   const toasts = [];
   const modals = [];
   const reLaunches = [];
@@ -890,7 +901,7 @@ test("room page: invalid room ids fall back to the placeholder display", () => {
   }
 });
 
-test("room page: share payload routes through the lobby login gate into the current room", () => {
+test("room page: share payload points directly to the current room entry", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -909,8 +920,87 @@ test("room page: share payload routes through the lobby login gate into the curr
     assert.equal(payload.title, "房主阿伟 邀你加入房间 123456");
     assert.equal(
       payload.path,
-      `/pages/lobby/lobby?redirect=${encodeURIComponent("/pages/room/room?mode=join&forceNew=1&roomId=123456")}`
+      "/pages/room/room?mode=join&forceNew=1&roomId=123456"
     );
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: stale direct ws fallbacks no longer expose ws or local network jargon on join", () => {
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    platform: "android",
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://127.0.0.1:3000/ws"
+  });
+
+  try {
+    page.onLoad({ mode: "join", roomId: "123456" });
+
+    assert.equal(page.data.networkStatusText, "请修改地址");
+    assert.equal(page.data.wsHintText.includes("ws://"), false);
+    assert.equal(page.data.wsHintText.includes("局域网"), false);
+    assert.deepEqual(toasts, ["当前服务连接异常，请稍后重试"]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: call count options expand to the full dice total for large rooms", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({});
+    page.setData({ playerId: "P1" });
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "778899",
+        phase: "calling",
+        round: 1,
+        currentPlayerId: "P1",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        },
+        players: Array.from({ length: 8 }, (_, index) => ({
+          id: `P${index + 1}`,
+          nickname: `玩家${index + 1}`,
+          avatar: "",
+          isOwner: index === 0,
+          onlineStatus: "online",
+          turnStatus: index === 0 ? "active" : "idle",
+          seatIndex: index + 1,
+          diceCupStatus: "closed",
+          rollLocked: true,
+          rollCountThisRound: 1
+        })),
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 1,
+        serverTs: 1710000000000
+      }
+    }));
+
+    assert.equal(page.data.maxCallCount, 40);
+    assert.equal(page.data.callCountOptions.length, 40);
+    assert.equal(page.data.callCountOptions[0].value, "1");
+    assert.equal(page.data.callCountOptions.at(-1).value, "40");
   } finally {
     cleanup();
   }
@@ -1639,7 +1729,61 @@ test("room page: seating panel moves the selected player into an empty seat", ()
     assert.equal(page.data.seatingSelectedSeatIndex, 0);
     assert.equal(page.data.seatingSelectedText, "未选择");
     assert.equal(hapticCalls, 1);
-    assert.equal(sfxCalls, 1);
+    assert.equal(sfxCalls, 0);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: seating direction change keeps haptic but stays audio silent", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sent = [];
+    let hapticCalls = 0;
+    let sfxCalls = 0;
+
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.haptic = () => {
+      hapticCalls += 1;
+    };
+    page.playSfx = () => {
+      sfxCalls += 1;
+    };
+
+    page.setData({
+      phase: "ready",
+      round: 0,
+      selfIsOwner: true,
+      roomConfig: {
+        direction: "cw"
+      }
+    });
+
+    page.onSeatingSelectDirection({
+      currentTarget: {
+        dataset: {
+          dir: "ccw"
+        }
+      }
+    });
+
+    assert.deepEqual(sent, [
+      {
+        event: "room:config:update",
+        payload: { direction: "ccw" }
+      }
+    ]);
+    assert.equal(hapticCalls, 1);
+    assert.equal(sfxCalls, 0);
   } finally {
     cleanup();
   }
@@ -1788,7 +1932,7 @@ test("room page: seating panel swaps two occupied seats", () => {
     assert.equal(page.data.seatingSelectedSeatIndex, 0);
     assert.equal(page.data.seatingSelectedText, "未选择");
     assert.equal(hapticCalls, 1);
-    assert.equal(sfxCalls, 1);
+    assert.equal(sfxCalls, 0);
   } finally {
     cleanup();
   }

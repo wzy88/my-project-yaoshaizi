@@ -1,7 +1,11 @@
+page {
+  height: 100%;
+  overflow: hidden;
+}
+
 .me-page {
   position: relative;
-  min-height: 100vh;
-  padding: calc(24rpx + env(safe-area-inset-top)) 20rpx calc(214rpx + env(safe-area-inset-bottom));
+  height: 100%;
   box-sizing: border-box;
   overflow: hidden;
   background: #1c1326;
@@ -43,21 +47,26 @@
   background: radial-gradient(circle, rgba(35, 181, 111, 0.1) 0%, rgba(35, 181, 111, 0) 70%);
 }
 
-.status-row,
+.me-shell,
+.me-header,
+.me-body-scroll,
+.me-body-scroll__content,
 .profile-card,
 .content-stack {
   position: relative;
   z-index: 2;
 }
 
-.status-time {
-  color: #e8f5e9;
-  font-size: 30rpx;
-  font-weight: 700;
+.me-shell {
+  height: 100%;
+  padding: calc(24rpx + env(safe-area-inset-top)) 20rpx calc(118rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-card {
-  margin-top: 20rpx;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 16rpx;
@@ -133,8 +142,26 @@
   line-height: 1.5;
 }
 
-.content-stack {
+.me-header {
+  flex-shrink: 0;
+}
+
+.section--basic {
   margin-top: 28rpx;
+}
+
+.me-body-scroll {
+  flex: 1;
+  min-height: 0;
+  margin-top: 14rpx;
+}
+
+.me-body-scroll__content {
+  padding-bottom: calc(96rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.content-stack {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
@@ -175,31 +202,10 @@
   gap: 14rpx;
 }
 
-.row--multiline {
-  align-items: flex-start;
-  padding-top: 20rpx;
-  padding-bottom: 20rpx;
-}
-
-.row-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
-
 .row-label {
   color: #ffffff;
   font-size: 28rpx;
   font-weight: 700;
-}
-
-.row-sub {
-  color: rgba(168, 230, 207, 0.82);
-  font-size: 22rpx;
-  line-height: 1.5;
-  word-break: break-all;
 }
 
 .nickname-input {
@@ -236,17 +242,6 @@
 
 .row-value--danger {
   color: #ff6b6b;
-}
-
-.row-tag {
-  min-width: 72rpx;
-  padding: 6rpx 14rpx;
-  border-radius: 999rpx;
-  background: rgba(35, 181, 111, 0.14);
-  color: #23b56f;
-  font-size: 18rpx;
-  font-weight: 700;
-  text-align: center;
 }
 
 .row-right {

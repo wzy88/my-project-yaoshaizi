@@ -1,6 +1,7 @@
 const app = getApp();
 const {
   LEGAL_ACCEPT_KEY,
+  LEGAL_VERSION,
   WS_URL_KEY,
   CLOUD_ENV_ID_KEY,
   CLOUD_SERVICE_KEY,
@@ -476,25 +477,13 @@ function buildRandomDiceValues(count = 5) {
 function buildCallCountOptionItems(currentValue, maxValue = 1, minValue = 1) {
   const max = Math.max(1, Number(maxValue) || 1);
   const min = Math.max(1, Math.min(Number(minValue) || 1, max));
-  const current = clampToRange(currentValue, min, max);
-  const windowSize = 7;
-
-  let start = current;
-  if (start + windowSize - 1 > max) {
-    start = Math.max(min, max - windowSize + 1);
-  }
-
   const list = [];
-  for (let value = start; value <= max && list.length < windowSize; value += 1) {
-    const isTail = list.length === windowSize - 1 && value < max;
+  for (let value = min; value <= max; value += 1) {
     list.push({
       value: String(value),
-      label: isTail ? `${value}+` : String(value),
-      isTail
+      label: String(value),
+      isTail: false
     });
-    if (isTail) {
-      break;
-    }
   }
 
   if (!list.length) {
@@ -590,7 +579,7 @@ function buildRoomJoinUrl(roomId) {
 }
 
 function buildRoomShareEntryUrl(roomId) {
-  return `/pages/lobby/lobby?redirect=${encodeURIComponent(buildRoomJoinUrl(roomId))}`;
+  return buildRoomJoinUrl(roomId);
 }
 
 function clampPercent(value, min = 0, max = 100) {
@@ -1170,49 +1159,48 @@ function buildWsHint(options, lastWsError = "") {
   const err = String(lastWsError || "");
 
   if (hasContainerService(containerConfig)) {
-    const summary = buildContainerSummary(containerConfig);
     if (!canUseCloudSocketApi()) {
-      return "当前微信基础库不支持云托管连接，请升级微信或开发者工具后重试";
+      return "当前微信版本较低，请升级后重试";
     }
     if (err.includes("1006")) {
-      return "云托管握手失败：请确认服务名、路径和环境绑定是否正确";
+      return "当前服务连接异常，请稍后重试";
     }
     if (err.includes("connectContainer")) {
-      return `云托管连接失败：${err}`;
+      return "当前服务连接异常，请稍后重试";
     }
     if (err.includes("ROOM_NOT_FOUND")) {
-      return "房间不存在：请确认双方进入的是同一个云托管服务";
+      return "房间不存在或房间号有误";
     }
-    return `当前通过微信云托管连接：${summary}`;
+    return "当前服务连接正常";
   }
 
   if (!url) {
-    return "当前服务暂不可用，请联系开发同学检查连接配置";
+    return "当前服务暂不可用，请稍后再试";
   }
 
   const matched = url.match(/^wss?:\/\/([^/:?#]+)/i);
   if (!matched) {
-    return "地址格式不正确，请使用 ws:// 或 wss://";
+    return "当前服务连接异常，请稍后重试";
   }
   const host = matched[1].toLowerCase();
 
   if (host === "127.0.0.1" || host === "localhost" || host === "::1") {
-    return "手机真机无法访问 127.0.0.1，请改成电脑局域网 IP（如 ws://192.168.1.23:3000/ws）";
+    return "当前服务连接异常，请稍后重试";
   }
 
   if (err.includes("1006")) {
-    return "1006 通常是握手或证书问题；请确认地址可访问，并优先使用 wss:// 公网域名";
+    return "当前服务连接失败，请稍后重试";
   }
 
   if (err.includes("ROOM_NOT_FOUND")) {
-    return "房间不存在：请确认两台手机连接的是同一个 WS 地址，且服务端没有重启";
+    return "房间不存在或房间号有误";
   }
 
   if (/^ws:\/\//i.test(url)) {
-    return "真机预览建议使用 wss:// 公网地址；局域网联调请确保手机与电脑在同一 Wi-Fi";
+    return "当前服务连接异常，请稍后重试";
   }
 
-  return "如连接失败，请确认服务端已启动，并检查地址末尾是否包含 /ws";
+  return "当前服务暂不可用，请稍后再试";
 }
 
 function isLoopbackWsUrl(wsUrl) {
@@ -1724,7 +1712,11 @@ Page({
     });
 
     const legalConsent = wx.getStorageSync(LEGAL_ACCEPT_KEY);
-    const legalAccepted = Boolean(legalConsent && legalConsent.accepted === true);
+    const legalAccepted = Boolean(
+      legalConsent
+      && legalConsent.accepted === true
+      && String(legalConsent.version || "") === LEGAL_VERSION
+    );
 
     this.setData({
       legalAccepted,
@@ -2211,7 +2203,7 @@ Page({
     this.refreshWsHint(errorText);
 
     if (hasPendingEntry) {
-      wx.showToast({ title: "请先改成局域网IP或wss地址", icon: "none" });
+      wx.showToast({ title: "当前服务连接异常，请稍后重试", icon: "none" });
     }
 
     return true;
@@ -2416,7 +2408,7 @@ Page({
     }
 
     if (!/^wss?:\/\/.+/i.test(this.data.wsUrl)) {
-      wx.showToast({ title: "服务器地址无效", icon: "none" });
+      wx.showToast({ title: "当前服务连接异常，请稍后重试", icon: "none" });
       this.refreshWsHint("地址无效");
       return;
     }
@@ -2428,7 +2420,7 @@ Page({
         networkStatusText: "请修改地址"
       });
       this.refreshWsHint(errorText);
-      wx.showToast({ title: "请改为局域网IP或wss域名", icon: "none" });
+      wx.showToast({ title: "当前服务连接异常，请稍后重试", icon: "none" });
       return;
     }
 
@@ -3385,7 +3377,6 @@ Page({
     const current = this.data.roomConfig && this.data.roomConfig.direction;
     if (current === dir) return;
     this.haptic("light");
-    this.playSfx("ok");
     this.sendEvent("room:config:update", { direction: dir });
   },
 
@@ -3438,7 +3429,6 @@ Page({
     }
 
     this.haptic("light");
-    this.playSfx("ok");
 
     // move
     if (fromId && !toId) {
@@ -5189,7 +5179,7 @@ Page({
   acceptLegal() {
     const payload = {
       accepted: true,
-      version: "1.0.0",
+      version: LEGAL_VERSION,
       acceptedAt: Date.now()
     };
     wx.setStorageSync(LEGAL_ACCEPT_KEY, payload);

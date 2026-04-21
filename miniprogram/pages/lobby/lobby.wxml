@@ -7,80 +7,77 @@
   <image class="float-die float-die--a" src="{{floatDiceAssets[0]}}" mode="aspectFit"></image>
   <image class="float-die float-die--b" src="{{floatDiceAssets[1]}}" mode="aspectFit"></image>
 
-  <view class="status-row">
-    <text class="status-time">{{timeText}}</text>
-    <view class="status-right">
-      <view class="status-signal">
-        <view class="status-signal__dot"></view>
-      </view>
-    </view>
-  </view>
-
-  <view class="hero">
-    <text class="hero-title">满上，</text>
-    <text class="hero-title">来一局</text>
-    <text class="hero-sub">LIAR'S DICE · 实时在线对决</text>
-  </view>
-
-  <view class="panel-stack">
-    <view class="glass-card profile-card">
-      <view class="profile-card__main">
-        <view class="profile-card__avatar">
-          <image wx:if="{{avatarUrl}}" class="profile-card__avatar-img" src="{{avatarUrl}}" mode="aspectFill"></image>
-          <text wx:else class="profile-card__avatar-text">{{nickname ? nickname.slice(0, 1) : '玩'}}</text>
-        </view>
-        <view class="profile-card__text">
-          <text class="profile-card__label">{{loggedIn ? '当前身份' : '默认身份'}}</text>
-          <text class="profile-card__name">{{nickname || '玩家001'}}</text>
-          <text class="profile-card__hint">{{loggedIn ? '头像会直接用于房间展示，昵称可在“我的”页修改。' : '登录后会先用这套默认头像昵称进入，之后可在“我的”页修改。'}}</text>
-        </view>
+  <view class="lobby-shell">
+    <view class="hero-zone">
+      <view class="hero">
+        <text class="hero-title">满上，</text>
+        <text class="hero-title">来一局</text>
+        <text class="hero-sub">LIAR'S DICE · 实时在线对决</text>
       </view>
     </view>
 
-    <view class="glass-card join-card">
-      <input
-        class="join-input"
-        value="{{joinRoomId}}"
-        bindinput="onJoinRoomIdChange"
-        placeholder="输入房间号加入"
-        maxlength="6"
-        type="number"
-        placeholder-class="join-placeholder"
-      />
-      <button class="join-btn" bindtap="goJoinRoom">
-        <text class="join-btn__text">加入房间</text>
+    <view class="lobby-main">
+      <view class="panel-stack">
+        <view class="glass-card profile-card">
+          <view class="profile-card__main">
+            <view class="profile-card__avatar">
+              <image wx:if="{{avatarUrl}}" class="profile-card__avatar-img" src="{{avatarUrl}}" mode="aspectFill"></image>
+              <text wx:else class="profile-card__avatar-text">{{nickname ? nickname.slice(0, 1) : '玩'}}</text>
+            </view>
+            <view class="profile-card__text">
+              <text class="profile-card__label">{{loggedIn ? '当前身份' : '默认身份'}}</text>
+              <text class="profile-card__name">{{nickname || '玩家001'}}</text>
+              <text class="profile-card__hint">{{loggedIn ? '头像会直接用于房间展示，昵称可在“我的”页修改。' : '登录后会先用这套默认头像昵称进入，之后可在“我的”页修改。'}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="glass-card join-card">
+          <input
+            class="join-input"
+            value="{{joinRoomId}}"
+            bindinput="onJoinRoomIdChange"
+            placeholder="输入房间号加入"
+            maxlength="6"
+            type="number"
+            placeholder-class="join-placeholder"
+          />
+          <button class="join-btn" bindtap="goJoinRoom">
+            <text class="join-btn__text">加入房间</text>
+          </button>
+        </view>
+
+        <view class="recent-section">
+          <text class="recent-title">最近对局</text>
+          <view class="recent-grid">
+            <view wx:if="{{hasSession}}" class="glass-card recent-card" bindtap="goResume">
+              <view class="recent-card__orb"></view>
+              <text class="recent-card__code">{{sessionRoomId}}</text>
+              <text class="recent-card__meta">点击继续上次房间</text>
+            </view>
+            <view wx:else class="glass-card recent-card is-empty">
+              <text class="recent-card__code">----</text>
+              <text class="recent-card__meta">暂无最近房间</text>
+            </view>
+            <view class="glass-card recent-card recent-card--secondary">
+              <text class="recent-card__code recent-card__code--tip">规则</text>
+              <text class="recent-card__meta">建议 4-8 人在线开局</text>
+            </view>
+          </view>
+          <view wx:if="{{hasSession}}" class="recent-actions">
+            <text class="recent-link" bindtap="goResume">继续房间</text>
+            <text class="recent-link recent-link--danger" bindtap="clearSession">清空记录</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="bottom-action">
+      <button class="create-btn" bindtap="goCreateRoom">
+        <image class="create-btn__die" src="{{createButtonDieAsset}}" mode="aspectFit"></image>
+        <text class="create-btn__text">创建新局</text>
       </button>
     </view>
-
-    <view class="recent-section">
-      <text class="recent-title">最近对局</text>
-      <view class="recent-grid">
-      <view wx:if="{{hasSession}}" class="glass-card recent-card" bindtap="goResume">
-        <view class="recent-card__orb"></view>
-        <text class="recent-card__code">{{sessionRoomId}}</text>
-        <text class="recent-card__meta">点击继续上次房间</text>
-      </view>
-      <view wx:else class="glass-card recent-card is-empty">
-        <text class="recent-card__code">----</text>
-        <text class="recent-card__meta">暂无最近房间</text>
-      </view>
-        <view class="glass-card recent-card recent-card--secondary">
-          <text class="recent-card__code recent-card__code--tip">规则</text>
-          <text class="recent-card__meta">建议 4-8 人在线开局</text>
-        </view>
-      </view>
-      <view wx:if="{{hasSession}}" class="recent-actions">
-        <text class="recent-link" bindtap="goResume">继续房间</text>
-        <text class="recent-link recent-link--danger" bindtap="clearSession">清空记录</text>
-      </view>
-    </view>
-  </view>
-
-  <view class="bottom-action">
-    <button class="create-btn" bindtap="goCreateRoom">
-      <image class="create-btn__die" src="{{createButtonDieAsset}}" mode="aspectFit"></image>
-      <text class="create-btn__text">创建新局</text>
-    </button>
   </view>
 
   <view class="login-gate" wx:if="{{showLoginGate}}">

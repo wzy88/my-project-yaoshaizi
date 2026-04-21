@@ -11,7 +11,10 @@ test("room call panel switches between count and point selectors", () => {
   const roomWxml = fs.readFileSync(roomWxmlPath, "utf8");
   const roomJs = fs.readFileSync(roomJsPath, "utf8");
 
-  assert.match(roomWxml, /wx:if="\{\{callSelectorMode !== 'point'\}\}" class="call-phase-panel__counts"/);
+  assert.match(roomWxml, /<scroll-view[\s\S]*wx:if="\{\{callSelectorMode !== 'point'\}\}"[\s\S]*class="call-phase-panel__counts-scroll"[\s\S]*scroll-x="true"/);
+  assert.match(roomWxml, /scroll-into-view="\{\{'call-count-option-' \+ callCount\}\}"/);
+  assert.match(roomWxml, /id="call-count-option-\{\{item\.value\}\}"/);
+  assert.match(roomWxml, /<view class="call-phase-panel__counts">/);
   assert.match(roomWxml, /wx:if="\{\{callSelectorMode === 'point'\}\}" class="call-phase-panel__points"/);
   assert.match(roomWxml, /class="call-phase-panel__value-box"[\s\S]*hover-class="call-phase-panel__box--pressing"/);
   assert.match(roomWxml, /class="call-phase-panel__point-box \{\{callForcedOpen \? 'is-disabled' : ''\}\}"[\s\S]*hover-class="\{\{callForcedOpen \? 'none' : 'call-phase-panel__box--pressing'\}\}"/);
@@ -25,6 +28,10 @@ test("room call panel switches between count and point selectors", () => {
   assert.match(
     roomJs,
     /function buildCallPointOptionItems\(options\)\s*\{\s*return \(Array\.isArray\(options\) \? options : \[\]\)\.map\(\(value\) => \(\{\s*value:\s*String\(value\),[\s\S]*asset:\s*getDieAsset\(value\)/
+  );
+  assert.match(
+    roomJs,
+    /function buildCallCountOptionItems\(currentValue, maxValue = 1, minValue = 1\)\s*\{[\s\S]*for \(let value = min; value <= max; value \+= 1\)/
   );
 });
 
@@ -55,4 +62,7 @@ test("room call panel stays content-sized instead of reserving an empty lower ha
   assert.match(roomWxss, /\.call-phase-panel\s*\{[\s\S]*padding:\s*24rpx 24rpx calc\(92rpx \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*rgba\(15, 19, 27, 0\.98\) 100%/);
   assert.match(roomWxss, /\.call-phase-panel\s*\{[\s\S]*animation:\s*call-phase-panel-rise 140ms cubic-bezier\(0\.22, 0\.9, 0\.32, 1\)/);
+  assert.match(roomWxss, /\.call-phase-panel__counts-scroll\s*\{[\s\S]*width:\s*100%/);
+  assert.match(roomWxss, /\.call-phase-panel__counts\s*\{[\s\S]*width:\s*max-content/);
+  assert.match(roomWxss, /\.call-phase-panel__count\s*\{[\s\S]*flex:\s*0 0 116rpx/);
 });

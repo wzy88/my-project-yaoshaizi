@@ -1,5 +1,6 @@
 const {
   LEGAL_ACCEPT_KEY,
+  LEGAL_VERSION,
   NICKNAME_KEY,
   AVATAR_URL_KEY,
   PROFILE_SEED_KEY,
@@ -228,7 +229,7 @@ function persistWechatProfile(profile) {
 function persistLegalConsent() {
   const payload = {
     accepted: true,
-    version: "1.0.0",
+    version: LEGAL_VERSION,
     acceptedAt: Date.now()
   };
   wx.setStorageSync(LEGAL_ACCEPT_KEY, payload);

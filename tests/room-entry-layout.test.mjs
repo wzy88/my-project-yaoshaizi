@@ -5,11 +5,23 @@ import path from "node:path";
 
 const roomWxmlPath = path.join(process.cwd(), "miniprogram/pages/room/room.wxml");
 const roomWxssPath = path.join(process.cwd(), "miniprogram/pages/room/room.wxss");
+const roomJsonPath = path.join(process.cwd(), "miniprogram/pages/room/room.json");
 
 test("room page no longer embeds the legacy create or join entry screen", () => {
   const source = fs.readFileSync(roomWxmlPath, "utf8");
   assert.doesNotMatch(source, /class="room-entry-screen"/);
   assert.doesNotMatch(source, />创建 \/ 加入</);
+});
+
+test("room page disables page-level scrolling while leaving internal panels to manage their own scroll", () => {
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  const json = JSON.parse(fs.readFileSync(roomJsonPath, "utf8"));
+  assert.equal(json.disableScroll, true);
+  assert.match(wxss, /page\s*\{[\s\S]*height:\s*100%[\s\S]*overflow:\s*hidden/);
+  assert.match(wxss, /\.page\s*\{[\s\S]*height:\s*100%/);
+  assert.match(wxss, /\.page\s*\{[\s\S]*min-height:\s*100%/);
+  assert.match(wxss, /\.page\.room-screen\s+\.room-shell\s*\{[\s\S]*height:\s*100%/);
+  assert.match(wxss, /\.page\.room-screen\s+\.room-shell\s*\{[\s\S]*overflow:\s*hidden/);
 });
 
 test("room shell keeps the room id centered while moving share into the left-top menu", () => {
@@ -145,6 +157,16 @@ test("seating dialog reuses the settlement sheet skin", () => {
   );
 });
 
+test("seating dialog keeps only clockwise and counterclockwise shortcuts", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxml, /bindtap="onSeatingSelectDirection">顺时针<\/view>/);
+  assert.match(wxml, /bindtap="onSeatingSelectDirection">逆时针<\/view>/);
+  assert.doesNotMatch(wxml, /bindtap="clearSeatingSelection"/);
+  assert.doesNotMatch(wxml, />清空<\/view>/);
+  assert.doesNotMatch(wxss, /\.seat-direction__item--ghost\s*\{/);
+});
+
 test("seating dialog uses a compact 2-column seat card grid", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
@@ -226,4 +248,16 @@ test("owner start button copy no longer includes the minimum-player hint", () =>
   const scriptPath = path.join(process.cwd(), "miniprogram/pages/room/room.js");
   const source = fs.readFileSync(scriptPath, "utf8");
   assert.doesNotMatch(source, /开始\(需2人\)/);
+});
+
+test("room page keeps only the history drawer and no longer renders chat or voice channels", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+
+  assert.match(wxml, /wx:if="\{\{historyVisible\}\}" class="room-drawer-overlay"/);
+  assert.match(wxml, /class="room-social__tab \{\{historyVisible \? 'is-active' : ''\}\}" bindtap="toggleHistory">战绩<\/view>/);
+  assert.doesNotMatch(wxml, /bindtap="toggleVoiceList"/);
+  assert.doesNotMatch(wxml, /bindtap="toggleChatList"/);
+  assert.doesNotMatch(wxml, /暂无语音/);
+  assert.doesNotMatch(wxml, /暂无聊天/);
+  assert.doesNotMatch(wxml, /说点什么/);
 });

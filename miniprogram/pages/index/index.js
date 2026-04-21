@@ -72,11 +72,11 @@ function buildMissingBackendMessageCompat(connection) {
   const containerConfig = resolveContainerConfig(source.containerConfig || {});
 
   if (!hasContainerService(containerConfig) && !wsUrl) {
-    return "当前服务暂不可用，请联系开发同学检查服务配置";
+    return "当前服务暂不可用，请稍后再试";
   }
 
   if (wsUrl && !/^wss?:\/\//i.test(wsUrl)) {
-    return "当前服务连接地址异常，请联系开发同学检查部署配置";
+    return "当前服务连接异常，请稍后再试";
   }
 
   return "当前服务暂不可用，请稍后再试";

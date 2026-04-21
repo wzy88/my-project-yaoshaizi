@@ -2,11 +2,13 @@ const DEFAULT_CLOUD_ENV_ID = "";
 const DEFAULT_CLOUD_SERVICE = "";
 
 module.exports = {
-  LEGAL_ACCEPT_KEY: "diceLegalConsentV1",
+  LEGAL_ACCEPT_KEY: "diceLegalConsentV2",
+  LEGAL_VERSION: "1.1.0",
   WS_URL_KEY: "diceWsUrlV1",
   CLOUD_ENV_ID_KEY: "diceCloudEnvIdV1",
   CLOUD_SERVICE_KEY: "diceCloudServiceV1",
   CLOUD_WS_PATH_KEY: "diceCloudWsPathV1",
+  CONTACT_EMAIL: "569500252@qq.com",
   DEFAULT_CLOUD_ENV_ID,
   DEFAULT_CLOUD_SERVICE,
   SESSION_KEY: "diceSession",

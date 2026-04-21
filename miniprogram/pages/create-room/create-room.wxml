@@ -8,34 +8,12 @@
     </view>
 
     <view class="block">
-      <text class="block-title">房间人数</text>
-      <view class="chip-row">
-        <block wx:for="{{playerCountOptions}}" wx:key="*this">
-          <view
-            class="chip {{playerCount === item ? 'active' : ''}} is-disabled"
-          >{{item}}</view>
-        </block>
-      </view>
-      <text class="block-hint">暂未开放自定义，当前固定 8 人房。</text>
-    </view>
-
-    <view class="toggle-card is-disabled">
-      <view class="toggle-copy">
-        <text class="toggle-title">允许旁观</text>
-        <text class="toggle-sub">暂未开放，当前默认关闭。</text>
-      </view>
-      <view class="toggle-pill {{allowSpectator ? 'is-on' : ''}} is-disabled">
-        <view class="toggle-pill__thumb"></view>
-      </view>
-    </view>
-
-    <view class="toggle-card is-disabled">
-      <view class="toggle-copy">
-        <text class="toggle-title">锁定房间</text>
-        <text class="toggle-sub">暂未开放，当前默认关闭。</text>
-      </view>
-      <view class="toggle-pill {{lockRoom ? 'is-on' : ''}} is-disabled">
-        <view class="toggle-pill__thumb"></view>
+      <text class="block-title">房间形式</text>
+      <view class="room-form-card">
+        <view class="room-form-card__glow"></view>
+        <view class="room-form-card__badge">固定房间</view>
+        <text class="room-form-card__title">固定 8 个座位</text>
+        <text class="room-form-card__desc">房间始终保留 8 个座位，来几个人算几个人，最多 8 人同局。</text>
       </view>
     </view>
 
@@ -49,7 +27,7 @@
       </view>
     </view>
 
-    <text class="panel-note">默认每人 5 颗骰子，按当前规则创建后会直接进入房间。</text>
+    <text class="panel-note">默认每人 5 颗骰子。创建后会直接进入房间，空位会保留杯位但不显示头像。</text>
 
     <button class="create-btn" bindtap="createAndEnter">创建并进入</button>
     <button class="cancel-btn" bindtap="back">取消</button>

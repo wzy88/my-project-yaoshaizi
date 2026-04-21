@@ -54,11 +54,11 @@
   </view>
 
   <view class="card section">
-    <text class="section-title">6. 语音叫骰</text>
+    <text class="section-title">6. 房间说明</text>
     <view class="bullets">
-      <text class="bullet">- 按住语音键说话，松开发送语音。</text>
-      <text class="bullet">- 识别文本会自动解析成「X个Y」并填入叫骰面板；需你点击“确认叫骰”提交（避免误识别误操作）。</text>
-      <text class="bullet">- 支持常见口语/中文数字：如「十个四」「十二个六」「三六」（=3个6）。</text>
+      <text class="bullet">- 房间固定保留 8 个杯位，来几个人就显示几个人，最多 8 人同局。</text>
+      <text class="bullet">- 空位会保留杯位氛围，但不会显示玩家头像。</text>
+      <text class="bullet">- 当前版本以摇骰、叫牌、开牌、结算为主，不提供聊天和语音功能。</text>
     </view>
   </view>
 </view>

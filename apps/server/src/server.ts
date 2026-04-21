@@ -7,6 +7,7 @@ import { PORT_RETRY_LIMIT, SERVER_HOST, SERVER_PORT, WS_PATH } from "./config.js
 import { AccountStore } from "./engine/account-store.js";
 import { RoomService } from "./engine/room-service.js";
 import { resolveWechatIdentity } from "./services/wechat-session-resolver.js";
+import { validateNicknameInput } from "./utils/nickname-validator.js";
 
 function normalizePath(input: string): string {
   const value = String(input || "/").trim();
@@ -140,15 +141,12 @@ async function handleHttpRequest(
 
     if (method === "POST" && pathname === "/api/auth/wechat-login") {
       const body = await readJsonBody(req);
-      const nickname = String(body.nickname || "").trim();
+      const nicknameInput = String(body.nickname || "").trim();
       const nicknameCustomized = Boolean(body.nicknameCustomized);
       const avatarUrl = String(body.avatarUrl || "").trim();
       const code = String(body.code || "").trim();
-
-      if (!nickname) {
-        sendJson(res, 400, { ok: false, message: "nickname required" });
-        return;
-      }
+      const nicknameResult = validateNicknameInput(nicknameInput);
+      const nickname = nicknameResult.ok ? nicknameResult.value : "玩家";
 
       if (!avatarUrl) {
         sendJson(res, 400, { ok: false, message: "avatarUrl required" });
@@ -200,14 +198,24 @@ async function handleHttpRequest(
       }
 
       const body = await readJsonBody(req);
-      const nickname = String(body.nickname || "").trim();
+      const nicknameInput = String(body.nickname || "").trim();
       const nicknameCustomized = typeof body.nicknameCustomized === "boolean"
         ? Boolean(body.nicknameCustomized)
         : undefined;
       const avatarUrl = String(body.avatarUrl || "").trim();
-      if (!nickname && !avatarUrl) {
+      if (!nicknameInput && !avatarUrl) {
         sendJson(res, 400, { ok: false, message: "profile patch required" });
         return;
+      }
+
+      let nickname = "";
+      if (nicknameInput) {
+        const nicknameResult = validateNicknameInput(nicknameInput);
+        if (!nicknameResult.ok) {
+          sendJson(res, 400, { ok: false, message: nicknameResult.message });
+          return;
+        }
+        nickname = nicknameResult.value;
       }
 
       const nextProfile = await accountStore.syncProfile(profile.accountId, {

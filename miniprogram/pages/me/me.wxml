@@ -4,136 +4,143 @@
   <view class="bg-glow bg-glow--top"></view>
   <view class="bg-glow bg-glow--bottom"></view>
 
-  <view class="status-row">
-    <text class="status-time">{{timeText}}</text>
-  </view>
-
-  <view class="profile-card">
-    <view class="avatar-shell">
-      <view class="avatar">
-        <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
-        <text wx:else class="avatar-text">{{initial}}</text>
+  <view class="me-shell">
+    <view class="profile-card">
+      <view class="avatar-shell">
+        <view class="avatar">
+          <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
+          <text wx:else class="avatar-text">{{initial}}</text>
+        </view>
+        <view class="avatar-badge">✓</view>
       </view>
-      <view class="avatar-badge">✓</view>
-    </view>
-    <view class="profile-main">
-      <text class="profile-title">{{nickname || '玩家'}}</text>
-      <text class="profile-sub">你的对局战绩和最近房间会跟着当前微信登录一起保留</text>
-    </view>
-  </view>
-
-  <view class="content-stack">
-    <view class="section">
-      <text class="section-title">基础信息</text>
-      <view class="card-block">
-        <view class="row row--editor">
-          <text class="row-label">昵称</text>
-          <input
-            class="nickname-input"
-            value="{{nickname}}"
-            bindinput="onNicknameChange"
-            bindblur="onNicknameCommit"
-            bindconfirm="onNicknameCommit"
-            placeholder="例如 阿伟"
-            placeholder-class="row-placeholder"
-          />
-          <text class="row-action">保存</text>
-        </view>
-      </view>
-      <text class="section-hint">首次登录会先给你一套默认头像和昵称；这里改昵称后，会同步到你的对局资料。</text>
-    </view>
-
-    <view class="section">
-      <text class="section-title">对局战绩</text>
-      <view class="card-block">
-        <view class="stats-grid">
-          <view class="stats-item">
-            <text class="stats-value">{{totalRounds}}</text>
-            <text class="stats-label">总局数</text>
-          </view>
-          <view class="stats-item">
-            <text class="stats-value">{{roundsWon}}</text>
-            <text class="stats-label">赢局</text>
-          </view>
-          <view class="stats-item">
-            <text class="stats-value">{{winRate}}</text>
-            <text class="stats-label">胜率</text>
-          </view>
-          <view class="stats-item">
-            <text class="stats-value">{{roomsCreated}}</text>
-            <text class="stats-label">建房</text>
-          </view>
-        </view>
-        <view class="row">
-          <text class="row-label">最近对局</text>
-          <text class="row-value">{{lastRoundText}}</text>
-        </view>
-        <view class="row">
-          <text class="row-label">总叫牌 / 开牌</text>
-          <text class="row-value">{{totalCallsMade}} / {{totalOpenRequests}}</text>
-        </view>
-      </view>
-      <text class="section-hint">重新登录后，只要还是同一个微信账号，战绩会继续累计。</text>
-    </view>
-
-    <view class="section">
-      <text class="section-title">对局设置</text>
-      <view class="card-block">
-        <view class="row" bindtap="onToggleSfx">
-          <text class="row-label">游戏音效</text>
-          <view class="row-right">
-            <text class="row-value">{{sfxEnabled ? '开启' : '关闭'}}</text>
-            <text class="row-arrow">›</text>
-          </view>
-        </view>
-        <view class="row" bindtap="onToggleHaptic">
-          <text class="row-label">震动反馈</text>
-          <view class="row-right">
-            <text class="row-value">{{hapticEnabled ? '开启' : '关闭'}}</text>
-            <text class="row-arrow">›</text>
-          </view>
-        </view>
+      <view class="profile-main">
+        <text class="profile-title">{{nickname || '玩家'}}</text>
+        <text class="profile-sub">你的对局战绩和最近房间会跟着当前微信登录一起保留</text>
       </view>
     </view>
 
-    <view class="section">
-      <text class="section-title">关于与帮助</text>
-      <view class="card-block">
-        <view class="row" bindtap="goRules">
-          <text class="row-label">玩法规则</text>
-          <text class="row-arrow">›</text>
+    <view class="me-header">
+      <view class="section section--basic">
+        <text class="section-title">基础信息</text>
+        <view class="card-block">
+          <view class="row row--editor">
+            <text class="row-label">昵称</text>
+            <input
+              class="nickname-input"
+              value="{{nickname}}"
+              bindinput="onNicknameChange"
+              bindblur="onNicknameCommit"
+              bindconfirm="onNicknameCommit"
+              placeholder="例如 阿伟"
+              placeholder-class="row-placeholder"
+            />
+            <text class="row-action">保存</text>
+          </view>
         </view>
-        <view class="row" bindtap="openPrivacyPage">
-          <text class="row-label">隐私政策</text>
-          <text class="row-arrow">›</text>
-        </view>
-        <view class="row" bindtap="openTermsPage">
-          <text class="row-label">用户协议</text>
-          <text class="row-arrow">›</text>
-        </view>
-        <view class="row">
-          <text class="row-label">联系客服</text>
-          <text class="row-arrow">›</text>
-        </view>
+        <text class="section-hint">首次登录会先给你一套默认头像和昵称；这里改昵称后，会同步到你的对局资料。</text>
       </view>
     </view>
 
-    <view class="section" wx:if="{{hasSession}}">
-      <text class="section-title">会话与数据</text>
-      <view class="card-block">
-        <view class="row" bindtap="goResume">
-          <text class="row-label">上次房间</text>
-          <text class="row-value row-value--accent">{{sessionRoomId}}</text>
-        </view>
-        <view class="row" bindtap="clearSession">
-          <text class="row-label">清空会话</text>
-          <text class="row-value row-value--danger">删除</text>
+    <scroll-view class="me-body-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+      <view class="me-body-scroll__content">
+        <view class="content-stack">
+          <view class="section">
+            <text class="section-title">对局战绩</text>
+            <view class="card-block">
+              <view class="stats-grid">
+                <view class="stats-item">
+                  <text class="stats-value">{{totalRounds}}</text>
+                  <text class="stats-label">总局数</text>
+                </view>
+                <view class="stats-item">
+                  <text class="stats-value">{{roundsWon}}</text>
+                  <text class="stats-label">赢局</text>
+                </view>
+                <view class="stats-item">
+                  <text class="stats-value">{{winRate}}</text>
+                  <text class="stats-label">胜率</text>
+                </view>
+                <view class="stats-item">
+                  <text class="stats-value">{{roomsCreated}}</text>
+                  <text class="stats-label">建房</text>
+                </view>
+              </view>
+              <view class="row">
+                <text class="row-label">最近对局</text>
+                <text class="row-value">{{lastRoundText}}</text>
+              </view>
+              <view class="row">
+                <text class="row-label">总叫牌 / 开牌</text>
+                <text class="row-value">{{totalCallsMade}} / {{totalOpenRequests}}</text>
+              </view>
+            </view>
+            <text class="section-hint">重新登录后，只要还是同一个微信账号，战绩会继续累计。</text>
+          </view>
+
+          <view class="section">
+            <text class="section-title">对局设置</text>
+            <view class="card-block">
+              <view class="row" bindtap="onToggleSfx">
+                <text class="row-label">游戏音效</text>
+                <view class="row-right">
+                  <text class="row-value">{{sfxEnabled ? '开启' : '关闭'}}</text>
+                  <text class="row-arrow">›</text>
+                </view>
+              </view>
+              <view class="row" bindtap="onToggleHaptic">
+                <text class="row-label">震动反馈</text>
+                <view class="row-right">
+                  <text class="row-value">{{hapticEnabled ? '开启' : '关闭'}}</text>
+                  <text class="row-arrow">›</text>
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <view class="section">
+            <text class="section-title">关于与帮助</text>
+            <view class="card-block">
+              <view class="row" bindtap="goRules">
+                <text class="row-label">玩法规则</text>
+                <text class="row-arrow">›</text>
+              </view>
+              <view class="row" bindtap="openPrivacyPage">
+                <text class="row-label">隐私政策</text>
+                <text class="row-arrow">›</text>
+              </view>
+              <view class="row" bindtap="openTermsPage">
+                <text class="row-label">用户协议</text>
+                <text class="row-arrow">›</text>
+              </view>
+              <view class="row" bindtap="copyContactEmail">
+                <text class="row-label">联系邮箱</text>
+                <view class="row-right">
+                  <text class="row-value">{{contactEmail}}</text>
+                  <text class="row-arrow">复制</text>
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <view class="section" wx:if="{{hasSession}}">
+            <text class="section-title">会话与数据</text>
+            <view class="card-block">
+              <view class="row" bindtap="goResume">
+                <text class="row-label">上次房间</text>
+                <text class="row-value row-value--accent">{{sessionRoomId}}</text>
+              </view>
+              <view class="row" bindtap="clearSession">
+                <text class="row-label">清空会话</text>
+                <text class="row-value row-value--danger">删除</text>
+              </view>
+            </view>
+          </view>
+
+          <view class="logout-wrap">
+            <button class="logout-btn" bindtap="logoutProfile">退出登录</button>
+          </view>
         </view>
       </view>
-    </view>
-
-    <view class="logout-wrap">
-      <button class="logout-btn" bindtap="logoutProfile">退出登录</button>
-    </view>
+    </scroll-view>
   </view>
 </view>

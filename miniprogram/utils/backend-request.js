@@ -40,11 +40,11 @@ function buildMissingBackendMessage(raw) {
   const containerConfig = resolveContainerConfig(source.containerConfig || {});
 
   if (!hasContainerService(containerConfig) && !wsUrl) {
-    return "当前服务暂不可用，请联系开发同学检查服务配置";
+    return "当前服务暂不可用，请稍后再试";
   }
 
   if (wsUrl && !/^wss?:\/\//i.test(wsUrl)) {
-    return "当前服务连接地址异常，请联系开发同学检查部署配置";
+    return "当前服务连接异常，请稍后再试";
   }
 
   return "当前服务暂不可用，请稍后再试";
@@ -97,11 +97,11 @@ function resolveBackendErrorMessage({ statusCode, data, errMsg, path }) {
   }
 
   if (normalizedPath === "/api/auth/wechat-login") {
-    return "当前服务还未部署完整，请联系开发同学检查微信登录接口";
+    return "当前服务暂不可用，请稍后再试";
   }
 
   if (normalizedPath === "/api/account/me" || normalizedPath === "/api/account/profile") {
-    return "当前服务还未部署完整，请联系开发同学检查账号接口";
+    return "当前服务暂不可用，请稍后再试";
   }
 
   return defaultMessage;
@@ -129,7 +129,7 @@ function normalizeResponse(res, requestContext = {}) {
 function resolveContainerFailMessage(errorLike) {
   const rawMessage = errorLike && errorLike.errMsg ? String(errorLike.errMsg) : "云托管请求失败";
   if (/INVALID_HOST/i.test(rawMessage)) {
-    return "当前服务连接配置异常，请联系开发同学检查云托管服务名和环境绑定";
+    return "当前服务连接异常，请稍后再试";
   }
   return rawMessage;
 }

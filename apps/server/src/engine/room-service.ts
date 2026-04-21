@@ -16,6 +16,7 @@ import {
   MAX_VOICE_BASE64_SIZE,
   RECONNECT_GRACE_MS
 } from "../config.js";
+import { assertValidNickname, validateNicknameInput } from "../utils/nickname-validator.js";
 import { createPlayerId, createResumeToken, createRoomId } from "../utils/random.js";
 import { AccountStore } from "./account-store.js";
 import { HistoryStore } from "./history-store.js";
@@ -239,7 +240,9 @@ export class RoomService {
   ): Promise<void> {
     const { room, session } = this.getRoomAndSession(ws);
     this.ensureActivePlayer(room, session.playerId);
-    const nickname = payload.nickname == null ? undefined : safeDecodeURIComponent(payload.nickname).trim();
+    const nickname = payload.nickname == null
+      ? undefined
+      : assertValidNickname(safeDecodeURIComponent(payload.nickname));
     const avatar = payload.avatar == null ? undefined : String(payload.avatar || "").trim();
 
     room.updatePlayerProfile(session.playerId, {
@@ -310,7 +313,9 @@ export class RoomService {
     this.ensureOwnerCanCreateRoom(ws, actionId);
     this.prepareSocketForCreateOrJoin(ws);
 
-    const nickname = safeDecodeURIComponent(payload.nickname).trim() || "玩家";
+    const nicknameInput = safeDecodeURIComponent(payload.nickname).trim() || "玩家";
+    const nicknameResult = validateNicknameInput(nicknameInput);
+    const nickname = nicknameResult.ok ? nicknameResult.value : "玩家";
     const avatar = String(payload.avatar || "");
     const boundAccount = await this.resolveBoundAccount(payload);
 
@@ -380,7 +385,9 @@ export class RoomService {
       throw new GameError(ErrorCode.ROOM_NOT_FOUND, "房间不存在");
     }
 
-    const nickname = safeDecodeURIComponent(payload.nickname).trim() || "玩家";
+    const nicknameInput = safeDecodeURIComponent(payload.nickname).trim() || "玩家";
+    const nicknameResult = validateNicknameInput(nicknameInput);
+    const nickname = nicknameResult.ok ? nicknameResult.value : "玩家";
     const avatar = String(payload.avatar || "");
     const boundAccount = await this.resolveBoundAccount(payload);
 

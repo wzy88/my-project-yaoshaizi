@@ -1,6 +1,12 @@
+page {
+  height: 100%;
+  overflow: hidden;
+}
+
 .page {
   position: relative;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 100%;
   padding: calc(20rpx + env(safe-area-inset-top)) 18rpx calc(18rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   overflow: hidden;
@@ -1162,10 +1168,6 @@
 .seat-direction__item.is-active {
   border-color: #e9c349;
   color: #f4d95a;
-}
-
-.seat-direction__item--ghost {
-  flex: 0 0 120rpx;
 }
 
 .seat-grid {
@@ -5116,12 +5118,18 @@ button.room-topbar-menu-popover__item::after {
   animation: call-phase-panel-rise 140ms cubic-bezier(0.22, 0.9, 0.32, 1);
 }
 
+.call-phase-panel__counts-scroll {
+  width: 100%;
+}
+
 .call-phase-panel__counts {
   display: flex;
   align-items: stretch;
   gap: 10rpx;
-  overflow-x: auto;
-  white-space: nowrap;
+  width: max-content;
+  min-width: 100%;
+  padding-bottom: 6rpx;
+  box-sizing: border-box;
 }
 
 .call-phase-panel__points {
@@ -5132,8 +5140,8 @@ button.room-topbar-menu-popover__item::after {
 
 .call-phase-panel__count {
   position: relative;
-  flex: 1 0 0;
-  min-width: 0;
+  flex: 0 0 116rpx;
+  width: 116rpx;
   height: 116rpx;
   border-radius: 20rpx;
   border: 2.46rpx solid rgba(255, 255, 255, 0.08);
@@ -5544,4 +5552,15 @@ button.room-topbar-menu-popover__item::after {
 .room-self__avatar,
 .settlement-avatar__img {
   border-radius: 999rpx;
+}
+
+.page.room-screen {
+  height: 100%;
+  min-height: 100%;
+}
+
+.page.room-screen .room-shell {
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
 }

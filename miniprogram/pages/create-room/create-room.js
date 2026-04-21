@@ -14,10 +14,7 @@ function safeDecodeComponent(raw) {
 Page({
   data: {
     nickname: "",
-    playerCountOptions: [2, 3, 4, 5, 6, 7, 8],
     playerCount: 8,
-    allowSpectator: false,
-    lockRoom: false,
     wildcardOneEnabled: true
   },
 
@@ -28,12 +25,6 @@ Page({
     this.setData({
       nickname: nickname || `玩家${Math.floor(Math.random() * 1000)}`
     });
-  },
-
-  onSelectPlayerCount(event) {
-    const value = Number(event.currentTarget.dataset.value);
-    if (!Number.isInteger(value) || value < 2 || value > 8) return;
-    this.setData({ playerCount: value });
   },
 
   onToggleField(event) {
@@ -48,7 +39,7 @@ Page({
     const minOpeningCount = 5;
 
     wx.navigateTo({
-      url: `/pages/room/room?mode=create&forceNew=1&nickname=${encodeURIComponent(this.data.nickname || "")}&direction=${direction}&wildcardOneEnabled=${this.data.wildcardOneEnabled ? "1" : "0"}&dicePerPlayer=${dicePerPlayer}&minOpeningCount=${minOpeningCount}&testMode=0&playerCount=${this.data.playerCount}&allowSpectator=${this.data.allowSpectator ? "1" : "0"}&lockRoom=${this.data.lockRoom ? "1" : "0"}`
+      url: `/pages/room/room?mode=create&forceNew=1&nickname=${encodeURIComponent(this.data.nickname || "")}&direction=${direction}&wildcardOneEnabled=${this.data.wildcardOneEnabled ? "1" : "0"}&dicePerPlayer=${dicePerPlayer}&minOpeningCount=${minOpeningCount}&testMode=0`
     });
   },
 

@@ -274,13 +274,13 @@ test("index page: blocks login with a product-style service hint when backend ta
 
   try {
     page.onLoad({});
-    assert.equal(page.data.connectionHintText, "当前服务暂不可用，请联系开发同学检查服务配置");
+    assert.equal(page.data.connectionHintText, "当前服务暂不可用，请稍后再试");
 
     await page.onWechatLogin();
 
     assert.equal(getLoginCalls(), 0);
     assert.deepEqual(requests, []);
-    assert.equal(toasts.includes("当前服务暂不可用，请联系开发同学检查服务配置"), true);
+    assert.equal(toasts.includes("当前服务暂不可用，请稍后再试"), true);
   } finally {
     cleanup();
   }
@@ -364,7 +364,7 @@ test("index page: falls back cleanly when backend-request helper exports are sta
 
   try {
     assert.doesNotThrow(() => page.onLoad({}));
-    assert.equal(page.data.connectionHintText, "当前服务暂不可用，请联系开发同学检查服务配置");
+    assert.equal(page.data.connectionHintText, "当前服务暂不可用，请稍后再试");
   } finally {
     cleanup();
   }
@@ -386,12 +386,12 @@ test("index page: translates legacy 404 login responses into a deploy hint", asy
     await page.onWechatLogin();
 
     assert.equal(
-      toasts.includes("当前服务还未部署完整，请联系开发同学检查微信登录接口"),
+      toasts.includes("当前服务暂不可用，请稍后再试"),
       true
     );
     assert.equal(
       page.data.loginHintText,
-      "当前服务还未部署完整，请联系开发同学检查微信登录接口"
+      "当前服务暂不可用，请稍后再试"
     );
   } finally {
     cleanup();
@@ -422,10 +422,10 @@ test("index page: invalid cloud host errors are translated into a config hint", 
 
     assert.equal(
       page.data.loginHintText,
-      "当前服务连接配置异常，请联系开发同学检查云托管服务名和环境绑定"
+      "当前服务连接异常，请稍后再试"
     );
     assert.equal(
-      toasts.includes("当前服务连接配置异常，请联系开发同学检查云托管服务名和环境绑定"),
+      toasts.includes("当前服务连接异常，请稍后再试"),
       true
     );
   } finally {

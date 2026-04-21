@@ -1,31 +1,28 @@
 <scroll-view class="legal-page" scroll-y>
   <view class="legal-wrap">
     <text class="legal-h1">摇骰子聚会助手隐私政策</text>
-    <text class="legal-meta">版本：1.0.0</text>
-    <text class="legal-meta">更新日期：2026-03-04</text>
+    <text class="legal-meta">版本：1.1.0</text>
+    <text class="legal-meta">更新日期：2026-04-21</text>
 
     <text class="legal-h2">1. 信息收集范围</text>
-    <text class="legal-p">我们仅收集实现基础功能所需的信息，包括：昵称、头像、房间对局数据、网络连接日志。若你使用语音功能，我们会在你授权后采集录音数据用于语音指令处理。</text>
+    <text class="legal-p">我们仅收集实现基础功能所需的信息，包括：昵称、头像、账号标识、房间对局数据，以及必要的网络连接日志。</text>
 
     <text class="legal-h2">2. 信息使用目的</text>
-    <text class="legal-p">用于房间对战、状态同步、断线重连、历史记录展示、问题排查与服务稳定性保障。未经你的明确同意，不会将你的个人信息用于与本产品无关的用途。</text>
+    <text class="legal-p">这些信息仅用于房间对战、状态同步、断线重连、战绩展示，以及问题排查与服务稳定性保障。未经你的明确同意，我们不会将你的个人信息用于与本产品无关的用途。</text>
 
-    <text class="legal-h2">3. 语音与权限说明</text>
-    <text class="legal-p">语音功能需要麦克风权限（scope.record）。你可以在系统设置中随时关闭权限。关闭后不影响文字操作。</text>
+    <text class="legal-h2">3. 数据存储与安全</text>
+    <text class="legal-p">我们会采取访问控制、传输加密与日志审计等合理措施保护数据安全。对局历史仅用于功能展示和故障追踪。</text>
 
-    <text class="legal-h2">4. 数据存储与安全</text>
-    <text class="legal-p">我们采取访问控制、传输加密与日志审计等措施保护数据安全。对局历史仅用于功能展示和故障追踪。</text>
-
-    <text class="legal-h2">5. 数据共享与披露</text>
+    <text class="legal-h2">4. 数据共享与披露</text>
     <text class="legal-p">除法律法规要求或你明确授权外，我们不会向第三方出售你的个人信息。</text>
 
-    <text class="legal-h2">6. 你的权利</text>
-    <text class="legal-p">你可申请查询、更正、删除相关数据，或注销账户。你也可撤回授权权限，撤回后对应功能将受限。</text>
+    <text class="legal-h2">5. 你的权利</text>
+    <text class="legal-p">你可以在产品内修改昵称、退出当前登录；如有其他隐私相关问题，可通过下方联系方式与我们沟通。</text>
 
-    <text class="legal-h2">7. 政策更新</text>
+    <text class="legal-h2">6. 政策更新</text>
     <text class="legal-p">若本政策发生重大变更，我们会通过产品内公告提示你查看更新内容。</text>
 
-    <text class="legal-h2">8. 联系我们</text>
-    <text class="legal-p">如有隐私问题，请通过产品内反馈入口联系运营团队。</text>
+    <text class="legal-h2">7. 联系我们</text>
+    <text class="legal-p">如有隐私问题，请发邮件至：569500252@qq.com</text>
   </view>
 </scroll-view>

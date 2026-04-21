@@ -4,13 +4,15 @@ const {
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
   WECHAT_LOGIN_TS_KEY,
   SFX_ENABLED_KEY,
-  HAPTIC_ENABLED_KEY
+  HAPTIC_ENABLED_KEY,
+  CONTACT_EMAIL
 } = require("../../utils/constants");
 const {
   getStoredAccountSession,
   fetchMyAccountProfile,
   syncMyAccountProfile
 } = require("../../utils/account-api");
+const { validateNickname } = require("../../utils/nickname-validator");
 const {
   getStoredWechatProfile,
   persistWechatProfile,
@@ -91,7 +93,8 @@ Page({
     winRate: "0%",
     lastRoundText: "暂无",
     hasSession: false,
-    sessionRoomId: ""
+    sessionRoomId: "",
+    contactEmail: CONTACT_EMAIL
   },
 
   onLoad() {
@@ -151,27 +154,30 @@ Page({
   },
 
   onNicknameChange(event) {
-    const nickname = String(event.detail.value || "").trim();
+    const nickname = String(event.detail.value || "");
     this.setData({
       nickname,
       initial: String(nickname || "玩家").slice(0, 1)
     });
-    wx.setStorageSync(NICKNAME_KEY, nickname);
-    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, Boolean(nickname));
   },
 
   async onNicknameCommit(event) {
-    const inputValue = String(event && event.detail && event.detail.value || this.data.nickname || "").trim();
-    if (!inputValue) {
-      wx.showToast({ title: "昵称不能为空", icon: "none" });
+    const inputValue = String(event && event.detail && event.detail.value || this.data.nickname || "");
+    const validation = validateNickname(inputValue);
+    if (!validation.ok) {
+      this.setData({
+        nickname: inputValue,
+        initial: String(inputValue || "玩家").slice(0, 1)
+      });
+      wx.showToast({ title: validation.message, icon: "none" });
       return;
     }
 
     this.setData({
-      nickname: inputValue,
-      initial: String(inputValue || "玩家").slice(0, 1)
+      nickname: validation.value,
+      initial: String(validation.value || "玩家").slice(0, 1)
     });
-    wx.setStorageSync(NICKNAME_KEY, inputValue);
+    wx.setStorageSync(NICKNAME_KEY, validation.value);
     wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, true);
 
     const session = getStoredAccountSession();
@@ -181,10 +187,10 @@ Page({
 
     try {
       const latest = await syncMyAccountProfile({
-        nickname: inputValue,
+        nickname: validation.value,
         nicknameCustomized: true
       });
-      const nextNickname = String(latest && latest.profile && latest.profile.nickname || inputValue).trim() || inputValue;
+      const nextNickname = String(latest && latest.profile && latest.profile.nickname || validation.value).trim() || validation.value;
       wx.setStorageSync(NICKNAME_KEY, nextNickname);
       this.setData({
         nickname: nextNickname,
@@ -277,5 +283,17 @@ Page({
 
   openTermsPage() {
     wx.navigateTo({ url: "/pages/legal/terms/terms" });
+  },
+
+  copyContactEmail() {
+    wx.setClipboardData({
+      data: CONTACT_EMAIL,
+      success: () => {
+        wx.showToast({ title: "邮箱已复制", icon: "none" });
+      },
+      fail: () => {
+        wx.showToast({ title: CONTACT_EMAIL, icon: "none" });
+      }
+    });
   }
 });
