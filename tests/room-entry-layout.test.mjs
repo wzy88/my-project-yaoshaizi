@@ -118,6 +118,19 @@ test("room self area renders a matching call bubble for the local player", () =>
   assert.match(wxss, /\.room-self__bubble\s*\{[\s\S]*bottom:\s*166rpx/);
 });
 
+test("room bubbles now use one shared compact size across every seat direction", () => {
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxss, /\.seat__bubble\s*\{[\s\S]*min-width:\s*120rpx[\s\S]*height:\s*72rpx[\s\S]*padding:\s*0 14rpx[\s\S]*border-radius:\s*24rpx/);
+  assert.doesNotMatch(wxss, /\.seat__bubble--slot-upper-left,\s*\.seat__bubble--slot-mid-left,\s*\.seat__bubble--slot-lower-left,\s*\.seat__bubble--slot-upper-right,\s*\.seat__bubble--slot-mid-right,\s*\.seat__bubble--slot-lower-right\s*\{/);
+});
+
+test("room bubble tails use the softer rounded pointer treatment", () => {
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxss, /\.seat__bubble::after\s*\{[\s\S]*width:\s*16rpx[\s\S]*height:\s*16rpx[\s\S]*border-radius:\s*50%/);
+  assert.match(wxss, /\.seat__bubble--slot-upper-left::after,[\s\S]*left:\s*14rpx[\s\S]*bottom:\s*-8rpx[\s\S]*transform:\s*none/);
+  assert.match(wxss, /\.seat__bubble--slot-upper-right::after,[\s\S]*right:\s*-8rpx[\s\S]*top:\s*50%[\s\S]*transform:\s*translateY\(-50%\)/);
+});
+
 test("room shell removes the floor shadows under outer cups", () => {
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
   assert.match(wxss, /\.ghost-cup\s+\.figma-cup__shadow,\s*\.seat-stage-cup\s+\.figma-cup__shadow\s*\{[\s\S]*display:\s*none/);

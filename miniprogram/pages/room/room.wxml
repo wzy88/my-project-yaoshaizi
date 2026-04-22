@@ -121,6 +121,16 @@
 
         <view wx:if="{{!callPanelVisible}}" class="room-shell__bottom-fade" style="{{roomBottomFadeStyle}}">
           <view
+            wx:if="{{showQuickOpenAction}}"
+            class="room-fab-secondary"
+            bindtap="openDice"
+            hover-class="room-fab-secondary--pressing"
+            hover-start-time="0"
+            hover-stay-time="70"
+          >
+            <text class="room-fab-secondary__text">开牌</text>
+          </view>
+          <view
             class="room-fab {{canPrimaryAction ? '' : 'is-disabled'}}"
             bindtap="onHudPrimaryAction"
             hover-class="{{canPrimaryAction ? 'room-fab--pressing' : 'none'}}"

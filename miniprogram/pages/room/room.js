@@ -1325,6 +1325,7 @@ Page({
     topbarMenuVisible: false,
     callPanelVisible: false,
     canOpenAction: false,
+    showQuickOpenAction: false,
     seatingVisible: false,
     seatingSelectedSeatIndex: 0,
     seatingSelectedText: "未选择",
@@ -4222,6 +4223,7 @@ Page({
         const callPanelVisible = isMyCallingTurn ? Boolean(this.data.callPanelVisible) : false;
         const callPanelExpanded = isMyCallingTurn ? Boolean(this.data.callPanelExpanded) : false;
         const canOpenAction = Boolean(isMyCallingTurn && lastCallObj);
+        const showQuickOpenAction = Boolean(canOpenAction && !callForcedOpen);
 
         const settlementVisible = Boolean(this.data.settlementVisible) && phase === "ended";
         if (!settlementVisible && this.data.settlementVisible) {
@@ -4323,6 +4325,7 @@ Page({
           callPanelExpanded: isMyCallingTurn ? callPanelExpanded : false,
           callPanelVisible,
           canOpenAction,
+          showQuickOpenAction,
           settlementVisible,
           settlementSummaryText: settlementVisible ? this.data.settlementSummaryText : "",
           settlementDeclaredText: settlementVisible ? this.data.settlementDeclaredText : "",
@@ -4949,6 +4952,7 @@ Page({
       callPanelExpanded: false,
       callPanelVisible: false,
       canOpenAction: false,
+      showQuickOpenAction: false,
       seatingVisible: false,
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "未选择",
@@ -5119,6 +5123,7 @@ Page({
       callPanelExpanded: false,
       callPanelVisible: false,
       canOpenAction: false,
+      showQuickOpenAction: false,
       seatingVisible: false,
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "未选择",

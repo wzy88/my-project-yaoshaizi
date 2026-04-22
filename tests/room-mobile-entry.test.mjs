@@ -3279,6 +3279,84 @@ test("room page: opening the call panel from the hud primary button stays audio 
   }
 });
 
+test("room page: calling-turn room state exposes the quick open action only when opening is allowed", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({ playerId: "P1" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P1",
+        lastCall: { count: 3, point: 4, by: "P2", ts: 101 }
+      })
+    }));
+    assert.equal(page.data.showQuickOpenAction, true);
+    assert.equal(page.data.primaryActionText, "叫牌");
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P1",
+        lastCall: null
+      })
+    }));
+    assert.equal(page.data.showQuickOpenAction, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: quick open action reuses the open flow without reopening the call panel", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sfxCalls = [];
+    const haptics = [];
+    const sent = [];
+    page.playSfx = (kind) => {
+      sfxCalls.push(kind);
+    };
+    page.haptic = (kind) => {
+      haptics.push(kind);
+    };
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.setData({
+      phase: "calling",
+      currentPlayerId: "player-a",
+      playerId: "player-a",
+      selfIsWaiting: false,
+      canOpenAction: true,
+      callPanelVisible: false,
+      callPanelExpanded: false
+    });
+
+    page.openDice();
+
+    assert.deepEqual(haptics, ["light"]);
+    assert.deepEqual(sfxCalls, ["open"]);
+    assert.deepEqual(sent, [{ event: "open:request", payload: {} }]);
+    assert.equal(page.data.callPanelVisible, false);
+    assert.equal(page.data.callPanelExpanded, false);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: submitting a manual call from the panel uses the bundled primary cue", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
