@@ -4,6 +4,7 @@ const {
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
   WECHAT_LOGIN_TS_KEY,
   SFX_ENABLED_KEY,
+  TURN_ALERT_SFX_ENABLED_KEY,
   HAPTIC_ENABLED_KEY,
   CONTACT_EMAIL
 } = require("../../utils/constants");
@@ -44,6 +45,11 @@ function formatShortDateTime(ts) {
   return `${month}-${day} ${hh}:${mm}`;
 }
 
+function readStoredBoolean(key, fallback = true) {
+  const stored = wx.getStorageSync(key);
+  return stored === "" || stored == null ? fallback : Boolean(stored);
+}
+
 function buildAccountData(session) {
   const normalized = session && typeof session === "object" ? session : {};
   const profile = normalized.profile && typeof normalized.profile === "object" ? normalized.profile : {};
@@ -79,6 +85,7 @@ Page({
     avatarUrl: "",
     initial: "玩",
     sfxEnabled: true,
+    turnAlertSfxEnabled: true,
     hapticEnabled: true,
     accountDisplayId: "",
     accountReady: false,
@@ -99,17 +106,14 @@ Page({
 
   onLoad() {
     const profile = getStoredWechatProfile();
-    const storedSfx = wx.getStorageSync(SFX_ENABLED_KEY);
-    const storedHaptic = wx.getStorageSync(HAPTIC_ENABLED_KEY);
-    const sfxEnabled = storedSfx === "" || storedSfx == null ? true : Boolean(storedSfx);
-    const hapticEnabled = storedHaptic === "" || storedHaptic == null ? true : Boolean(storedHaptic);
     this.setData({
       timeText: buildTimeText(),
       nickname: profile.nickname,
       avatarUrl: profile.avatarUrl,
       initial: String(profile.nickname || "玩家").slice(0, 1),
-      sfxEnabled,
-      hapticEnabled,
+      sfxEnabled: readStoredBoolean(SFX_ENABLED_KEY, true),
+      turnAlertSfxEnabled: readStoredBoolean(TURN_ALERT_SFX_ENABLED_KEY, true),
+      hapticEnabled: readStoredBoolean(HAPTIC_ENABLED_KEY, true),
       ...buildAccountData(getStoredAccountSession())
     });
 
@@ -124,7 +128,12 @@ Page({
   },
 
   onShow() {
-    this.setData({ timeText: buildTimeText() });
+    this.setData({
+      timeText: buildTimeText(),
+      sfxEnabled: readStoredBoolean(SFX_ENABLED_KEY, true),
+      turnAlertSfxEnabled: readStoredBoolean(TURN_ALERT_SFX_ENABLED_KEY, true),
+      hapticEnabled: readStoredBoolean(HAPTIC_ENABLED_KEY, true)
+    });
 
     const profile = getStoredWechatProfile();
     if (profile.nickname !== this.data.nickname || profile.avatarUrl !== this.data.avatarUrl) {
@@ -208,6 +217,12 @@ Page({
     const next = !this.data.sfxEnabled;
     this.setData({ sfxEnabled: next });
     wx.setStorageSync(SFX_ENABLED_KEY, next);
+  },
+
+  onToggleTurnAlertSfx() {
+    const next = !this.data.turnAlertSfxEnabled;
+    this.setData({ turnAlertSfxEnabled: next });
+    wx.setStorageSync(TURN_ALERT_SFX_ENABLED_KEY, next);
   },
 
   onToggleHaptic() {

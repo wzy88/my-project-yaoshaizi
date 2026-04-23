@@ -1,5 +1,5 @@
-const NICKNAME_MIN_LENGTH = 2;
-const NICKNAME_MAX_LENGTH = 12;
+const NICKNAME_MIN_LENGTH = 1;
+const NICKNAME_MAX_LENGTH = 5;
 
 const BLOCKED_TERMS = [
   "客服",

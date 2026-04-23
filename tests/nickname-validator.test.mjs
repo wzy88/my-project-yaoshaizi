@@ -14,28 +14,32 @@ test("server nickname validator accepts ordinary nicknames and normalizes whites
     ok: true,
     value: "阿伟"
   });
-  assert.deepEqual(validateNicknameInput("Lucky 7"), {
+  assert.deepEqual(validateNicknameInput("阿"), {
     ok: true,
-    value: "Lucky 7"
+    value: "阿"
+  });
+  assert.deepEqual(validateNicknameInput("玩家123"), {
+    ok: true,
+    value: "玩家123"
   });
 });
 
-test("server nickname validator rejects short, ad-like, and contact nicknames", async () => {
+test("server nickname validator rejects long, ad-like, and contact nicknames", async () => {
   const { validateNicknameInput } = await import(serverValidatorPath);
 
-  assert.deepEqual(validateNicknameInput("A"), {
+  assert.deepEqual(validateNicknameInput("玩家1234"), {
     ok: false,
-    value: "A",
-    message: "昵称需为2-12个字"
+    value: "玩家1234",
+    message: "昵称需为1-5个字"
   });
   assert.deepEqual(validateNicknameInput("兼职接单"), {
     ok: false,
     value: "兼职接单",
     message: "昵称包含不合适的内容，请换一个"
   });
-  assert.deepEqual(validateNicknameInput("abc@qq.com"), {
+  assert.deepEqual(validateNicknameInput("qq123"), {
     ok: false,
-    value: "abc@qq.com",
+    value: "qq123",
     message: "昵称包含不合适的内容，请换一个"
   });
 });

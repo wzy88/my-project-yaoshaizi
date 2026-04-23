@@ -11,6 +11,7 @@ const {
   AVATAR_URL_KEY,
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
   SFX_ENABLED_KEY,
+  TURN_ALERT_SFX_ENABLED_KEY,
   HAPTIC_ENABLED_KEY
 } = require("../../utils/constants");
 const { DEFAULT_3D_DIE_ASSET, SELF_DICE_PLACEHOLDER, getDieAsset } = require("../../utils/dice-assets");
@@ -41,6 +42,14 @@ const ROOM_AUDIO_ASSETS = {
   loseAlert: "/assets/audio/lose-alert.mp3",
   turnAlert: "/assets/audio/turn-alert.mp3"
 };
+const ROOM_AUDIO_DURATIONS_MS = {
+  turnAlert: 1540
+};
+const ROOM_AUDIO_STOP_RATIOS = {};
+const ROOM_PLAYFIELD_LIFT_RPX = 48;
+const ROOM_STAGE_HEIGHT_RPX = 1608;
+const ROOM_STAGE_MIN_SCALE = 0.9;
+
 function buildAccountAuthPayload() {
   const session = getStoredAccountSession();
   if (!session.loggedIn) {
@@ -96,18 +105,78 @@ function buildSelfRollDisplayItems({ count = 5, finalDice = [], revealCount = 0 
   });
 }
 
-function buildSettlementDiceItems(values, countDetail = null, fallbackHighlightValue = 0) {
+function isSettlementStraight(diceList) {
+  const normalized = (Array.isArray(diceList) ? diceList : [])
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 6);
+  if (normalized.length <= 1) {
+    return false;
+  }
+
+  const sorted = [...normalized].sort((a, b) => a - b);
+  for (let index = 1; index < sorted.length; index += 1) {
+    if (sorted[index] !== sorted[index - 1] + 1) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function estimateSettlementPointTotal(allDice, point, oneAsWildcard) {
+  const targetPoint = Number(point) || 0;
+  let total = 0;
+  for (const diceList of Array.isArray(allDice) ? allDice : []) {
+    const normalized = (Array.isArray(diceList) ? diceList : [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 1 && value <= 6);
+    const diceCount = normalized.length;
+    if (diceCount <= 0 || isSettlementStraight(normalized)) {
+      continue;
+    }
+
+    const pointCount = normalized.filter((value) => value === targetPoint).length;
+    const oneCount = normalized.filter((value) => value === 1).length;
+    const leopardFace = normalized[0];
+    const isLeopard = normalized.every((value) => value === leopardFace);
+
+    if (targetPoint === 1) {
+      total += pointCount + (isLeopard && leopardFace === 1 ? 1 : 0);
+    } else if (oneAsWildcard) {
+      const effectiveCount = pointCount + oneCount;
+      total += effectiveCount === diceCount ? diceCount + 1 : effectiveCount;
+    } else {
+      total += pointCount + (isLeopard && leopardFace === targetPoint ? 1 : 0);
+    }
+  }
+  return total;
+}
+
+function shouldFallbackHighlightWildcardOnes(summaryPlayers, declaredPoint, actualCount, hasCountDetails) {
+  const point = Number(declaredPoint) || 0;
+  if (hasCountDetails || point <= 1) {
+    return false;
+  }
+
+  const allDice = (Array.isArray(summaryPlayers) ? summaryPlayers : [])
+    .map((player) => Array.isArray(player && player.dice) ? player.dice : []);
+  const plainTotal = estimateSettlementPointTotal(allDice, point, false);
+  const wildcardTotal = estimateSettlementPointTotal(allDice, point, true);
+  return wildcardTotal !== plainTotal && wildcardTotal === Number(actualCount || 0);
+}
+
+function buildSettlementDiceItems(values, countDetail = null, fallbackHighlightValue = 0, fallbackWildcardOnes = false) {
   const detailDice = countDetail && Array.isArray(countDetail.dice) ? countDetail.dice : [];
   const detailByIndex = new Map(detailDice.map((item) => [Number(item.index), item]));
   return (Array.isArray(values) ? values : []).map((value, index) => {
     const num = Number(value) || 0;
     const detail = detailByIndex.get(index);
     const hasDetail = detail && typeof detail === "object";
+    const fallbackWildcard = Boolean(fallbackWildcardOnes && num === 1);
     return {
       value: num,
       asset: getDieAsset(num),
-      highlighted: hasDetail ? Boolean(detail.counted) : num === Number(fallbackHighlightValue || 0),
-      wildcard: hasDetail ? Boolean(detail.wildcard) : false,
+      highlighted: hasDetail ? Boolean(detail.counted) : (num === Number(fallbackHighlightValue || 0) || fallbackWildcard),
+      wildcard: hasDetail ? Boolean(detail.wildcard) : fallbackWildcard,
       index
     };
   });
@@ -213,6 +282,7 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     summaryPlayers.map((p) => [String(p.playerId || ""), Array.isArray(p.dice) ? p.dice : []])
   );
   const countDetails = Array.isArray(first.countDetails) ? first.countDetails : [];
+  const hasCountDetails = countDetails.length > 0;
   const countDetailMap = new Map(
     countDetails.map((detail) => [String(detail.playerId || ""), detail])
   );
@@ -245,6 +315,12 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
   const declaredPoint = Number(first.declared.point) || 1;
   const declaredFace = DICE_FACE_SYMBOLS[declaredPoint] || String(declaredPoint || "");
   const actualCount = Number(first.actual) || 0;
+  const fallbackWildcardOnes = shouldFallbackHighlightWildcardOnes(
+    summaryPlayers,
+    declaredPoint,
+    actualCount,
+    hasCountDetails
+  );
 
   const summaryIds = summaryPlayers
     .map((p) => String(p.playerId || ""))
@@ -295,9 +371,10 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     return {
       playerId: id,
       name: displayName,
+      nameLengthClass: Array.from(displayName).length > 5 ? "is-extra-long" : Array.from(displayName).length > 4 ? "is-long" : "",
       avatarUrl: getSeatAvatarPresentation(player ? player.avatar : "", Math.max(0, getSeatIndex(id) - 1)).src,
       avatarText: String(name || "玩").slice(0, 1),
-      diceItems: buildSettlementDiceItems(dice, countDetail, declaredPoint),
+      diceItems: buildSettlementDiceItems(dice, countDetail, declaredPoint, fallbackWildcardOnes),
       countNoteText,
       countBonusText,
       kind,
@@ -379,13 +456,13 @@ function getSeatGeometry(seatIndex, seatCount = 8) {
 
 function getStitchSeatLayout() {
   const figmaShellSlots = [
-    { x: 187.5, y: 168, bx: 240, by: 180, cupX: 187.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" },
-    { x: 42, y: 290, bx: 118, by: 236, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" },
-    { x: 333, y: 290, bx: 257, by: 236, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" },
-    { x: 30, y: 396, bx: 126, by: 340, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" },
-    { x: 345, y: 396, bx: 249, by: 340, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" },
-    { x: 44, y: 526, bx: 136, by: 470, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" },
-    { x: 331, y: 526, bx: 239, by: 470, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" },
+    { x: 187.5, y: 168, bx: 248, by: 165, cupX: 187.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" },
+    { x: 42, y: 290, bx: 144, by: 250, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" },
+    { x: 333, y: 290, bx: 231, by: 250, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" },
+    { x: 42, y: 396, bx: 144, by: 356, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" },
+    { x: 333, y: 396, bx: 231, by: 356, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" },
+    { x: 42, y: 526, bx: 144, by: 486, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" },
+    { x: 333, y: 526, bx: 231, by: 486, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" },
     { x: 187.5, y: 804, bx: 187.5, by: 736, cupX: 187.5, cupY: 734, cupAlign: "top", slotClass: "slot-bottom" }
   ];
 
@@ -578,6 +655,33 @@ function px(value) {
   return `${Math.max(0, Math.round(num))}px`;
 }
 
+function roundScale(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 1;
+  return Math.round(num * 1000) / 1000;
+}
+
+function buildRoomPlayfieldStyle(nav, shellTopPaddingPx) {
+  const windowWidth = Number(nav && nav.windowWidth) || 0;
+  const windowHeight = Number(nav && nav.windowHeight) || 0;
+  const bottomInset = Math.max(0, Number(nav && nav.bottomInset) || 0);
+  let scale = 1;
+
+  if (windowWidth > 0 && windowHeight > 0) {
+    const pxToRpxRatio = 750 / windowWidth;
+    const viewportHeightRpx = windowHeight * pxToRpxRatio;
+    const shellTopPaddingRpx = Math.max(0, Number(shellTopPaddingPx) || 0) * pxToRpxRatio;
+    const bottomInsetRpx = bottomInset * pxToRpxRatio;
+    const bottomClearanceRpx = Math.max(24, bottomInsetRpx + 12);
+    const availableHeightRpx = viewportHeightRpx - shellTopPaddingRpx + ROOM_PLAYFIELD_LIFT_RPX - bottomClearanceRpx;
+    if (availableHeightRpx > 0) {
+      scale = Math.min(1, Math.max(ROOM_STAGE_MIN_SCALE, availableHeightRpx / ROOM_STAGE_HEIGHT_RPX));
+    }
+  }
+
+  return `transform:translateY(-${ROOM_PLAYFIELD_LIFT_RPX}rpx) scale(${roundScale(scale)});`;
+}
+
 function buildRoomSafeAreaStyles() {
   const nav = getNavigationSafeArea();
   const topInset = Math.max(0, Number(nav.topInset) || 0);
@@ -586,13 +690,15 @@ function buildRoomSafeAreaStyles() {
   const roomLabelHeight = 24;
   const menuTop = Math.max(topInset + 8, Number(nav.menuTop) || 0);
   const roomLabelTopOffset = Math.round((topbarButtonSize - roomLabelHeight) / 6);
+  const shellTopPaddingPx = Math.max(16, topInset + 8);
 
   return {
-    roomShellStyle: `padding-top:${px(Math.max(16, topInset + 8))};`,
+    roomShellStyle: `padding-top:${px(shellTopPaddingPx)};`,
+    roomPlayfieldStyle: buildRoomPlayfieldStyle(nav, shellTopPaddingPx),
     roomTopbarCornerStyle: `margin-top:${px(menuTop)};`,
     roomTopbarCenterStyle: `top:${px(Math.max(menuTop + roomLabelTopOffset, topInset + 18))};`,
-    roomBottomFadeStyle: `top:auto;bottom:${px(Math.max(bottomInset + 16, 16))};`,
-    roomSelfStyle: `bottom:${px(Math.max(72, bottomInset + 72))};`,
+    roomBottomFadeStyle: `top:auto;bottom:${px(bottomInset)};`,
+    roomSelfStyle: `bottom:${px(Math.max(46, bottomInset + 46))};`,
     callPhaseOverlayStyle: ""
   };
 }
@@ -630,6 +736,8 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
     }
 
     const nicknameDecoded = safeDecodeComponent(player.nickname).trim() || "玩家";
+    const nicknameLength = Array.from(nicknameDecoded).length;
+    const nicknameLengthClass = nicknameLength > 6 ? "is-extra-long" : nicknameLength > 4 ? "is-long" : "";
     const cupAlign = geometry.cupAlign || "left";
 
     const bubbleClass = [];
@@ -647,7 +755,8 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
     return {
       ...player,
       shortId: String(player.id || "").slice(0, 8),
-      nicknameShort: nicknameDecoded.slice(0, 5),
+      nicknameShort: nicknameDecoded,
+      nicknameLengthClass,
       avatarText: nicknameDecoded.slice(0, 1) || "玩",
       callText: player.currentCall ? `${player.currentCall.count}个${player.currentCall.point}` : "",
       displayAvatar: avatarPresentation.src,
@@ -1340,8 +1449,10 @@ Page({
     playingVoiceId: "",
     playingVoiceTip: "点击语音可播放",
     sfxEnabled: true,
+    turnAlertSfxEnabled: true,
     hapticEnabled: true,
     roomShellStyle: "",
+    roomPlayfieldStyle: "",
     roomTopbarCornerStyle: "",
     roomTopbarCenterStyle: "",
     roomBottomFadeStyle: "",
@@ -1417,10 +1528,12 @@ Page({
     }, { ui: false });
 
 	    const storedSfx = wx.getStorageSync(SFX_ENABLED_KEY);
+	    const storedTurnAlertSfx = wx.getStorageSync(TURN_ALERT_SFX_ENABLED_KEY);
 	    const storedHaptic = wx.getStorageSync(HAPTIC_ENABLED_KEY);
 	    const sfxEnabled = storedSfx === "" || storedSfx == null ? true : Boolean(storedSfx);
+	    const turnAlertSfxEnabled = storedTurnAlertSfx === "" || storedTurnAlertSfx == null ? true : Boolean(storedTurnAlertSfx);
 	    const hapticEnabled = storedHaptic === "" || storedHaptic == null ? true : Boolean(storedHaptic);
-	    this.setData({ sfxEnabled, hapticEnabled });
+	    this.setData({ sfxEnabled, turnAlertSfxEnabled, hapticEnabled });
 	    this.voiceStartTs = 0;
 	    this.voiceStopLocked = false;
     this.pendingVoiceFileId = "";
@@ -1455,6 +1568,7 @@ Page({
     this.asrFinalText = "";
     this.audioContext = null;
     this.sfxContext = null;
+    this.sfxStopTimer = null;
 
     try {
       if (typeof wx.getRecorderManager === "function") {
@@ -1986,6 +2100,8 @@ Page({
       this.audioContext.destroy();
       this.audioContext = null;
     }
+
+    this.clearSfxStopTimer();
 
 	    if (this.sfxContext) {
 	      this.sfxContext.destroy();
@@ -3143,7 +3259,14 @@ Page({
     }
 
     const selfId = String(this.data.playerId || "");
-    const settlementCanContinue = Boolean(model.loserId) && selfId === String(model.loserId);
+    const playersRaw = this.data.playersRaw || [];
+    const self = playersRaw.find((player) => String(player.id || "") === selfId);
+    const loser = playersRaw.find((player) => String(player.id || "") === String(model.loserId || ""));
+    const loserUnavailable = Boolean(model.loserId) && (!loser || loser.onlineStatus === "offline");
+    const settlementCanContinue = Boolean(model.loserId) && (
+      selfId === String(model.loserId)
+      || (Boolean(self && self.isOwner) && loserUnavailable)
+    );
     const shouldPlaySettlementSfx = !this.data.settlementVisible;
     if (settlementCanContinue) {
       this.startSettlementCountdown(2);
@@ -3411,7 +3534,10 @@ Page({
     }
 
     const self = (this.data.playersRaw || []).find((player) => player.id === this.data.playerId);
-    if (this.data.phase === "ready" && self && self.isOwner && this.data.round === 0) {
+    const canManageSeating = (this.data.phase === "ready" || this.data.phase === "ended")
+      && self
+      && self.isOwner;
+    if (canManageSeating) {
       const picked = (this.data.playersRaw || []).find((p) => p.id === playerId);
       this.openSeatingPanel(picked);
       return;
@@ -3428,7 +3554,7 @@ Page({
   },
 
   openSeatingPanel(presetPlayer) {
-    if (!(this.data.phase === "ready" && this.data.selfIsOwner && this.data.round === 0)) {
+    if (!((this.data.phase === "ready" || this.data.phase === "ended") && this.data.selfIsOwner)) {
       wx.showToast({ title: "当前不可排位", icon: "none" });
       return;
     }
@@ -3848,6 +3974,14 @@ Page({
 
     const config = this.data.roomConfig;
     const testMode = Boolean(config && config.testMode);
+    const hasWaitingPlayers = (this.data.waitingPlayersRaw || []).length > 0;
+    if (this.data.selfIsOwner && hasWaitingPlayers) {
+      sections.push({
+        label: "房主工具",
+        open: () => this.openToolsOwnerMenu()
+      });
+    }
+
     if (this.data.selfIsOwner && testMode) {
       sections.push({
         label: "测试工具",
@@ -3890,6 +4024,15 @@ Page({
       this.setData({ sfxEnabled: next });
       wx.setStorageSync(SFX_ENABLED_KEY, next);
       wx.showToast({ title: next ? "音效已开启" : "音效已关闭", icon: "none" });
+    });
+
+    const turnAlertToggleLabel = this.data.turnAlertSfxEnabled ? "关闭轮到提醒音" : "开启轮到提醒音";
+    items.push(turnAlertToggleLabel);
+    actions.push(() => {
+      const next = !this.data.turnAlertSfxEnabled;
+      this.setData({ turnAlertSfxEnabled: next });
+      wx.setStorageSync(TURN_ALERT_SFX_ENABLED_KEY, next);
+      wx.showToast({ title: next ? "轮到提醒音已开启" : "轮到提醒音已关闭", icon: "none" });
     });
 
     const hapticToggleLabel = this.data.hapticEnabled ? "关闭震动" : "开启震动";
@@ -3985,6 +4128,11 @@ Page({
 
   openWaitingAdmitFlow() {
     const waiting = this.data.waitingPlayersRaw || [];
+    if (!waiting.length) {
+      wx.showToast({ title: "暂无等待玩家", icon: "none" });
+      return;
+    }
+
     const labels = waiting.map((p) => `${String(p.nickname || "等待").slice(0, 6)} (${String(p.id || "").slice(0, 6)})`);
 
     this.showActionSheetSafe({
@@ -4247,6 +4395,24 @@ Page({
 
         const startActionEnabled = Boolean(selfIsOwner && phase === "ready" && playerCount >= 2);
         const startActionText = selfIsOwner ? "开始" : "等待房主";
+        const onlinePlayerCount = playersRaw.filter((player) => player.onlineStatus === "online").length;
+        const lastCallPlayer = lastCallObj
+          ? playersRaw.find((player) => String(player.id || "") === String(lastCallObj.by || ""))
+          : null;
+        const lastCallIsOpenableTarget = Boolean(
+          lastCallObj
+          && lastCallPlayer
+          && String(lastCallObj.by || "") !== String(this.data.playerId || "")
+          && onlinePlayerCount >= 2
+        );
+        const endedStarter = payload.currentPlayerId
+          ? playersRaw.find((player) => String(player.id || "") === String(payload.currentPlayerId || ""))
+          : null;
+        const ownerCanRestartEnded = Boolean(
+          selfIsOwner
+          && phase === "ended"
+          && (!payload.currentPlayerId || !endedStarter || endedStarter.onlineStatus === "offline")
+        );
 
         const isMyCallingTurn = payload.phase === "calling"
           && payload.currentPlayerId === this.data.playerId
@@ -4279,7 +4445,7 @@ Page({
         const callForcedOpen = Boolean(isMyCallingTurn && suggestedCall.forcedOpen);
         const callPanelVisible = isMyCallingTurn ? Boolean(this.data.callPanelVisible) : false;
         const callPanelExpanded = isMyCallingTurn ? Boolean(this.data.callPanelExpanded) : false;
-        const canOpenAction = Boolean(isMyCallingTurn && lastCallObj);
+        const canOpenAction = Boolean(isMyCallingTurn && lastCallIsOpenableTarget);
         const showQuickOpenAction = Boolean(canOpenAction && !callForcedOpen);
 
         const settlementVisible = Boolean(this.data.settlementVisible) && phase === "ended";
@@ -4318,7 +4484,7 @@ Page({
           primaryActionText = "开牌中";
           canPrimaryAction = false;
         } else if (phase === "ended") {
-          if (payload.currentPlayerId === this.data.playerId) {
+          if (payload.currentPlayerId === this.data.playerId || ownerCanRestartEnded) {
             primaryActionText = "开始";
             canPrimaryAction = true;
           } else {
@@ -4425,7 +4591,9 @@ Page({
         }
         if (shouldPlayTurnAlert) {
           this.lastTurnAlertKey = turnKey;
-          this.playSfx("turnAlert");
+          if (this.data.turnAlertSfxEnabled) {
+            this.playSfx("turnAlert");
+          }
           this.haptic("heavy");
         }
 
@@ -4785,6 +4953,22 @@ Page({
     this.sfxPaths = nextPaths;
   },
 
+  clearSfxStopTimer() {
+    if (this.sfxStopTimer) {
+      clearTimeout(this.sfxStopTimer);
+      this.sfxStopTimer = null;
+    }
+  },
+
+  getSfxStopDelayMs(kind) {
+    const duration = Number(ROOM_AUDIO_DURATIONS_MS[kind]) || 0;
+    const ratio = Number(ROOM_AUDIO_STOP_RATIOS[kind]) || 0;
+    if (duration <= 0 || ratio <= 0 || ratio >= 1) {
+      return 0;
+    }
+    return Math.max(0, Math.round(duration * ratio));
+  },
+
   playSfx(kind) {
     if (!this.data.sfxEnabled) {
       return;
@@ -4797,9 +4981,21 @@ Page({
       return;
     }
     try {
+      this.clearSfxStopTimer();
       this.sfxContext.stop();
       this.sfxContext.src = path;
       this.sfxContext.play();
+      const stopDelay = this.getSfxStopDelayMs(kind);
+      if (stopDelay > 0) {
+        this.sfxStopTimer = setTimeout(() => {
+          this.sfxStopTimer = null;
+          try {
+            this.sfxContext && this.sfxContext.stop();
+          } catch (error) {
+            // ignore stop failure
+          }
+        }, stopDelay);
+      }
     } catch (error) {
       // ignore play failure
     }

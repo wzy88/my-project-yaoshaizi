@@ -32,6 +32,8 @@ test("room shell keeps the room id centered while moving share into the left-top
   assert.match(wxml, /class="room-topbar-menu-popover"/);
   assert.match(wxml, /class="room-topbar-menu-popover__item room-topbar-menu-popover__item--share" open-type="share" bindtap="onTapMenuShare"/);
   assert.match(wxml, /class="room-topbar-menu-popover__text">邀请好友<\/text>/);
+  assert.match(wxml, /class="room-topbar-menu-popover__text">音效开关<\/text>/);
+  assert.doesNotMatch(wxml, /class="room-topbar-menu-popover__text">设置<\/text>/);
   assert.match(wxml, /class="room-topbar__room/);
   assert.match(wxml, /<text class="room-topbar__room-label">房间号:<\/text>/);
   assert.doesNotMatch(wxml, /class="room-topbar__toggle"/);
@@ -51,14 +53,20 @@ test("room shell gives the left menu button a dedicated hero style", () => {
   const source = fs.readFileSync(roomWxssPath, "utf8");
   assert.match(source, /\.room-chrome-btn--menu\s*\{/);
   assert.match(source, /\.room-chrome-btn--menu::after\s*\{/);
-  assert.match(source, /\.room-chrome-btn--menu::after\s*\{[\s\S]*linear-gradient/);
+  assert.match(source, /\.room-chrome-btn--menu::after\s*\{[\s\S]*display:\s*none/);
+  assert.doesNotMatch(source, /\.room-chrome-btn--menu\s*\{[\s\S]*0 0 0 2rpx rgba\(255, 226, 116/);
 });
 
-test("room shell rebalances the playfield to leave a slim bottom gap and a taller header zone", () => {
+test("room shell lifts the playfield and removes the heavy bottom mask", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const source = fs.readFileSync(roomWxssPath, "utf8");
-  assert.match(source, /\.room-playfield\s*\{[\s\S]*translateY\(18rpx\)/);
+  assert.match(wxml, /class="room-playfield" style="\{\{roomPlayfieldStyle\}\}"/);
+  assert.match(source, /\.room-playfield\s*\{[\s\S]*translateY\(-48rpx\)/);
+  assert.match(source, /\.room-playfield\s*\{[\s\S]*transform-origin:\s*top center/);
   assert.match(source, /\.room-stage__table\s*\{[\s\S]*top:\s*152rpx/);
   assert.match(source, /\.room-stage__table\s*\{[\s\S]*height:\s*1448rpx/);
+  assert.match(source, /\.room-shell__bottom-fade\s*\{[\s\S]*background:\s*none/);
+  assert.match(source, /\.room-shell__bottom-fade\s*\{[\s\S]*pointer-events:\s*none/);
 });
 
 test("room shell keeps the room id on the same top line while nudging it slightly upward", () => {
@@ -79,7 +87,7 @@ test("room shell wires dynamic safe-area styles for top and bottom chrome", () =
   assert.match(source, /const topbarButtonSize = 68;/);
   assert.match(source, /const roomLabelHeight = 24;/);
   assert.match(source, /const roomLabelTopOffset = Math\.round\(\(topbarButtonSize - roomLabelHeight\) \/ 6\);/);
-  assert.match(source, /bottomInset \+ 72/);
+  assert.match(source, /bottomInset \+ 46/);
   assert.match(wxml, /class="room-shell" style="\{\{roomShellStyle\}\}"/);
   assert.match(wxml, /class="room-topbar__corner" style="\{\{roomTopbarCornerStyle\}\}"/);
   assert.match(wxml, /class="room-topbar__center" style="\{\{roomTopbarCenterStyle\}\}"/);
@@ -120,8 +128,31 @@ test("room self area renders a matching call bubble for the local player", () =>
 
 test("room bubbles now use one shared compact size across every seat direction", () => {
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
-  assert.match(wxss, /\.seat__bubble\s*\{[\s\S]*min-width:\s*120rpx[\s\S]*height:\s*72rpx[\s\S]*padding:\s*0 14rpx[\s\S]*border-radius:\s*24rpx/);
+  assert.match(wxss, /\.seat__bubble\s*\{[\s\S]*min-width:\s*100rpx[\s\S]*height:\s*56rpx[\s\S]*padding:\s*0 10rpx[\s\S]*border-radius:\s*19rpx/);
+  assert.match(wxss, /\.room-self__bubble\s*\{[\s\S]*min-width:\s*100rpx[\s\S]*height:\s*56rpx[\s\S]*padding:\s*0 10rpx[\s\S]*border-radius:\s*19rpx/);
   assert.doesNotMatch(wxss, /\.seat__bubble--slot-upper-left,\s*\.seat__bubble--slot-mid-left,\s*\.seat__bubble--slot-lower-left,\s*\.seat__bubble--slot-upper-right,\s*\.seat__bubble--slot-mid-right,\s*\.seat__bubble--slot-lower-right\s*\{/);
+});
+
+test("room player names stay on one line and the self identity sits below the cup", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxml, /class="seat__name \{\{item\.nicknameLengthClass\}\}">\{\{item\.nicknameShort\}\}<\/text>/);
+  assert.match(wxss, /\.seat__name\s*\{[\s\S]*max-width:\s*176rpx[\s\S]*white-space:\s*nowrap[\s\S]*font-size:\s*22rpx/);
+  assert.match(wxss, /\.seat__name\.is-long\s*\{[\s\S]*font-size:\s*20rpx/);
+  assert.match(wxss, /\.seat__name\.is-extra-long\s*\{[\s\S]*font-size:\s*18rpx/);
+  assert.match(wxss, /\.room-self__identity\s*\{[\s\S]*margin-top:\s*40rpx/);
+  assert.match(wxss, /\.room-self__name\s*\{[\s\S]*white-space:\s*nowrap/);
+});
+
+test("room entry and settlement names enforce the five-character single-line rule", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+
+  assert.match(wxml, /class="join-input"[\s\S]*maxlength="5"/);
+  assert.match(wxml, /class="settlement-name \{\{item\.nameLengthClass\}\}">\{\{item\.name\}\}<\/text>/);
+  assert.match(wxss, /\.settlement-name\s*\{[\s\S]*max-width:\s*132rpx[\s\S]*white-space:\s*nowrap/);
+  assert.match(wxss, /\.settlement-name\.is-long\s*\{[\s\S]*font-size:\s*21rpx/);
+  assert.match(wxss, /\.settlement-name\.is-extra-long\s*\{[\s\S]*font-size:\s*18rpx/);
 });
 
 test("room bubble tails use the softer rounded pointer treatment", () => {
@@ -139,13 +170,13 @@ test("room shell removes the floor shadows under outer cups", () => {
 test("room shell uses a more even seven-seat outer ring layout", () => {
   const scriptPath = path.join(process.cwd(), "miniprogram/pages/room/room.js");
   const source = fs.readFileSync(scriptPath, "utf8");
-  assert.match(source, /\{ x: 187\.5, y: 168, bx: 240, by: 180, cupX: 187\.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" \}/);
-  assert.match(source, /\{ x: 42, y: 290, bx: 118, by: 236, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" \}/);
-  assert.match(source, /\{ x: 333, y: 290, bx: 257, by: 236, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" \}/);
-  assert.match(source, /\{ x: 30, y: 396, bx: 126, by: 340, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" \}/);
-  assert.match(source, /\{ x: 345, y: 396, bx: 249, by: 340, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" \}/);
-  assert.match(source, /\{ x: 44, y: 526, bx: 136, by: 470, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" \}/);
-  assert.match(source, /\{ x: 331, y: 526, bx: 239, by: 470, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" \}/);
+  assert.match(source, /\{ x: 187\.5, y: 168, bx: 248, by: 165, cupX: 187\.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" \}/);
+  assert.match(source, /\{ x: 42, y: 290, bx: 144, by: 250, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" \}/);
+  assert.match(source, /\{ x: 333, y: 290, bx: 231, by: 250, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" \}/);
+  assert.match(source, /\{ x: 42, y: 396, bx: 144, by: 356, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" \}/);
+  assert.match(source, /\{ x: 333, y: 396, bx: 231, by: 356, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" \}/);
+  assert.match(source, /\{ x: 42, y: 526, bx: 144, by: 486, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" \}/);
+  assert.match(source, /\{ x: 333, y: 526, bx: 231, by: 486, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" \}/);
 });
 
 test("side seats pull the avatar group inward and scale it below the top and bottom seats", () => {
@@ -165,6 +196,7 @@ test("room page does not rely on external room-view helper at runtime", () => {
 test("settlement dialog keeps only the bottom continue action", () => {
   const source = fs.readFileSync(roomWxmlPath, "utf8");
   assert.doesNotMatch(source, /sheet-close"\s+bindtap="onSettlementContinue">继续/);
+  assert.doesNotMatch(source, /继续\(\{\{settlementContinueSec/);
   assert.doesNotMatch(source, />返回</);
   assert.match(source, /wx:if="\{\{settlementCanContinue\}\}" class="sheet-actions"/);
 });

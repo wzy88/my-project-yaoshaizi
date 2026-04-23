@@ -167,3 +167,59 @@ test("room engine: settlement treats 5-5-5-5-1 as a 5 leopard while wildcard one
   assert.equal(openResult.targets[0].countDetails[0].leopardBonus, true);
   assert.equal(openResult.targets[0].countDetails[0].dice.find((die) => die.index === 4).wildcard, true);
 });
+
+test("room engine: active round returns to ready when an explicit leave leaves only one player", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.startGame("P_OWNER");
+  engine.finishRolling("P_OWNER");
+
+  engine.removePlayer("P_B");
+
+  const state = engine.getState();
+  assert.equal(state.phase, "ready");
+  assert.equal(state.players.length, 1);
+  assert.equal(state.players[0].id, "P_OWNER");
+  assert.equal(state.currentPlayerId, "P_OWNER");
+  assert.equal(state.lastCall, undefined);
+});
+
+test("room engine: owner can restart when the losing starter has left after settlement", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.addPlayer({ id: "P_C", nickname: "c", avatar: "" });
+  engine.startGame("P_OWNER");
+
+  engine.setNextDice("P_OWNER", [2, 2, 3, 3, 3], "P_OWNER");
+  engine.setNextDice("P_OWNER", [1, 4, 5, 6, 6], "P_B");
+  engine.setNextDice("P_OWNER", [3, 4, 5, 6, 6], "P_C");
+  engine.finishRolling("P_OWNER");
+  engine.makeCall("P_OWNER", 2, 2);
+  engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
+  assert.equal(engine.getState().phase, "ended");
+
+  engine.removePlayer("P_B");
+  engine.restartRound("P_OWNER");
+
+  const state = engine.getState();
+  assert.equal(state.phase, "rolling");
+  assert.equal(state.players.length, 2);
+  assert.equal(state.players.some((player) => player.id === "P_B"), false);
+});
+
+test("room engine: owner can adjust seats after settlement before the next round", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.addPlayer({ id: "P_C", nickname: "c", avatar: "" });
+  engine.startGame("P_OWNER");
+
+  engine.finishRolling("P_OWNER");
+  engine.makeCall("P_OWNER", 2, 2);
+  engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
+  assert.equal(engine.getState().phase, "ended");
+
+  engine.setSeat("P_OWNER", "P_C", 8);
+  assert.equal(engine.getState().players.find((player) => player.id === "P_C").seatIndex, 8);
+
+  engine.swapSeats("P_OWNER", "P_OWNER", "P_C");
+  const state = engine.getState();
+  assert.equal(state.players.find((player) => player.id === "P_OWNER").seatIndex, 8);
+  assert.equal(state.players.find((player) => player.id === "P_C").seatIndex, 1);
+});

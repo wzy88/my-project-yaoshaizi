@@ -50,6 +50,7 @@ function getNavigationSafeArea() {
   const safeBottom = toFiniteNumber(safeArea.bottom);
   const screenHeight = toFiniteNumber(windowInfo.screenHeight);
   const windowHeight = toFiniteNumber(windowInfo.windowHeight);
+  const windowWidth = toFiniteNumber(windowInfo.windowWidth) || toFiniteNumber(windowInfo.screenWidth);
 
   if (screenHeight > 0 && safeBottom > 0) {
     bottomInset = Math.max(0, screenHeight - safeBottom);
@@ -66,7 +67,10 @@ function getNavigationSafeArea() {
     bottomInset,
     menuTop,
     menuHeight,
-    menuBottom
+    menuBottom,
+    windowWidth,
+    windowHeight,
+    screenHeight
   };
 }
 

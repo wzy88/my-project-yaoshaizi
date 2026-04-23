@@ -15,4 +15,5 @@ test("room entry sheet exposes a lightweight nickname-and-consent confirm flow",
   assert.match(source, /点击继续即表示同意/);
   assert.match(source, /bindinput="onNicknameChange"/);
   assert.match(source, /bindtap="refreshEntryNickname"/);
+  assert.match(source, /maxlength="5"/);
 });

@@ -1167,7 +1167,16 @@ export class RoomService {
     this.clearReconnectTimer(roomId, playerId);
     this.playerResumeTokens.delete(this.playerKey(roomId, playerId));
 
-    room.removePlayer(playerId);
+    const stateBeforeRemoval = room.getState();
+    const shouldAutoAdvanceLeavingTurn = Boolean(
+      reason === "explicit_leave"
+      && stateBeforeRemoval.phase === "calling"
+      && stateBeforeRemoval.currentPlayerId === playerId
+    );
+
+    room.removePlayer(playerId, {
+      preserveCurrentTurn: shouldAutoAdvanceLeavingTurn
+    });
 
     this.logDiagnostic("log", "room:player_removed", {
       playerId,
@@ -1186,7 +1195,13 @@ export class RoomService {
       return;
     }
 
-    this.broadcastRoomState(roomId);
+    if (shouldAutoAdvanceLeavingTurn) {
+      void this.autoAdvanceCurrentCallTurn(roomId, playerId).catch(() => {
+        this.broadcastRoomState(roomId);
+      });
+    } else {
+      this.broadcastRoomState(roomId);
+    }
   }
 
   private cleanupRoomResources(roomId: string): void {
@@ -1318,22 +1333,37 @@ export class RoomService {
     }
 
     try {
-      const suggestion = room.getAutoCallSuggestion();
-      if (suggestion) {
-        room.makeCall(playerId, suggestion.count, suggestion.point);
-        this.broadcastRoomState(roomId);
-        return;
-      }
-
-      const { openResult, roundSummary } = room.openDice(playerId, room.getRuleOptionsForCurrentRound());
-      await this.historyStore.saveRoundSummary(roundSummary);
-      await this.accountStore.recordRoundSummary(roundSummary);
-      this.broadcastRoom(roomId, "open:result", openResult);
-      this.broadcastRoom(roomId, "round:summary", roundSummary);
-      this.broadcastRoomState(roomId);
+      await this.autoAdvanceCurrentCallTurn(roomId, playerId);
     } catch {
       // ignore timeout failure
     }
+  }
+
+  private async autoAdvanceCurrentCallTurn(roomId: string, playerId: string): Promise<void> {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return;
+    }
+
+    const state = room.getState();
+    if (state.phase !== "calling" || state.currentPlayerId !== playerId) {
+      this.broadcastRoomState(roomId);
+      return;
+    }
+
+    const suggestion = room.getAutoCallSuggestion();
+    if (suggestion) {
+      room.makeCall(playerId, suggestion.count, suggestion.point);
+      this.broadcastRoomState(roomId);
+      return;
+    }
+
+    const { openResult, roundSummary } = room.openDice(playerId, room.getRuleOptionsForCurrentRound());
+    await this.historyStore.saveRoundSummary(roundSummary);
+    await this.accountStore.recordRoundSummary(roundSummary);
+    this.broadcastRoom(roomId, "open:result", openResult);
+    this.broadcastRoom(roomId, "round:summary", roundSummary);
+    this.broadcastRoomState(roomId);
   }
 
   private sendToPlayer<E extends keyof ServerEventMap>(
