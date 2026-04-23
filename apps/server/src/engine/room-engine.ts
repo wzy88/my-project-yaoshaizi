@@ -1,7 +1,7 @@
 import {
   ErrorCode,
   GameError,
-  countPointWithOptions,
+  getPointCountBreakdown,
   isCallHigher,
   isValidCallInput,
   type DiceCall,
@@ -677,14 +677,17 @@ export class RoomEngine {
         player.hasRolled = true;
       }
     }
-    const allDice = this.getOrderedPlayers().map((player) => player.privateDice);
+    const orderedPlayers = this.getOrderedPlayers();
+    const allDice = orderedPlayers.map((player) => player.privateDice);
+    const playerIds = orderedPlayers.map((player) => player.id);
 
     const target = this.players.get(targetId);
     if (!target || !target.currentCall) {
       throw new GameError(ErrorCode.INVALID_OPEN_TARGET, "上一手叫牌玩家不存在或无有效声明");
     }
 
-    const actual = countPointWithOptions(allDice, target.currentCall.point, options);
+    const countBreakdown = getPointCountBreakdown(allDice, target.currentCall.point, options, playerIds);
+    const actual = countBreakdown.total;
     const winnerId = actual >= target.currentCall.count ? target.id : actorId;
 
     const targets = [
@@ -695,7 +698,8 @@ export class RoomEngine {
           point: target.currentCall.point
         },
         actual,
-        winnerId
+        winnerId,
+        countDetails: countBreakdown.players
       }
     ];
 

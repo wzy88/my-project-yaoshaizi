@@ -70,6 +70,22 @@ export interface OpenResultTarget {
   };
   actual: number;
   winnerId: string;
+  countDetails?: OpenResultCountPlayer[];
+}
+
+export interface OpenResultCountDie {
+  index: number;
+  value: number;
+  counted: boolean;
+  wildcard: boolean;
+}
+
+export interface OpenResultCountPlayer {
+  playerId: string;
+  dice: OpenResultCountDie[];
+  contribution: number;
+  straight: boolean;
+  leopardBonus: boolean;
 }
 
 export interface OpenResultDTO {

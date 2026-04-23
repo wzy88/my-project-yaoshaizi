@@ -446,13 +446,18 @@ export class AccountStore {
     }
 
     const data = await this.readData();
-    const winnerIds = new Set((summary.openResult?.targets || []).map((target) => target.winnerId));
+    const targets = summary.openResult?.targets || [];
+    const winnerIds = new Set(targets.map((target) => target.winnerId));
     const loserIds = new Set(
-      (summary.openResult?.targets || []).map((target) => (
+      targets.map((target) => (
         target.winnerId === target.targetId ? summary.openResult.openerId : target.targetId
       ))
     );
     const openerId = String(summary.openResult?.openerId || "");
+    const scoredPlayerIds = new Set([
+      openerId,
+      ...targets.map((target) => String(target.targetId || ""))
+    ].filter(Boolean));
     const ts = Number(summary.serverTs) || Date.now();
 
     let changed = false;
@@ -463,20 +468,22 @@ export class AccountStore {
         continue;
       }
 
-      account.stats.totalRounds += 1;
       if (player.call) {
         account.stats.totalCallsMade += 1;
       }
       if (player.playerId === openerId) {
         account.stats.totalOpenRequests += 1;
       }
-      if (winnerIds.has(player.playerId)) {
-        account.stats.roundsWon += 1;
+      if (scoredPlayerIds.has(player.playerId)) {
+        account.stats.totalRounds += 1;
+        if (winnerIds.has(player.playerId)) {
+          account.stats.roundsWon += 1;
+        }
+        if (loserIds.has(player.playerId)) {
+          account.stats.roundsLost += 1;
+        }
+        account.stats.lastRoundAt = ts;
       }
-      if (loserIds.has(player.playerId)) {
-        account.stats.roundsLost += 1;
-      }
-      account.stats.lastRoundAt = ts;
       account.updatedAt = ts;
 
       account.recentRooms = [

@@ -1070,6 +1070,7 @@ page {
   border-radius: 18rpx;
   background: rgba(255, 255, 255, 0.03);
   border: 1rpx solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
 }
 
 .settlement-row__left {
@@ -1165,10 +1166,67 @@ page {
   gap: 8rpx;
 }
 
+.settlement-die-wrap {
+  position: relative;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settlement-die-wrap.is-counted {
+  background: rgba(240, 192, 48, 0.18);
+  box-shadow: 0 0 0 2rpx rgba(240, 192, 48, 0.72), 0 0 16rpx rgba(240, 192, 48, 0.28);
+}
+
+.settlement-die-wrap.is-wildcard::after {
+  content: "1";
+  position: absolute;
+  right: -6rpx;
+  top: -8rpx;
+  min-width: 20rpx;
+  height: 20rpx;
+  padding: 0 4rpx;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  background: rgba(35, 181, 111, 0.96);
+  color: #ffffff;
+  font-size: 14rpx;
+  font-weight: 900;
+  line-height: 20rpx;
+  text-align: center;
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.28);
+}
+
 .settlement-die {
   width: 40rpx;
   height: 40rpx;
   filter: drop-shadow(0 3rpx 6rpx rgba(0, 0, 0, 0.18));
+}
+
+.settlement-dice-bonus {
+  min-width: 40rpx;
+  height: 32rpx;
+  padding: 0 10rpx;
+  border-radius: 999rpx;
+  background: rgba(240, 192, 48, 0.18);
+  border: 1rpx solid rgba(240, 192, 48, 0.52);
+  color: #f0c030;
+  font-size: 20rpx;
+  font-weight: 900;
+  line-height: 32rpx;
+  text-align: center;
+}
+
+.settlement-count-note {
+  width: 100%;
+  padding-left: 76rpx;
+  box-sizing: border-box;
+  color: rgba(168, 230, 207, 0.82);
+  font-size: 18rpx;
+  line-height: 1.2;
 }
 
 .settlement-dice--empty {
@@ -5075,6 +5133,34 @@ button.room-topbar-menu-popover__item::after {
   width: 212.68rpx;
   height: 139.94rpx;
   position: relative;
+}
+
+.room-self__dice-cup.is-covered .room-self__dice-stack {
+  opacity: 0.08;
+  filter: blur(6rpx) saturate(0.65);
+}
+
+.room-self__dice-cup.is-covered .room-self__dice-glass {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(132, 185, 205, 0.1) 42%, rgba(0, 0, 0, 0.2) 100%);
+  box-shadow: 0 24rpx 42rpx rgba(0, 0, 0, 0.5), inset 0 14rpx 28rpx rgba(255, 255, 255, 0.18), inset 0 -8rpx 20rpx rgba(0, 0, 0, 0.32);
+}
+
+.room-self__dice-cup.is-covered::after {
+  content: "已遮住";
+  position: absolute;
+  left: 50%;
+  top: 44rpx;
+  z-index: 8;
+  transform: translateX(-50%);
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(13, 22, 26, 0.68);
+  color: rgba(244, 255, 239, 0.9);
+  font-size: 18rpx;
+  font-weight: 800;
+  letter-spacing: 0.8rpx;
+  pointer-events: none;
 }
 
 .room-self__dice-pile {

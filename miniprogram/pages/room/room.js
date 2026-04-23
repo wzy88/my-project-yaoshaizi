@@ -37,7 +37,9 @@ const ROOM_AUDIO_ASSETS = {
   roll: "/assets/audio/dice-roll.mp3",
   settlement: "/assets/audio/settlement.mp3",
   primary: "/assets/audio/primary-action.mp3",
-  roundStart: "/assets/audio/round-start.mp3"
+  roundStart: "/assets/audio/round-start.mp3",
+  loseAlert: "/assets/audio/lose-alert.mp3",
+  turnAlert: "/assets/audio/turn-alert.mp3"
 };
 function buildAccountAuthPayload() {
   const session = getStoredAccountSession();
@@ -94,13 +96,18 @@ function buildSelfRollDisplayItems({ count = 5, finalDice = [], revealCount = 0 
   });
 }
 
-function buildSettlementDiceItems(values, highlightValue = 0) {
+function buildSettlementDiceItems(values, countDetail = null, fallbackHighlightValue = 0) {
+  const detailDice = countDetail && Array.isArray(countDetail.dice) ? countDetail.dice : [];
+  const detailByIndex = new Map(detailDice.map((item) => [Number(item.index), item]));
   return (Array.isArray(values) ? values : []).map((value, index) => {
     const num = Number(value) || 0;
+    const detail = detailByIndex.get(index);
+    const hasDetail = detail && typeof detail === "object";
     return {
       value: num,
       asset: getDieAsset(num),
-      highlighted: num === Number(highlightValue || 0),
+      highlighted: hasDetail ? Boolean(detail.counted) : num === Number(fallbackHighlightValue || 0),
+      wildcard: hasDetail ? Boolean(detail.wildcard) : false,
       index
     };
   });
@@ -205,6 +212,10 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
   const summaryDiceMap = new Map(
     summaryPlayers.map((p) => [String(p.playerId || ""), Array.isArray(p.dice) ? p.dice : []])
   );
+  const countDetails = Array.isArray(first.countDetails) ? first.countDetails : [];
+  const countDetailMap = new Map(
+    countDetails.map((detail) => [String(detail.playerId || ""), detail])
+  );
 
   const getPlayerName = (playerId) => {
     const id = String(playerId || "");
@@ -253,10 +264,13 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     const dice = (summaryDiceMap.get(id) || [])
       .map((num) => Number(num))
       .filter((num) => Number.isInteger(num) && num >= 1 && num <= 6);
+    const countDetail = countDetailMap.get(id) || null;
     let kind = "neutral";
     let tagText = "";
     let deltaText = "+0";
     let deltaClass = "neutral";
+    let countNoteText = "";
+    let countBonusText = "";
 
     if (id === winnerId) {
       kind = "winner";
@@ -269,13 +283,23 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
       deltaText = "💀 -1";
       deltaClass = "loser";
     }
+    if (countDetail && countDetail.straight) {
+      countNoteText = "顺子 0";
+    } else if (countDetail && Number(countDetail.contribution) > 0) {
+      countNoteText = `计入 ${Number(countDetail.contribution)}`;
+    }
+    if (countDetail && countDetail.leopardBonus) {
+      countBonusText = "+1";
+    }
 
     return {
       playerId: id,
       name: displayName,
       avatarUrl: getSeatAvatarPresentation(player ? player.avatar : "", Math.max(0, getSeatIndex(id) - 1)).src,
       avatarText: String(name || "玩").slice(0, 1),
-      diceItems: buildSettlementDiceItems(dice, declaredPoint),
+      diceItems: buildSettlementDiceItems(dice, countDetail, declaredPoint),
+      countNoteText,
+      countBonusText,
       kind,
       tagText,
       deltaText,
@@ -1289,6 +1313,7 @@ Page({
     myDiceRolling: false,
     myDiceRevealing: false,
     myDiceJustRevealed: false,
+    myDiceCovered: false,
     recording: false,
     voiceTipText: "按住语音键说话，松开发送",
     callCount: "3",
@@ -1415,6 +1440,7 @@ Page({
 	    this.lastAutoRollRound = 0;
     this.hasReceivedRoomState = false;
     this.lastRoundStartSfxKey = "";
+    this.lastTurnAlertKey = "";
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
     this.settlementCountdownTimer = null;
@@ -2870,6 +2896,7 @@ Page({
       myDiceRolling: false,
       myDiceRevealing: false,
       myDiceJustRevealed: false,
+      myDiceCovered: hasStableDice && shouldShowDice ? Boolean(this.data.myDiceCovered) : false,
       roomSelfDiceFaces: hasStableDice ? buildDiceFaceItems(stableDice) : buildSelfDiceDisplayItems()
     });
   },
@@ -2913,7 +2940,8 @@ Page({
     this.setData({
       myDiceRolling: false,
       myDiceRevealing: true,
-      myDiceJustRevealed: false
+      myDiceJustRevealed: false,
+      myDiceCovered: false
     });
 
     const revealNext = () => {
@@ -2930,6 +2958,7 @@ Page({
         this.setData({
           myDiceRevealing: false,
           myDiceJustRevealed: true,
+          myDiceCovered: false,
           roomSelfDiceFaces: buildDiceFaceItems(this.pendingPrivateDice)
         });
         this.myDiceRevealTimer = setTimeout(() => {
@@ -2982,6 +3011,7 @@ Page({
       myDiceRolling: true,
       myDiceRevealing: false,
       myDiceJustRevealed: false,
+      myDiceCovered: false,
       roomSelfDiceFaces: buildSelfRollDisplayItems({ count: expected })
     });
     this.startRoomSelfRolling(expected, actionId);
@@ -3015,6 +3045,7 @@ Page({
       myDiceRolling: false,
       myDiceRevealing: false,
       myDiceJustRevealed: false,
+      myDiceCovered: false,
       roomSelfDiceFaces: buildDiceFaceItems(display)
     });
   },
@@ -3031,8 +3062,26 @@ Page({
       myDicePeekVisible: canPeek,
       myDiceRolling: false,
       myDiceRevealing: false,
-      myDiceJustRevealed: false
+      myDiceJustRevealed: false,
+      myDiceCovered: false
     });
+  },
+
+  toggleSelfDiceCover() {
+    if (this.data.selfIsWaiting || this.data.phase === "ended" || this.data.myDiceRolling || this.data.myDiceRevealing) {
+      return;
+    }
+
+    const expected = this.data.roomConfig && typeof this.data.roomConfig.dicePerPlayer === "number"
+      ? this.data.roomConfig.dicePerPlayer
+      : 5;
+    const hasDice = Array.isArray(this.data.privateDice) && this.data.privateDice.length === expected;
+    if (!hasDice || !this.data.myDiceVisible) {
+      return;
+    }
+
+    this.haptic("light");
+    this.setData({ myDiceCovered: !this.data.myDiceCovered });
   },
 
   clearSettlementCountdown() {
@@ -3102,7 +3151,7 @@ Page({
       this.clearSettlementCountdown();
     }
     if (shouldPlaySettlementSfx) {
-      this.playSfx("settlement");
+      this.playSfx(settlementCanContinue ? "loseAlert" : "settlement");
     }
     this.setData({
       settlementVisible: true,
@@ -3160,6 +3209,7 @@ Page({
       myDiceRolling: false,
       myDiceRevealing: false,
       myDiceJustRevealed: false,
+      myDiceCovered: false,
       callTimeline: [],
       lastCallKey: ""
     });
@@ -4178,6 +4228,13 @@ Page({
           && phase === "calling"
           && !this.suppressCallAttention
         );
+        const shouldPlayTurnAlert = Boolean(
+          this.hasReceivedRoomState
+          && phase === "calling"
+          && String(payload.currentPlayerId || "") === String(this.data.playerId || "")
+          && !selfIsWaiting
+          && turnKey !== this.lastTurnAlertKey
+        );
 
         const playersDecorated = decoratePlayers(
           playersRaw,
@@ -4343,7 +4400,8 @@ Page({
           myDicePeekVisible: selfIsWaiting ? false : myDicePeekVisible,
           myDiceRolling: (selfIsWaiting || phase === "ended" || roundChanged) ? false : this.data.myDiceRolling,
           myDiceRevealing: (selfIsWaiting || phase === "ended" || roundChanged) ? false : this.data.myDiceRevealing,
-          myDiceJustRevealed: (selfIsWaiting || roundChanged) ? false : this.data.myDiceJustRevealed
+          myDiceJustRevealed: (selfIsWaiting || roundChanged) ? false : this.data.myDiceJustRevealed,
+          myDiceCovered: (selfIsWaiting || phase === "ended" || roundChanged || !hasDice) ? false : this.data.myDiceCovered
         });
 
         this.hasReceivedRoomState = true;
@@ -4353,16 +4411,22 @@ Page({
           this.playSfx("roundStart");
         }
         if (shouldPlayCallAttention) {
-          if (String(lastCallObj && lastCallObj.by || "") !== String(this.data.playerId || "")) {
+          if (String(lastCallObj && lastCallObj.by || "") !== String(this.data.playerId || "") && !shouldPlayTurnAlert) {
             this.playSfx("call");
           }
           if (
             String(payload.currentPlayerId || "") === String(this.data.playerId || "")
             && String(lastCallObj && lastCallObj.by || "") !== String(this.data.playerId || "")
             && !selfIsWaiting
+            && !shouldPlayTurnAlert
           ) {
             this.haptic("light");
           }
+        }
+        if (shouldPlayTurnAlert) {
+          this.lastTurnAlertKey = turnKey;
+          this.playSfx("turnAlert");
+          this.haptic("heavy");
         }
 
         break;
@@ -4467,7 +4531,8 @@ Page({
           privateDice: finalDice,
           selfHasDice: finalDice.length === expected,
           myDiceVisible: !this.data.selfIsWaiting && this.data.phase !== "ended",
-          myDicePeekVisible: false
+          myDicePeekVisible: false,
+          myDiceCovered: false
         });
 
         if (!this.data.myDiceRolling && !this.data.myDiceRevealing) {
@@ -4476,6 +4541,7 @@ Page({
             myDiceRolling: false,
             myDiceRevealing: false,
             myDiceJustRevealed: true,
+            myDiceCovered: false,
             roomSelfDiceFaces: buildDiceFaceItems(finalDice.length === expected
               ? finalDice
               : buildSelfDiceFallback(expected))
@@ -4687,7 +4753,9 @@ Page({
         roll: ROOM_AUDIO_ASSETS.roll,
         settlement: ROOM_AUDIO_ASSETS.settlement,
         primary: ROOM_AUDIO_ASSETS.primary,
-        roundStart: ROOM_AUDIO_ASSETS.roundStart
+        roundStart: ROOM_AUDIO_ASSETS.roundStart,
+        loseAlert: ROOM_AUDIO_ASSETS.loseAlert,
+        turnAlert: ROOM_AUDIO_ASSETS.turnAlert
       };
       return;
     }
@@ -4699,7 +4767,9 @@ Page({
       roll: ROOM_AUDIO_ASSETS.roll,
       settlement: ROOM_AUDIO_ASSETS.settlement,
       primary: ROOM_AUDIO_ASSETS.primary,
-      roundStart: ROOM_AUDIO_ASSETS.roundStart
+      roundStart: ROOM_AUDIO_ASSETS.roundStart,
+      loseAlert: ROOM_AUDIO_ASSETS.loseAlert,
+      turnAlert: ROOM_AUDIO_ASSETS.turnAlert
     };
     for (const key of keys) {
       const path = `${base}/dice_sfx_${key}.wav`;
@@ -4887,6 +4957,7 @@ Page({
     this.latestRoundSummary = null;
     this.hasReceivedRoomState = false;
     this.lastRoundStartSfxKey = "";
+    this.lastTurnAlertKey = "";
     this.suppressCallAttention = false;
 
     this.pendingVoiceFileId = "";
@@ -4932,6 +5003,7 @@ Page({
       myDiceRolling: false,
       myDiceRevealing: false,
       myDiceJustRevealed: false,
+      myDiceCovered: false,
       roomSelfDiceFaces: buildSelfDiceDisplayItems(),
       historyItems: [],
       historyNextBeforeRound: null,
@@ -5095,6 +5167,7 @@ Page({
     this.clearMyDiceTimers();
     this.resetSelfRollTransientState();
     this.suppressCallAttention = false;
+    this.lastTurnAlertKey = "";
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
@@ -5136,6 +5209,7 @@ Page({
       myDiceRolling: false,
       myDiceRevealing: false,
       myDiceJustRevealed: false,
+      myDiceCovered: false,
       roomSelfDiceFaces: buildSelfDiceDisplayItems(),
       selfRollLocked: false,
       selfRollCountThisRound: 0,

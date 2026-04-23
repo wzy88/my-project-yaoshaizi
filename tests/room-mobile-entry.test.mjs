@@ -264,6 +264,8 @@ test("room page: roll uses the bundled audio asset while the other sfx keep the 
     const win = files.get("/tmp/dice-sfx/dice_sfx_win.wav");
 
     assert.equal(page.sfxPaths.roll, "/assets/audio/dice-roll.mp3");
+    assert.equal(page.sfxPaths.loseAlert, "/assets/audio/lose-alert.mp3");
+    assert.equal(page.sfxPaths.turnAlert, "/assets/audio/turn-alert.mp3");
     assert.equal(files.has("/tmp/dice-sfx/dice_sfx_roll.wav"), false);
     assert.equal(Boolean(ok && open && lose && win), true);
     assert.equal(ok.byteLength >= 2400 && ok.byteLength <= 3000, true);
@@ -309,7 +311,7 @@ test("room page: initial room sync with an existing call does not replay attenti
   }
 });
 
-test("room page: accepted remote calls trigger attention sfx, gold latest-call border, and turn haptic", () => {
+test("room page: accepted remote calls trigger the turn alert when it becomes my turn", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -339,8 +341,8 @@ test("room page: accepted remote calls trigger attention sfx, gold latest-call b
       })
     }));
 
-    assert.deepEqual(sfx, ["call"]);
-    assert.deepEqual(haptics, ["light"]);
+    assert.deepEqual(sfx, ["turnAlert"]);
+    assert.deepEqual(haptics, ["heavy"]);
     assert.equal(page.data.lastCallKey, "P1_5_3_1710000000456");
     assert.equal(page.data.playersDecorated.find((player) => player.id === "P1").bubbleClass.includes("latest"), true);
   } finally {
@@ -3073,6 +3075,49 @@ test("room page: direct private dice restore reveals stable dice immediately whe
   }
 });
 
+test("room page: tapping the self dice cup toggles cover without changing dice values", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const haptics = [];
+    page.haptic = (kind) => haptics.push(kind);
+    page.setData({
+      phase: "calling",
+      selfIsWaiting: false,
+      myDiceVisible: true,
+      myDiceRolling: false,
+      myDiceRevealing: false,
+      privateDice: [2, 4, 6, 1, 3],
+      roomConfig: {
+        dicePerPlayer: 5
+      },
+      roomSelfDiceFaces: [
+        { value: 2 },
+        { value: 4 },
+        { value: 6 },
+        { value: 1 },
+        { value: 3 }
+      ]
+    });
+
+    page.toggleSelfDiceCover();
+    assert.equal(page.data.myDiceCovered, true);
+    assert.deepEqual(page.data.privateDice, [2, 4, 6, 1, 3]);
+
+    page.toggleSelfDiceCover();
+    assert.equal(page.data.myDiceCovered, false);
+    assert.deepEqual(haptics, ["light", "light"]);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: all players see the settlement dialog and only the loser can continue", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -3099,7 +3144,35 @@ test("room page: all players see the settlement dialog and only the loser can co
           targetId: "loser",
           declared: { count: 10, point: 4 },
           actual: 5,
-          winnerId: "winner"
+          winnerId: "winner",
+          countDetails: [
+            {
+              playerId: "winner",
+              contribution: 3,
+              straight: false,
+              leopardBonus: false,
+              dice: [
+                { index: 0, value: 4, counted: true, wildcard: false },
+                { index: 1, value: 1, counted: false, wildcard: false },
+                { index: 2, value: 1, counted: false, wildcard: false },
+                { index: 3, value: 4, counted: true, wildcard: false },
+                { index: 4, value: 4, counted: true, wildcard: false }
+              ]
+            },
+            {
+              playerId: "loser",
+              contribution: 6,
+              straight: false,
+              leopardBonus: true,
+              dice: [
+                { index: 0, value: 4, counted: true, wildcard: false },
+                { index: 1, value: 4, counted: true, wildcard: false },
+                { index: 2, value: 4, counted: true, wildcard: false },
+                { index: 3, value: 1, counted: true, wildcard: true },
+                { index: 4, value: 4, counted: true, wildcard: false }
+              ]
+            }
+          ]
         }
       ],
       serverTs: Date.now()
@@ -3128,12 +3201,16 @@ test("room page: all players see the settlement dialog and only the loser can co
     assert.equal(page.data.settlementVisible, true);
     assert.equal(page.data.settlementCanContinue, true);
     assert.equal(page.data.settlementRows.length, 2);
+    const loserRow = page.data.settlementRows.find((row) => row.playerId === "loser");
+    assert.equal(loserRow.countBonusText, "+1");
+    assert.equal(loserRow.diceItems.filter((item) => item.highlighted).length, 5);
+    assert.equal(loserRow.diceItems.find((item) => item.index === 3).wildcard, true);
   } finally {
     cleanup();
   }
 });
 
-test("room page: settlement audio plays once when the dialog first appears and does not stack with win lose cues", () => {
+test("room page: settlement audio plays once for non-losers while losers get a distinct alert", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -3193,6 +3270,11 @@ test("room page: settlement audio plays once when the dialog first appears and d
     assert.deepEqual(sfxCalls, ["settlement"]);
     assert.equal(page.data.settlementVisible, true);
     assert.equal(page.data.settlementRows.length, 2);
+
+    page.setData({ settlementVisible: false });
+    page.data.playerId = "loser";
+    page.showSettlementPanel(openResult, roundSummary);
+    assert.deepEqual(sfxCalls, ["settlement", "loseAlert"]);
   } finally {
     cleanup();
   }

@@ -1,4 +1,4 @@
-import type { DiceCall, RuleOptions } from "./types.js";
+import type { DiceCall, OpenResultCountPlayer, RuleOptions } from "./types.js";
 
 export function isValidCallInput(count: number, point: number): boolean {
   return Number.isInteger(count) && count > 0 && Number.isInteger(point) && point >= 1 && point <= 6;
@@ -25,12 +25,30 @@ export function countPointWithOptions(
   point: number,
   options: RuleOptions
 ): number {
-  let total = 0;
+  return getPointCountBreakdown(allDice, point, options).total;
+}
 
-  for (const diceList of allDice) {
+export function getPointCountBreakdown(
+  allDice: number[][],
+  point: number,
+  options: RuleOptions,
+  playerIds: string[] = []
+): { total: number; players: OpenResultCountPlayer[] } {
+  let total = 0;
+  const players: OpenResultCountPlayer[] = [];
+
+  for (const [playerIndex, diceList] of allDice.entries()) {
     const normalized = Array.isArray(diceList) ? diceList : [];
     const diceCount = normalized.length;
+    const playerId = String(playerIds[playerIndex] || `P${playerIndex + 1}`);
     if (diceCount <= 0) {
+      players.push({
+        playerId,
+        dice: [],
+        contribution: 0,
+        straight: false,
+        leopardBonus: false
+      });
       continue;
     }
 
@@ -38,6 +56,18 @@ export function countPointWithOptions(
     // - Straight (strict consecutive, no duplicates) counts as 0 for all faces.
     // - Leopard (all same) adds +1 to that face.
     if (isStraight(normalized)) {
+      players.push({
+        playerId,
+        dice: normalized.map((value, index) => ({
+          index,
+          value,
+          counted: false,
+          wildcard: false
+        })),
+        contribution: 0,
+        straight: true,
+        leopardBonus: false
+      });
       continue;
     }
 
@@ -57,30 +87,77 @@ export function countPointWithOptions(
     }
 
     if (point === 1) {
-      total += pointCount;
-      if (isLeopard && leopardFace === 1) {
-        total += 1;
-      }
+      const leopardBonus = Boolean(isLeopard && leopardFace === 1);
+      const contribution = pointCount + (leopardBonus ? 1 : 0);
+      total += contribution;
+      players.push({
+        playerId,
+        dice: normalized.map((value, index) => ({
+          index,
+          value,
+          counted: value === 1,
+          wildcard: false
+        })),
+        contribution,
+        straight: false,
+        leopardBonus
+      });
       continue;
     }
 
     if (options.oneAsWildcard) {
       const effectiveCount = pointCount + oneCount;
       if (effectiveCount === diceCount) {
-        total += diceCount + 1;
+        const contribution = diceCount + 1;
+        total += contribution;
+        players.push({
+          playerId,
+          dice: normalized.map((value, index) => ({
+            index,
+            value,
+            counted: value === point || value === 1,
+            wildcard: value === 1
+          })),
+          contribution,
+          straight: false,
+          leopardBonus: true
+        });
         continue;
       }
 
       total += effectiveCount;
+      players.push({
+        playerId,
+        dice: normalized.map((value, index) => ({
+          index,
+          value,
+          counted: value === point || value === 1,
+          wildcard: value === 1
+        })),
+        contribution: effectiveCount,
+        straight: false,
+        leopardBonus: false
+      });
     } else {
-      total += pointCount;
-      if (isLeopard && leopardFace === point) {
-        total += 1;
-      }
+      const leopardBonus = Boolean(isLeopard && leopardFace === point);
+      const contribution = pointCount + (leopardBonus ? 1 : 0);
+      total += contribution;
+      players.push({
+        playerId,
+        dice: normalized.map((value, index) => ({
+          index,
+          value,
+          counted: value === point,
+          wildcard: false
+        })),
+        contribution,
+        straight: false,
+        leopardBonus
+      });
     }
   }
 
-  return total;
+  return { total, players };
 }
 
 function isStraight(diceList: number[]): boolean {

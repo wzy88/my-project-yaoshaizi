@@ -129,6 +129,11 @@ test("room engine: openDice settles and loser starts next round", () => {
 
   const { openResult } = engine.openDice(opener, engine.getRuleOptionsForCurrentRound());
   assert.equal(openResult.targets.length, 1);
+  assert.equal(openResult.targets[0].countDetails.length, 2);
+  assert.equal(openResult.targets[0].countDetails[0].playerId, "P_OWNER");
+  assert.equal(openResult.targets[0].countDetails[0].contribution, 2);
+  assert.equal(openResult.targets[0].countDetails[1].playerId, "P_B");
+  assert.equal(openResult.targets[0].countDetails[1].contribution, 1);
 
   const settled = engine.getState();
   assert.equal(settled.phase, "ended");
@@ -159,4 +164,6 @@ test("room engine: settlement treats 5-5-5-5-1 as a 5 leopard while wildcard one
   const { openResult } = engine.openDice(opener, engine.getRuleOptionsForCurrentRound());
   assert.equal(openResult.targets[0].actual, 6);
   assert.equal(openResult.targets[0].winnerId, "P_OWNER");
+  assert.equal(openResult.targets[0].countDetails[0].leopardBonus, true);
+  assert.equal(openResult.targets[0].countDetails[0].dice.find((die) => die.index === 4).wildcard, true);
 });
