@@ -68,6 +68,10 @@ export class RoomService {
     this.accountStore = accountStore;
   }
 
+  hasRoom(roomId: string): boolean {
+    return this.rooms.has(String(roomId || "").trim());
+  }
+
   private logDiagnostic(level: "log" | "warn", event: string, details: Record<string, unknown>): void {
     const logger = level === "warn" ? console.warn : console.log;
     logger(`[dice-server] ${event} ${JSON.stringify(details)}`);

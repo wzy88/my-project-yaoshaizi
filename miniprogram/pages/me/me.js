@@ -1,3 +1,4 @@
+const app = getApp();
 const {
   SESSION_KEY,
   NICKNAME_KEY,
@@ -16,9 +17,11 @@ const {
 const { validateNickname } = require("../../utils/nickname-validator");
 const {
   getStoredWechatProfile,
+  requestWechatUserProfile,
   persistWechatProfile,
   clearWechatProfile
 } = require("../../utils/wechat-auth");
+const { performWechatOneTapLogin } = require("../../utils/wechat-login-flow");
 
 function buildTimeText() {
   const date = new Date();
@@ -81,6 +84,7 @@ function buildAccountData(session) {
 Page({
   data: {
     timeText: "10:21",
+    devtoolsMode: false,
     nickname: "",
     avatarUrl: "",
     initial: "玩",
@@ -101,12 +105,14 @@ Page({
     lastRoundText: "暂无",
     hasSession: false,
     sessionRoomId: "",
-    contactEmail: CONTACT_EMAIL
+    contactEmail: CONTACT_EMAIL,
+    nicknameSaving: false
   },
 
   onLoad() {
     const profile = getStoredWechatProfile();
     this.setData({
+      devtoolsMode: Boolean(app && app.globalData && app.globalData.isDevtoolsMode),
       timeText: buildTimeText(),
       nickname: profile.nickname,
       avatarUrl: profile.avatarUrl,
@@ -170,7 +176,7 @@ Page({
     });
   },
 
-  async onNicknameCommit(event) {
+  onNicknameBlur(event) {
     const inputValue = String(event && event.detail && event.detail.value || this.data.nickname || "");
     const validation = validateNickname(inputValue);
     if (!validation.ok) {
@@ -186,15 +192,55 @@ Page({
       nickname: validation.value,
       initial: String(validation.value || "玩家").slice(0, 1)
     });
+  },
+
+  async onNicknameSave(event) {
+    if (this.data.nicknameSaving) {
+      return;
+    }
+
+    const inputValue = String(event && event.detail && event.detail.value || this.data.nickname || "");
+    const validation = validateNickname(inputValue);
+    if (!validation.ok) {
+      this.setData({
+        nickname: inputValue,
+        initial: String(inputValue || "玩家").slice(0, 1)
+      });
+      wx.showToast({ title: validation.message, icon: "none" });
+      return;
+    }
+
+    this.setData({
+      nickname: validation.value,
+      initial: String(validation.value || "玩家").slice(0, 1),
+      nicknameSaving: true
+    });
     wx.setStorageSync(NICKNAME_KEY, validation.value);
     wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, true);
 
     const session = getStoredAccountSession();
-    if (!session.loggedIn) {
-      return;
-    }
-
     try {
+      if (!session.loggedIn) {
+        const userProfile = await requestWechatUserProfile();
+        persistWechatProfile({
+          nickname: validation.value,
+          avatarUrl: String(userProfile && userProfile.avatarUrl || this.data.avatarUrl || "").trim(),
+          nicknameCustomized: true
+        });
+        const loginResult = await performWechatOneTapLogin();
+        const loggedProfile = loginResult && loginResult.profile ? loginResult.profile : getStoredWechatProfile();
+        const loggedSession = loginResult && loginResult.accountSession ? loginResult.accountSession : getStoredAccountSession();
+        this.setData({
+          nickname: loggedProfile.nickname || validation.value,
+          avatarUrl: loggedProfile.avatarUrl || this.data.avatarUrl,
+          initial: String((loggedProfile.nickname || validation.value || "玩家")).slice(0, 1),
+          ...buildAccountData(loggedSession)
+        });
+        wx.showToast({ title: "登录成功，昵称已保存", icon: "none" });
+        void this.refreshAccountProfile();
+        return;
+      }
+
       const latest = await syncMyAccountProfile({
         nickname: validation.value,
         nicknameCustomized: true
@@ -210,6 +256,8 @@ Page({
     } catch (error) {
       const message = error && error.message ? String(error.message) : "昵称同步失败";
       wx.showToast({ title: message, icon: "none" });
+    } finally {
+      this.setData({ nicknameSaving: false });
     }
   },
 

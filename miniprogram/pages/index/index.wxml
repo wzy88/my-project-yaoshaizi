@@ -1,4 +1,4 @@
-<view class="entry-page">
+<view class="entry-page {{devtoolsMode ? 'is-perf-lite' : ''}}">
   <view class="entry-page__aurora entry-page__aurora--top"></view>
   <view class="entry-page__aurora entry-page__aurora--bottom"></view>
   <view class="entry-page__stars">

@@ -12,12 +12,16 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   const wxss = fs.readFileSync(createRoomWxssPath, "utf8");
   const script = fs.readFileSync(createRoomScriptPath, "utf8");
 
+  assert.match(script, /const app = getApp\(\);/);
   assert.match(script, /playerCount:\s*8/);
+  assert.match(script, /devtoolsMode:\s*false/);
+  assert.match(script, /app\.globalData && app\.globalData\.isDevtoolsMode/);
   assert.doesNotMatch(script, /playerCountOptions/);
   assert.doesNotMatch(script, /allowSpectator/);
   assert.doesNotMatch(script, /lockRoom/);
 
   assert.match(wxml, /<text class="block-title">房间形式<\/text>/);
+  assert.match(wxml, /create-page \{\{devtoolsMode \? 'is-perf-lite' : ''\}\}/);
   assert.match(wxml, /class="create-sheet"/);
   assert.match(wxml, /class="create-sheet__eyebrow">ROOM SETUP<\/text>/);
   assert.match(wxml, /class="create-sheet__title">创建房间<\/text>/);
@@ -31,14 +35,13 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.doesNotMatch(wxml, /允许旁观/);
   assert.doesNotMatch(wxml, /锁定房间/);
   assert.doesNotMatch(wxml, /测试模式/);
-  assert.doesNotMatch(wxml, /wx:if="\{\{devtoolsMode\}\}"/);
   assert.doesNotMatch(script, /\btestMode:\s*false/);
-  assert.doesNotMatch(script, /\bdevtoolsMode:\s*false/);
-  assert.doesNotMatch(script, /isDevtoolsPlatform/);
   assert.match(script, /&testMode=0/);
   assert.doesNotMatch(script, /playerCount=\$\{/);
   assert.doesNotMatch(script, /allowSpectator=/);
   assert.doesNotMatch(script, /lockRoom=/);
+  assert.match(script, /getCurrentPages/);
+  assert.match(script, /wx\.switchTab\(\{ url: "\/pages\/lobby\/lobby" \}\)/);
 
   assert.match(wxss, /\.create-sheet\s*\{/);
   assert.match(wxss, /\.create-page\s*\{[\s\S]*display:\s*flex[\s\S]*align-items:\s*flex-end[\s\S]*justify-content:\s*center/);
@@ -49,4 +52,6 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxss, /\.room-form-card\s*\{/);
   assert.match(wxss, /\.room-form-card__title\s*\{/);
   assert.match(wxss, /\.room-form-card__desc\s*\{/);
+  assert.match(wxss, /\.create-page\.is-perf-lite \.create-sheet,[\s\S]*animation:\s*none !important/);
+  assert.match(wxss, /\.create-page\.is-perf-lite \.mask-bg,[\s\S]*display:\s*none !important/);
 });

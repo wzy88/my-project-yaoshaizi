@@ -344,3 +344,37 @@
   opacity: 0.94;
   transform: scale(0.985);
 }
+
+.create-page.is-perf-lite {
+  background: linear-gradient(180deg, #1d1328 0%, #150c20 100%);
+}
+
+.create-page.is-perf-lite .mask-bg,
+.create-page.is-perf-lite .create-sheet__glow,
+.create-page.is-perf-lite .room-form-card__glow {
+  display: none !important;
+}
+
+.create-page.is-perf-lite .create-sheet,
+.create-page.is-perf-lite .room-form-card,
+.create-page.is-perf-lite .toggle-card,
+.create-page.is-perf-lite .create-note-card,
+.create-page.is-perf-lite .create-actions,
+.create-page.is-perf-lite .create-btn,
+.create-page.is-perf-lite .cancel-btn,
+.create-page.is-perf-lite .toggle-pill,
+.create-page.is-perf-lite .toggle-pill__thumb {
+  animation: none !important;
+  transition: none !important;
+}
+
+.create-page.is-perf-lite .create-sheet,
+.create-page.is-perf-lite .room-form-card,
+.create-page.is-perf-lite .toggle-card,
+.create-page.is-perf-lite .create-note-card,
+.create-page.is-perf-lite .create-btn,
+.create-page.is-perf-lite .cancel-btn,
+.create-page.is-perf-lite .toggle-pill {
+  box-shadow: 0 10rpx 20rpx rgba(0, 0, 0, 0.18) !important;
+  filter: none !important;
+}

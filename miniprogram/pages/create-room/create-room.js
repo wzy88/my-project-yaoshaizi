@@ -1,3 +1,4 @@
+const app = getApp();
 const { NICKNAME_KEY } = require("../../utils/constants");
 
 function safeDecodeComponent(raw) {
@@ -14,6 +15,7 @@ function safeDecodeComponent(raw) {
 Page({
   data: {
     nickname: "",
+    devtoolsMode: false,
     playerCount: 8,
     wildcardOneEnabled: true
   },
@@ -23,6 +25,7 @@ Page({
     const cachedNickname = safeDecodeComponent(wx.getStorageSync(NICKNAME_KEY)).trim();
     const nickname = optNickname || cachedNickname;
     this.setData({
+      devtoolsMode: Boolean(app && app.globalData && app.globalData.isDevtoolsMode),
       nickname: nickname || `玩家${Math.floor(Math.random() * 1000)}`
     });
   },
@@ -44,6 +47,19 @@ Page({
   },
 
   back() {
-    wx.navigateBack();
+    const stack = typeof getCurrentPages === "function" ? getCurrentPages() : [];
+    if (stack.length > 1 && wx.navigateBack && typeof wx.navigateBack === "function") {
+      wx.navigateBack({ delta: 1 });
+      return;
+    }
+
+    if (wx.switchTab && typeof wx.switchTab === "function") {
+      wx.switchTab({ url: "/pages/lobby/lobby" });
+      return;
+    }
+
+    if (wx.reLaunch && typeof wx.reLaunch === "function") {
+      wx.reLaunch({ url: "/pages/lobby/lobby" });
+    }
   }
 });

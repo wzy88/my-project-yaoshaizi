@@ -1,4 +1,7 @@
-const { ACCOUNT_SESSION_KEY } = require("../utils/constants");
+const {
+  ACCOUNT_SESSION_KEY,
+  LOGIN_GATE_REDIRECT_KEY
+} = require("../utils/constants");
 
 Component({
   data: {
@@ -61,8 +64,16 @@ Component({
         accountSession.sessionToken
       );
       if (!accountReady) {
+        if (currentRoute === "/pages/lobby/lobby") {
+          const currentPage = pages[pages.length - 1];
+          if (currentPage && typeof currentPage.requireLogin === "function") {
+            currentPage.requireLogin("/pages/create-room/create-room");
+            return;
+          }
+        }
+
+        wx.setStorageSync(LOGIN_GATE_REDIRECT_KEY, "/pages/create-room/create-room");
         wx.switchTab({ url: "/pages/lobby/lobby" });
-        wx.showToast({ title: "请先微信登录", icon: "none" });
         return;
       }
 

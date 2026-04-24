@@ -253,3 +253,25 @@
 .link {
   color: #f0c840;
 }
+
+.entry-page.is-perf-lite .entry-page__aurora,
+.entry-page.is-perf-lite .entry-page__stars {
+  display: none;
+}
+
+.entry-page.is-perf-lite .hero-card,
+.entry-page.is-perf-lite .action-panel,
+.entry-page.is-perf-lite .dice {
+  animation: none !important;
+  transition: none !important;
+}
+
+.entry-page.is-perf-lite .hero-card,
+.entry-page.is-perf-lite .action-panel {
+  backdrop-filter: none;
+  box-shadow: 0 12rpx 24rpx rgba(0, 0, 0, 0.2);
+}
+
+.entry-page.is-perf-lite .dice {
+  filter: none;
+}

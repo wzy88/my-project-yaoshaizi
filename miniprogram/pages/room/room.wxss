@@ -4599,6 +4599,75 @@ page {
   opacity: 0.2;
 }
 
+.page.room-screen.is-perf-lite .room-screen__aurora,
+.page.room-screen.is-perf-lite .room-screen__grain,
+.page.room-screen.is-perf-lite .room-screen__stars,
+.page.room-screen.is-perf-lite .room-sheet__glow,
+.page.room-screen.is-perf-lite .room-stage__halo,
+.page.room-screen.is-perf-lite .room-self__dice-gloss,
+.page.room-screen.is-perf-lite .room-stage__table-line,
+.page.room-screen.is-perf-lite .room-stage__watermark,
+.page.room-screen.is-perf-lite .figma-cup__shadow,
+.page.room-screen.is-perf-lite .figma-cup__shine {
+  display: none !important;
+}
+
+.page.room-screen.is-perf-lite .room-mask,
+.page.room-screen.is-perf-lite .room-mask--settings,
+.page.room-screen.is-perf-lite .call-phase-overlay,
+.page.room-screen.is-perf-lite .room-topbar-menu-mask {
+  backdrop-filter: none !important;
+}
+
+.page.room-screen.is-perf-lite .room-sheet,
+.page.room-screen.is-perf-lite .room-fab,
+.page.room-screen.is-perf-lite .room-fab-secondary,
+.page.room-screen.is-perf-lite .call-phase-panel,
+.page.room-screen.is-perf-lite .call-phase-panel__btn,
+.page.room-screen.is-perf-lite .room-topbar-menu-popover,
+.page.room-screen.is-perf-lite .seat__bubble,
+.page.room-screen.is-perf-lite .room-self__bubble,
+.page.room-screen.is-perf-lite .room-self__dice-cup,
+.page.room-screen.is-perf-lite .room-chrome-btn,
+.page.room-screen.is-perf-lite .seat__avatar-shell,
+.page.room-screen.is-perf-lite .room-self__avatar-shell,
+.page.room-screen.is-perf-lite .room-shell,
+.page.room-screen.is-perf-lite .room-stage,
+.page.room-screen.is-perf-lite .room-table,
+.page.room-screen.is-perf-lite .seat-stage-cup,
+.page.room-screen.is-perf-lite .ghost-cup,
+.page.room-screen.is-perf-lite .dock-btn,
+.page.room-screen.is-perf-lite .room-sheet__body,
+.page.room-screen.is-perf-lite .room-sheet__footer,
+.page.room-screen.is-perf-lite .room-sheet__action,
+.page.room-screen.is-perf-lite .settlement-row,
+.page.room-screen.is-perf-lite .settlement-list,
+.page.room-screen.is-perf-lite .topbar-hero-btn {
+  animation: none !important;
+  transition: none !important;
+}
+
+.page.room-screen.is-perf-lite .room-sheet,
+.page.room-screen.is-perf-lite .room-fab,
+.page.room-screen.is-perf-lite .room-fab-secondary,
+.page.room-screen.is-perf-lite .call-phase-panel,
+.page.room-screen.is-perf-lite .call-phase-panel__btn,
+.page.room-screen.is-perf-lite .room-topbar-menu-popover,
+.page.room-screen.is-perf-lite .seat__bubble,
+.page.room-screen.is-perf-lite .room-self__bubble,
+.page.room-screen.is-perf-lite .room-self__dice-cup,
+.page.room-screen.is-perf-lite .room-chrome-btn,
+.page.room-screen.is-perf-lite .seat__avatar-shell,
+.page.room-screen.is-perf-lite .room-self__avatar-shell {
+  box-shadow: 0 8rpx 16rpx rgba(0, 0, 0, 0.16) !important;
+  filter: none !important;
+}
+
+.page.room-screen.is-perf-lite .seat__glow,
+.page.room-screen.is-perf-lite .ghost-avatar__glow {
+  display: none !important;
+}
+
 .room-screen__aurora {
   background:
     radial-gradient(circle at 50% 50%, rgba(66, 32, 94, 0.32) 0, rgba(33, 16, 47, 0.14) 12%, rgba(0, 0, 0, 0) 18%);

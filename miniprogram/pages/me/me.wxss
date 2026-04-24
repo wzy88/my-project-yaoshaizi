@@ -59,7 +59,7 @@ page {
 
 .me-shell {
   height: 100%;
-  padding: calc(24rpx + env(safe-area-inset-top)) 20rpx calc(118rpx + env(safe-area-inset-bottom));
+  padding: calc(72rpx + env(safe-area-inset-top)) 20rpx calc(118rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -120,6 +120,15 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.avatar-badge.is-on {
+  background: #23b56f;
+}
+
+.avatar-badge.is-off {
+  background: rgba(168, 230, 207, 0.24);
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .profile-main {
@@ -232,6 +241,10 @@ page {
   color: #23b56f;
 }
 
+.row-action.is-disabled {
+  opacity: 0.56;
+}
+
 .row-arrow {
   font-size: 30rpx;
 }
@@ -307,4 +320,23 @@ page {
 .logout-btn:active,
 .row:active {
   opacity: 0.92;
+}
+
+.me-page.is-perf-lite .bg-glow {
+  display: none;
+}
+
+.me-page.is-perf-lite .avatar,
+.me-page.is-perf-lite .card-block,
+.me-page.is-perf-lite .logout-btn,
+.me-page.is-perf-lite .profile-card,
+.me-page.is-perf-lite .row {
+  animation: none !important;
+  transition: none !important;
+}
+
+.me-page.is-perf-lite .avatar,
+.me-page.is-perf-lite .card-block,
+.me-page.is-perf-lite .logout-btn {
+  box-shadow: 0 8rpx 16rpx rgba(0, 0, 0, 0.14);
 }

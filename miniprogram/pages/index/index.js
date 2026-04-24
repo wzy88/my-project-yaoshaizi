@@ -95,6 +95,7 @@ Page({
   data: {
     timeText: "09:41",
     heroDiceAssets: HOME_HERO_DICE_ASSETS,
+    devtoolsMode: false,
     loginBusy: false,
     loginHintText: "不强制登录，进入大厅后需要创建或加入房间时再授权即可",
     backendReady: false,
@@ -108,6 +109,7 @@ Page({
     this.didAutoRoute = false;
 
     this.setData({
+      devtoolsMode: Boolean(app && app.globalData && app.globalData.isDevtoolsMode),
       timeText: buildTimeText(),
       profileTitle: profile.loggedIn ? `欢迎回来，${profile.nickname}` : "准备开局",
       pendingRedirectUrl: decodeRedirect(options.redirect),

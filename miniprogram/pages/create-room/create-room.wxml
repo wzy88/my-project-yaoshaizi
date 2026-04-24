@@ -1,4 +1,4 @@
-<view class="page create-page">
+<view class="page create-page {{devtoolsMode ? 'is-perf-lite' : ''}}">
   <view class="mask-bg"></view>
   <view class="create-sheet">
     <view class="create-sheet__glow create-sheet__glow--a"></view>

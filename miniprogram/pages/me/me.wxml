@@ -1,4 +1,4 @@
-<view class="page me-page">
+<view class="page me-page {{devtoolsMode ? 'is-perf-lite' : ''}}">
   <view class="bg-layer bg-main"></view>
   <view class="bg-layer bg-pattern"></view>
   <view class="bg-glow bg-glow--top"></view>
@@ -11,11 +11,11 @@
           <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
           <text wx:else class="avatar-text">{{initial}}</text>
         </view>
-        <view class="avatar-badge">✓</view>
+        <view class="avatar-badge {{accountReady ? 'is-on' : 'is-off'}}">{{accountReady ? '✓' : '游'}}</view>
       </view>
       <view class="profile-main">
         <text class="profile-title">{{nickname || '玩家'}}</text>
-        <text class="profile-sub">你的对局战绩和最近房间会跟着当前微信登录一起保留</text>
+        <text class="profile-sub">{{accountReady ? '你的对局战绩和最近房间会跟着当前微信登录一起保留' : '当前为浏览状态，未登录时不会保留个人战绩数据'}}</text>
       </view>
     </view>
 
@@ -30,12 +30,12 @@
               value="{{nickname}}"
               maxlength="5"
               bindinput="onNicknameChange"
-              bindblur="onNicknameCommit"
-              bindconfirm="onNicknameCommit"
+              bindblur="onNicknameBlur"
+              bindconfirm="onNicknameSave"
               placeholder="例如 阿伟"
               placeholder-class="row-placeholder"
             />
-            <text class="row-action">保存</text>
+            <text class="row-action {{nicknameSaving ? 'is-disabled' : ''}}" bindtap="onNicknameSave">{{nicknameSaving ? '保存中' : '保存'}}</text>
           </view>
         </view>
         <text class="section-hint">首次登录会先给你一套默认头像和昵称；这里改昵称后，会同步到你的对局资料。</text>
@@ -144,7 +144,7 @@
             </view>
           </view>
 
-          <view class="logout-wrap">
+          <view wx:if="{{accountReady}}" class="logout-wrap">
             <button class="logout-btn" bindtap="logoutProfile">退出登录</button>
           </view>
         </view>

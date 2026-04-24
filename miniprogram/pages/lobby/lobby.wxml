@@ -1,4 +1,4 @@
-<view class="page lobby-page">
+<view class="page lobby-page {{devtoolsMode ? 'is-perf-lite' : ''}}">
   <view class="bg-layer bg-main"></view>
   <view class="bg-layer bg-pattern"></view>
   <view class="bg-glow bg-glow--top"></view>
@@ -86,40 +86,34 @@
       <view class="login-gate__glow login-gate__glow--a"></view>
       <view class="login-gate__glow login-gate__glow--b"></view>
       <view class="login-gate__handle"></view>
-      <text class="login-gate__eyebrow">继续当前操作</text>
-      <text class="login-gate__title">{{loginGateTitle}}</text>
-      <text class="login-gate__desc">{{loginGateDesc}}</text>
-      <view class="login-gate__profile">
-        <view class="login-gate__profile-avatar">
-          <image wx:if="{{avatarUrl}}" class="login-gate__profile-avatar-img" src="{{avatarUrl}}" mode="aspectFill"></image>
-          <text wx:else class="login-gate__profile-avatar-text">{{nickname ? nickname.slice(0, 1) : '玩'}}</text>
-        </view>
-        <view class="login-gate__profile-copy">
-          <text class="login-gate__profile-label">登录后会使用当前默认身份进入</text>
-          <text class="login-gate__profile-name">{{nickname || '玩家001'}}</text>
-        </view>
+      <view class="login-gate__header">
+        <text class="login-gate__title">{{loginGateTitle}}</text>
+        <text wx:if="{{loginGateDesc}}" class="login-gate__desc">{{loginGateDesc}}</text>
+      </view>
+      <view class="login-gate__button-stack">
+        <button class="login-gate__btn {{loginAgreementChecked ? '' : 'is-disabled'}}" loading="{{loginBusy}}" disabled="{{loginBusy || !loginAgreementChecked}}" bindtap="onWechatLogin">
+          <text class="login-gate__btn-text">{{loginBusy ? '登录中...' : '微信登录并继续'}}</text>
+        </button>
+        <button class="login-gate__btn login-gate__btn--secondary" disabled="{{loginBusy}}" bindtap="closeLoginGate">
+          <text class="login-gate__btn-text login-gate__btn-text--secondary">暂不登录</text>
+        </button>
       </view>
       <view class="login-gate__agreement-row">
-        <view class="login-gate__checkbox {{loginAgreementChecked ? 'is-checked' : ''}}" bindtap="toggleLoginAgreement">
-          <text class="login-gate__checkbox-mark">✓</text>
-        </view>
-        <view class="login-gate__agreement-copy">
-          <text class="login-gate__agreement-copy-text">我已阅读并同意</text>
-          <view class="login-gate__agreement-links">
-            <text class="login-gate__link" bindtap="openTermsPage">《用户协议》</text>
-            <text class="login-gate__agreement-copy-text">与</text>
-            <text class="login-gate__link" bindtap="openPrivacyPage">《隐私政策》</text>
+        <view class="login-gate__agreement-inline" bindtap="toggleLoginAgreement">
+          <view class="login-gate__checkbox {{loginAgreementChecked ? 'is-checked' : ''}}">
+            <text class="login-gate__checkbox-mark">✓</text>
+          </view>
+          <view class="login-gate__agreement-copy">
+            <text class="login-gate__agreement-copy-text">我已阅读并同意</text>
+            <text class="login-gate__link" catchtap="openTermsPage">《用户协议》</text>
+            <text class="login-gate__agreement-copy-text">和</text>
+            <text class="login-gate__link" catchtap="openPrivacyPage">《隐私政策》</text>
           </view>
         </view>
       </view>
-      <button class="login-gate__btn {{loginAgreementChecked ? '' : 'is-disabled'}}" loading="{{loginBusy}}" disabled="{{loginBusy || !loginAgreementChecked}}" bindtap="onWechatLogin">
-        <text class="login-gate__btn-text">{{loginBusy ? '登录中...' : '微信登录并继续'}}</text>
-      </button>
-      <text class="login-gate__hint">{{loginHintText}}</text>
       <view wx:if="{{connectionHintText}}" class="login-gate__connection">
         <text class="login-gate__connection-text">{{connectionHintText}}</text>
       </view>
-      <text class="login-gate__secondary" bindtap="closeLoginGate">暂不登录</text>
     </view>
   </view>
 </view>
