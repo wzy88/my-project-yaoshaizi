@@ -527,6 +527,7 @@ test("room page: accepting legal on mobile join keeps the pending action until a
     };
 
     page.onLoad({ mode: "join", roomId: "654321" });
+    page.setData({ legalAgreementChecked: true });
     page.acceptLegal();
 
     assert.equal(connectAttempts, 0);
@@ -549,7 +550,7 @@ test("room page: accepting legal blocks an invalid nickname before entering", ()
 
   try {
     page.onLoad({ mode: "join", roomId: "654321" });
-    page.setData({ nickname: "玩家1234" });
+    page.setData({ nickname: "玩家1234", legalAgreementChecked: true });
 
     page.acceptLegal();
 
@@ -557,6 +558,24 @@ test("room page: accepting legal blocks an invalid nickname before entering", ()
     assert.equal(page.data.showLegalModal, true);
     assert.equal(storageState[LEGAL_ACCEPT_KEY], undefined);
     assert.equal(toasts.includes("昵称需为1-5个字"), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: agreeing is required before the share-entry drawer can continue", () => {
+  const { page, toasts, storageState, cleanup } = instantiateRoomPage({
+    storage: {}
+  });
+
+  try {
+    page.onLoad({ mode: "join", roomId: "654321" });
+    page.acceptLegal();
+
+    assert.equal(page.data.legalAccepted, false);
+    assert.equal(page.data.showLegalModal, true);
+    assert.equal(storageState[LEGAL_ACCEPT_KEY], undefined);
+    assert.equal(toasts.includes("请先勾选协议"), true);
   } finally {
     cleanup();
   }

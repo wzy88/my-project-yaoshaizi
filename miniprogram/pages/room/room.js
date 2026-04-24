@@ -1468,6 +1468,7 @@ Page({
     seatingSelectedText: "未选择",
     seatRows: [],
     legalAccepted: false,
+    legalAgreementChecked: false,
     showLegalModal: false
   },
 
@@ -1808,6 +1809,7 @@ Page({
 
     this.setData({
       legalAccepted,
+      legalAgreementChecked: legalAccepted,
       showLegalModal: !legalAccepted
     });
     this.refreshWsHint("");
@@ -5484,6 +5486,11 @@ Page({
   },
 
   acceptLegal() {
+    if (!this.data.legalAgreementChecked) {
+      wx.showToast({ title: "请先勾选协议", icon: "none" });
+      return;
+    }
+
     if (!this.commitNicknameInput(this.data.nickname)) {
       return;
     }
@@ -5497,6 +5504,7 @@ Page({
 
     this.setData({
       legalAccepted: true,
+      legalAgreementChecked: true,
       showLegalModal: false
     });
 
@@ -5512,7 +5520,23 @@ Page({
   },
 
   declineLegal() {
-    wx.showToast({ title: "同意后方可继续使用", icon: "none" });
+    const stack = this.getRouteStack();
+    if (stack.length > 1 && wx.navigateBack && typeof wx.navigateBack === "function") {
+      wx.navigateBack({ delta: 1 });
+      return;
+    }
+
+    wx.reLaunch({ url: "/pages/lobby/lobby" });
+  },
+
+  returnToLobby() {
+    wx.reLaunch({ url: "/pages/lobby/lobby" });
+  },
+
+  toggleLegalAgreement() {
+    this.setData({
+      legalAgreementChecked: !this.data.legalAgreementChecked
+    });
   },
 
   getRouteStack() {

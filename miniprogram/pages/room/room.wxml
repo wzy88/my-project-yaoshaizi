@@ -462,16 +462,19 @@
     </view>
   </view>
 
-  <view wx:if="{{showLegalModal}}" class="room-mask">
-    <view class="room-sheet room-sheet--legal">
-      <view class="sheet-head">
+  <view wx:if="{{showLegalModal}}" class="room-mask room-mask--drawer">
+    <view class="room-sheet room-sheet--legal" catchtap="noop">
+      <view class="room-sheet__glow room-sheet__glow--legal-a"></view>
+      <view class="room-sheet__glow room-sheet__glow--legal-b"></view>
+      <view class="legal-drawer__handle"></view>
+      <view class="sheet-head sheet-head--legal">
         <view class="entry-sheet__headline">
-          <text class="entry-sheet__eyebrow">首次进入</text>
-          <text class="sheet-title">开始前确认一下</text>
-          <text class="entry-sheet__desc">确认昵称后就能继续，进房后也能再修改。</text>
+          <text class="entry-sheet__eyebrow">进入房间前</text>
+          <text class="sheet-title">确认昵称与协议</text>
+          <text class="entry-sheet__desc">从分享进入也可以先改昵称，确认后再进入房间；进房后还能在“我的”里修改。</text>
         </view>
       </view>
-      <view class="sheet-body sheet-body--entry">
+      <view class="sheet-body sheet-body--entry sheet-body--legal">
         <view wx:if="{{joinRoomId || roomId}}" class="entry-room-card">
           <text class="entry-room-card__eyebrow">即将进入房间</text>
           <text class="entry-room-card__value">{{joinRoomId || roomId || displayRoomId || '------'}}</text>
@@ -494,17 +497,29 @@
           />
           <text class="entry-field__hint">默认昵称也能直接玩，不喜欢的话现在改一下就行。</text>
         </view>
-        <text class="entry-agreement">
-          点击继续即表示同意
-          <text class="entry-agreement__link" bindtap="openTermsPage">《用户协议》</text>
-          与
-          <text class="entry-agreement__link" bindtap="openPrivacyPage">《隐私政策》</text>
-        </text>
-        <view class="sheet-actions">
-          <view class="dock-btn dock-btn--gold" bindtap="acceptLegal" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
-            <text class="dock-btn__label">同意并继续</text>
+        <view class="entry-consent">
+          <view class="entry-consent__checkbox {{legalAgreementChecked ? 'is-checked' : ''}}" bindtap="toggleLegalAgreement">
+            <text class="entry-consent__checkbox-mark">✓</text>
+          </view>
+          <view class="entry-consent__copy">
+            <text class="entry-consent__copy-text">我已阅读并同意</text>
+            <view class="entry-consent__links">
+              <text class="entry-agreement__link" bindtap="openTermsPage">《用户协议》</text>
+              <text class="entry-consent__copy-text">与</text>
+              <text class="entry-agreement__link" bindtap="openPrivacyPage">《隐私政策》</text>
+            </view>
           </view>
         </view>
+        <text class="entry-field__hint">同意后才会正式进入房间；如果现在不想进，也可以先回大厅。</text>
+        <view class="sheet-actions sheet-actions--legal">
+          <view class="dock-btn dock-btn--ghost" bindtap="returnToLobby" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
+            <text class="dock-btn__label">返回大厅</text>
+          </view>
+          <view class="dock-btn dock-btn--gold {{legalAgreementChecked ? '' : 'dock-btn--disabled'}}" bindtap="acceptLegal" hover-class="{{legalAgreementChecked ? 'dock-btn--pressing' : 'none'}}" hover-start-time="0" hover-stay-time="70">
+            <text class="dock-btn__label">同意并进入</text>
+          </view>
+        </view>
+        <text class="legal-drawer__tertiary" bindtap="declineLegal">暂不进入</text>
       </view>
     </view>
   </view>

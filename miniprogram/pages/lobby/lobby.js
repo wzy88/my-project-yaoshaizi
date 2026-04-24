@@ -6,7 +6,8 @@ const backendRequest = require("../../utils/backend-request");
 const { performWechatOneTapLogin } = require("../../utils/wechat-login-flow");
 const {
   getStoredWechatProfile,
-  navigateAfterWechatLogin
+  navigateAfterWechatLogin,
+  persistLegalConsent
 } = require("../../utils/wechat-auth");
 
 function buildTimeText() {
@@ -92,6 +93,35 @@ function buildConnectionState() {
   };
 }
 
+function buildLoginGateCopy(redirectUrl = "/pages/lobby/lobby") {
+  const target = String(redirectUrl || "").trim();
+  if (target.includes("/pages/create-room/create-room")) {
+    return {
+      title: "登录后创建房间",
+      desc: "先浏览大厅，再在需要开局时主动登录，登录成功后会直接进入创建房间。"
+    };
+  }
+
+  if (target.includes("/pages/room/room?resume=1")) {
+    return {
+      title: "登录后继续房间",
+      desc: "当前操作需要确认你的身份，登录成功后会继续进入你上次的房间。"
+    };
+  }
+
+  if (target.includes("/pages/room/room")) {
+    return {
+      title: "登录后加入房间",
+      desc: "确认协议后即可继续当前加入操作，登录成功后会直接进入目标房间。"
+    };
+  }
+
+  return {
+    title: "登录后继续",
+    desc: "你可以先浏览大厅，确定要继续当前操作时再登录。"
+  };
+}
+
 function syncLobbyTabBar(page) {
   const tabBar = page.getTabBar && page.getTabBar();
   if (!tabBar || !tabBar.setData) {
@@ -115,7 +145,10 @@ Page({
     loggedIn: false,
     showLoginGate: false,
     loginBusy: false,
-    loginHintText: "登录后就能直接组局",
+    loginHintText: "你可以先浏览大厅，确认要继续时再登录",
+    loginAgreementChecked: false,
+    loginGateTitle: "登录后继续",
+    loginGateDesc: "你可以先浏览大厅，确定要继续当前操作时再登录。",
     backendReady: false,
     connectionHintText: "",
     pendingRedirectUrl: "/pages/lobby/lobby",
@@ -156,8 +189,9 @@ Page({
       nickname: profile.nickname || "玩家001",
       avatarUrl: String(profile.avatarUrl || "").trim(),
       loggedIn: profile.loggedIn,
-      showLoginGate: !profile.loggedIn,
-      loginHintText: profile.loggedIn ? "已登录，现在可以直接组局" : "登录后就能直接组局",
+      showLoginGate: typeof extra.showLoginGate === "boolean" ? extra.showLoginGate : false,
+      loginAgreementChecked: typeof extra.loginAgreementChecked === "boolean" ? extra.loginAgreementChecked : false,
+      loginHintText: profile.loggedIn ? "已登录，现在可以直接组局" : "你可以先浏览大厅，确认要继续时再登录",
       hasSession,
       sessionRoomId: hasSession ? session.roomId : "",
       ...buildConnectionState(),
@@ -171,14 +205,43 @@ Page({
 
   requireLogin(redirectUrl = "/pages/lobby/lobby") {
     this.didAutoRoute = false;
+    const gateCopy = buildLoginGateCopy(redirectUrl);
     this.setData({
       showLoginGate: true,
+      loginAgreementChecked: false,
       pendingRedirectUrl: decodeRedirect(redirectUrl),
-      loginHintText: "登录后就能继续当前操作",
+      loginHintText: "勾选协议后再登录，即可继续当前操作",
+      loginGateTitle: gateCopy.title,
+      loginGateDesc: gateCopy.desc,
       ...buildConnectionState()
     });
+    syncLobbyTabBar(this);
     return false;
   },
+
+  closeLoginGate() {
+    if (this.data.loginBusy) {
+      return;
+    }
+
+    this.setData({
+      showLoginGate: false,
+      loginAgreementChecked: false,
+      pendingRedirectUrl: "/pages/lobby/lobby",
+      loginHintText: "你可以先浏览大厅，确认要继续时再登录",
+      loginGateTitle: "登录后继续",
+      loginGateDesc: "你可以先浏览大厅，确定要继续当前操作时再登录。"
+    });
+    syncLobbyTabBar(this);
+  },
+
+  toggleLoginAgreement() {
+    this.setData({
+      loginAgreementChecked: !this.data.loginAgreementChecked
+    });
+  },
+
+  noop() {},
 
   onJoinRoomIdChange(event) {
     this.setData({ joinRoomId: String(event.detail.value || "").trim() });
@@ -249,6 +312,11 @@ Page({
       return;
     }
 
+    if (!this.data.loginAgreementChecked) {
+      wx.showToast({ title: "请先勾选协议", icon: "none" });
+      return;
+    }
+
     const connectionState = buildConnectionState();
     this.setData(connectionState);
     if (!connectionState.backendReady) {
@@ -269,12 +337,14 @@ Page({
       const profile = result && result.profile ? result.profile : getStoredWechatProfile();
       const nextRedirectUrl = decodeRedirect(this.data.pendingRedirectUrl);
       const shouldStayOnLobby = !nextRedirectUrl || nextRedirectUrl === "/pages/lobby/lobby";
+      persistLegalConsent();
 
       this.setData({
         nickname: profile.nickname || this.data.nickname,
         avatarUrl: profile.avatarUrl || this.data.avatarUrl,
         loggedIn: true,
         showLoginGate: false,
+        loginAgreementChecked: false,
         loginHintText: shouldStayOnLobby ? "登录成功，现在可以直接组局" : "登录成功，正在进入...",
         pendingRedirectUrl: shouldStayOnLobby ? "/pages/lobby/lobby" : nextRedirectUrl,
         ...buildConnectionState()

@@ -11,7 +11,7 @@ test("lobby login overlay sits above the custom tab bar and keeps extra bottom c
 
   assert.match(source, /\.login-gate\s*\{[\s\S]*position:\s*fixed/);
   assert.match(source, /\.login-gate\s*\{[\s\S]*z-index:\s*10020/);
-  assert.match(source, /\.login-gate__sheet\s*\{[\s\S]*bottom:\s*calc\(170rpx \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(source, /\.login-gate__sheet\s*\{[\s\S]*bottom:\s*calc\(150rpx \+ env\(safe-area-inset-bottom\)\)/);
 });
 
 test("custom tab bar can be fully hidden while the lobby login overlay is showing", () => {

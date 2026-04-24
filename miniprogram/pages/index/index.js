@@ -96,7 +96,7 @@ Page({
     timeText: "09:41",
     heroDiceAssets: HOME_HERO_DICE_ASSETS,
     loginBusy: false,
-    loginHintText: "点一下就能用微信登录并进入大厅",
+    loginHintText: "不强制登录，进入大厅后需要创建或加入房间时再授权即可",
     backendReady: false,
     connectionHintText: "",
     profileTitle: "",
@@ -111,7 +111,7 @@ Page({
       timeText: buildTimeText(),
       profileTitle: profile.loggedIn ? `欢迎回来，${profile.nickname}` : "准备开局",
       pendingRedirectUrl: decodeRedirect(options.redirect),
-      loginHintText: profile.loggedIn ? "登录状态有效，正在进入..." : "点一下就能用微信登录并进入大厅",
+      loginHintText: profile.loggedIn ? "登录状态有效，正在进入..." : "不强制登录，进入大厅后需要创建或加入房间时再授权即可",
       ...buildConnectionState()
     });
   },
@@ -132,6 +132,12 @@ Page({
 
   onUnload() {
     this.didAutoRoute = false;
+  },
+
+  goLobby() {
+    wx.switchTab({
+      url: "/pages/lobby/lobby"
+    });
   },
 
   async onWechatLogin() {

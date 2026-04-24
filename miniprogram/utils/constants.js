@@ -3,7 +3,7 @@ const DEFAULT_CLOUD_SERVICE = "";
 
 module.exports = {
   LEGAL_ACCEPT_KEY: "diceLegalConsentV2",
-  LEGAL_VERSION: "1.1.0",
+  LEGAL_VERSION: "1.2.0",
   WS_URL_KEY: "diceWsUrlV1",
   CLOUD_ENV_ID_KEY: "diceCloudEnvIdV1",
   CLOUD_SERVICE_KEY: "diceCloudServiceV1",

@@ -385,17 +385,46 @@ page {
   position: absolute;
   left: 24rpx;
   right: 24rpx;
-  bottom: calc(170rpx + env(safe-area-inset-bottom));
-  padding: 22rpx 22rpx 30rpx;
-  border-radius: 34rpx;
+  bottom: calc(150rpx + env(safe-area-inset-bottom));
+  padding: 26rpx 24rpx 30rpx;
+  border-radius: 38rpx;
+  overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(18, 20, 31, 0.98), rgba(14, 16, 27, 0.94)),
-    rgba(14, 16, 27, 0.96);
-  border: 1rpx solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 -10rpx 40rpx rgba(0, 0, 0, 0.26);
+    radial-gradient(circle at 0% 0%, rgba(244, 203, 95, 0.13) 0%, rgba(244, 203, 95, 0) 34%),
+    radial-gradient(circle at 100% 100%, rgba(34, 185, 111, 0.12) 0%, rgba(34, 185, 111, 0) 42%),
+    linear-gradient(180deg, rgba(24, 21, 40, 0.98), rgba(13, 15, 26, 0.96));
+  border: 1rpx solid rgba(247, 214, 122, 0.16);
+  box-shadow:
+    0 24rpx 62rpx rgba(0, 0, 0, 0.42),
+    inset 0 1rpx 0 rgba(255, 248, 220, 0.1);
+}
+
+.login-gate__glow {
+  position: absolute;
+  border-radius: 999rpx;
+  filter: blur(10rpx);
+  pointer-events: none;
+}
+
+.login-gate__glow--a {
+  width: 220rpx;
+  height: 220rpx;
+  top: -90rpx;
+  right: -36rpx;
+  background: radial-gradient(circle, rgba(244, 203, 95, 0.28) 0%, rgba(244, 203, 95, 0) 72%);
+}
+
+.login-gate__glow--b {
+  width: 240rpx;
+  height: 240rpx;
+  left: -86rpx;
+  bottom: -110rpx;
+  background: radial-gradient(circle, rgba(35, 181, 111, 0.2) 0%, rgba(35, 181, 111, 0) 76%);
 }
 
 .login-gate__handle {
+  position: relative;
+  z-index: 1;
   width: 72rpx;
   height: 8rpx;
   border-radius: 999rpx;
@@ -403,8 +432,22 @@ page {
   margin: 0 auto 18rpx;
 }
 
-.login-gate__title {
+.login-gate__eyebrow {
+  position: relative;
+  z-index: 1;
   display: block;
+  color: rgba(244, 205, 106, 0.88);
+  font-size: 20rpx;
+  font-weight: 800;
+  letter-spacing: 3rpx;
+  text-align: center;
+}
+
+.login-gate__title {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 10rpx;
   color: #ffffff;
   font-size: 38rpx;
   font-weight: 800;
@@ -412,6 +455,8 @@ page {
 }
 
 .login-gate__desc {
+  position: relative;
+  z-index: 1;
   display: block;
   margin-top: 12rpx;
   color: rgba(232, 240, 235, 0.7);
@@ -420,13 +465,144 @@ page {
   line-height: 1.6;
 }
 
+.login-gate__profile {
+  position: relative;
+  z-index: 1;
+  margin-top: 22rpx;
+  padding: 18rpx 18rpx 20rpx;
+  border-radius: 24rpx;
+  background:
+    linear-gradient(180deg, rgba(11, 9, 24, 0.88) 0%, rgba(16, 14, 30, 0.82) 100%);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.06),
+    0 10rpx 22rpx rgba(0, 0, 0, 0.18);
+}
+
+.login-gate__profile-avatar {
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 42rpx;
+  overflow: hidden;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(182, 236, 212, 0.28) 0%, rgba(182, 236, 212, 0.08) 30%, rgba(255, 255, 255, 0.06) 100%);
+  border: 2rpx solid rgba(167, 229, 201, 0.24);
+}
+
+.login-gate__profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.login-gate__profile-avatar-text {
+  color: #fff2c7;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.login-gate__profile-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.login-gate__profile-label {
+  display: block;
+  color: rgba(232, 240, 235, 0.62);
+  font-size: 21rpx;
+  line-height: 1.5;
+}
+
+.login-gate__profile-name {
+  display: block;
+  margin-top: 8rpx;
+  color: #ffffff;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.login-gate__agreement-row {
+  position: relative;
+  z-index: 1;
+  margin-top: 18rpx;
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.login-gate__checkbox {
+  width: 38rpx;
+  height: 38rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid rgba(214, 224, 243, 0.24);
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-top: 2rpx;
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.06);
+}
+
+.login-gate__checkbox.is-checked {
+  border-color: rgba(244, 205, 106, 0.72);
+  background: linear-gradient(180deg, #f7db76 0%, #e9c349 100%);
+  box-shadow: 0 8rpx 18rpx rgba(233, 195, 73, 0.2);
+}
+
+.login-gate__checkbox-mark {
+  color: transparent;
+  font-size: 24rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.login-gate__checkbox.is-checked .login-gate__checkbox-mark {
+  color: #3b250c;
+}
+
+.login-gate__agreement-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.login-gate__agreement-copy-text {
+  color: rgba(232, 240, 235, 0.72);
+  font-size: 22rpx;
+  line-height: 1.6;
+}
+
+.login-gate__agreement-links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+
 .login-gate__btn {
+  position: relative;
+  z-index: 1;
   margin-top: 24rpx;
   width: 100%;
   height: 92rpx;
   border-radius: 24rpx;
   background: linear-gradient(180deg, #ffe17e 0%, #e9c349 100%);
   box-shadow: 0 12rpx 32rpx rgba(233, 195, 73, 0.28);
+}
+
+.login-gate__btn.is-disabled {
+  background: linear-gradient(180deg, rgba(152, 162, 189, 0.4) 0%, rgba(112, 123, 147, 0.3) 100%);
+  box-shadow: none;
 }
 
 .login-gate__btn::after {
@@ -440,6 +616,8 @@ page {
 }
 
 .login-gate__hint {
+  position: relative;
+  z-index: 1;
   display: block;
   margin-top: 14rpx;
   color: rgba(232, 240, 235, 0.64);
@@ -449,6 +627,8 @@ page {
 }
 
 .login-gate__connection {
+  position: relative;
+  z-index: 1;
   margin-top: 12rpx;
   padding: 14rpx 16rpx;
   border-radius: 20rpx;
@@ -462,15 +642,17 @@ page {
   text-align: center;
 }
 
-.login-gate__agreement {
-  display: block;
-  margin-top: 18rpx;
-  color: rgba(232, 240, 235, 0.52);
-  font-size: 20rpx;
-  text-align: center;
-  line-height: 1.6;
+.login-gate__link {
+  color: #f6d36f;
 }
 
-.login-gate__link {
-  color: #a8e6cf;
+.login-gate__secondary {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 18rpx;
+  text-align: center;
+  color: rgba(214, 224, 243, 0.7);
+  font-size: 24rpx;
+  font-weight: 700;
 }
