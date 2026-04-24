@@ -15,7 +15,7 @@ test("me page keeps the profile and nickname area fixed while only the lower con
   assert.match(wxml, /<view class="me-shell">/);
   assert.match(wxml, /maxlength="5"/);
   assert.match(wxml, /bindtap="onToggleTurnAlertSfx"/);
-  assert.match(wxml, /<text class="row-label">轮到提醒音<\/text>/);
+  assert.match(wxml, /<text class="row-label">叫牌提醒<\/text>/);
   assert.match(wxml, /<view class="me-header">/);
   assert.match(wxml, /<scroll-view class="me-body-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">/);
   assert.match(wxml, /<view class="me-body-scroll__content">/);

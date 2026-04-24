@@ -89,7 +89,7 @@
                 </view>
               </view>
               <view class="row" bindtap="onToggleTurnAlertSfx">
-                <text class="row-label">轮到提醒音</text>
+                <text class="row-label">叫牌提醒</text>
                 <view class="row-right">
                   <text class="row-value">{{turnAlertSfxEnabled ? '开启' : '关闭'}}</text>
                   <text class="row-arrow">›</text>

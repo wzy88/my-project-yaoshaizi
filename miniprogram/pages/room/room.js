@@ -1459,6 +1459,7 @@ Page({
     roomSelfStyle: "",
     callPhaseOverlayStyle: "",
     topbarMenuVisible: false,
+    toolsBasicVisible: false,
     callPanelVisible: false,
     canOpenAction: false,
     showQuickOpenAction: false,
@@ -3262,11 +3263,16 @@ Page({
     const playersRaw = this.data.playersRaw || [];
     const self = playersRaw.find((player) => String(player.id || "") === selfId);
     const loser = playersRaw.find((player) => String(player.id || "") === String(model.loserId || ""));
+    const winner = model.rows.find((row) => row.kind === "winner") || null;
+    const winnerId = winner ? String(winner.playerId || "") : "";
     const loserUnavailable = Boolean(model.loserId) && (!loser || loser.onlineStatus === "offline");
     const settlementCanContinue = Boolean(model.loserId) && (
       selfId === String(model.loserId)
       || (Boolean(self && self.isOwner) && loserUnavailable)
     );
+    const settlementSfxKind = selfId && selfId === String(model.loserId || "")
+      ? "loseAlert"
+      : (selfId && selfId === winnerId ? "settlement" : "settlement");
     const shouldPlaySettlementSfx = !this.data.settlementVisible;
     if (settlementCanContinue) {
       this.startSettlementCountdown(2);
@@ -3274,7 +3280,7 @@ Page({
       this.clearSettlementCountdown();
     }
     if (shouldPlaySettlementSfx) {
-      this.playSfx(settlementCanContinue ? "loseAlert" : "settlement");
+      this.playSfx(settlementSfxKind);
     }
     this.setData({
       settlementVisible: true,
@@ -4014,44 +4020,35 @@ Page({
   },
 
   openToolsBasicMenu() {
-    const items = [];
-    const actions = [];
+    this.setData({ toolsBasicVisible: true });
+  },
 
-    const sfxToggleLabel = this.data.sfxEnabled ? "关闭音效" : "开启音效";
-    items.push(sfxToggleLabel);
-    actions.push(() => {
-      const next = !this.data.sfxEnabled;
-      this.setData({ sfxEnabled: next });
-      wx.setStorageSync(SFX_ENABLED_KEY, next);
-      wx.showToast({ title: next ? "音效已开启" : "音效已关闭", icon: "none" });
-    });
+  closeToolsBasicMenu() {
+    if (!this.data.toolsBasicVisible) {
+      return;
+    }
+    this.setData({ toolsBasicVisible: false });
+  },
 
-    const turnAlertToggleLabel = this.data.turnAlertSfxEnabled ? "关闭轮到提醒音" : "开启轮到提醒音";
-    items.push(turnAlertToggleLabel);
-    actions.push(() => {
-      const next = !this.data.turnAlertSfxEnabled;
-      this.setData({ turnAlertSfxEnabled: next });
-      wx.setStorageSync(TURN_ALERT_SFX_ENABLED_KEY, next);
-      wx.showToast({ title: next ? "轮到提醒音已开启" : "轮到提醒音已关闭", icon: "none" });
-    });
+  onToggleRoomSfx() {
+    const next = !this.data.sfxEnabled;
+    this.setData({ sfxEnabled: next });
+    wx.setStorageSync(SFX_ENABLED_KEY, next);
+    wx.showToast({ title: next ? "音效已开启" : "音效已关闭", icon: "none" });
+  },
 
-    const hapticToggleLabel = this.data.hapticEnabled ? "关闭震动" : "开启震动";
-    items.push(hapticToggleLabel);
-    actions.push(() => {
-      const next = !this.data.hapticEnabled;
-      this.setData({ hapticEnabled: next });
-      wx.setStorageSync(HAPTIC_ENABLED_KEY, next);
-      wx.showToast({ title: next ? "震动已开启" : "震动已关闭", icon: "none" });
-    });
+  onToggleRoomTurnAlertSfx() {
+    const next = !this.data.turnAlertSfxEnabled;
+    this.setData({ turnAlertSfxEnabled: next });
+    wx.setStorageSync(TURN_ALERT_SFX_ENABLED_KEY, next);
+    wx.showToast({ title: next ? "叫牌提醒已开启" : "叫牌提醒已关闭", icon: "none" });
+  },
 
-    this.showActionSheetSafe({
-      itemList: items,
-      success: (res) => {
-        const action = actions[res.tapIndex];
-        if (action) action();
-      },
-      fail: () => {}
-    });
+  onToggleRoomHaptic() {
+    const next = !this.data.hapticEnabled;
+    this.setData({ hapticEnabled: next });
+    wx.setStorageSync(HAPTIC_ENABLED_KEY, next);
+    wx.showToast({ title: next ? "震动已开启" : "震动已关闭", icon: "none" });
   },
 
   openToolsOwnerMenu() {

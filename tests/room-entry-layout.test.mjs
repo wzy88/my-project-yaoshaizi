@@ -49,6 +49,19 @@ test("room shell keeps the room id centered while moving share into the left-top
   assert.match(wxss, /\.room-topbar-menu-popover__text\s*\{/);
 });
 
+test("room shell renders an in-room custom settings sheet instead of a native-looking menu", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+
+  assert.match(wxml, /wx:if="\{\{toolsBasicVisible\}\}" class="room-mask room-mask--settings"/);
+  assert.match(wxml, /class="room-sheet room-sheet--settings"/);
+  assert.match(wxml, /class="settings-row" bindtap="onToggleRoomTurnAlertSfx"/);
+  assert.match(wxml, /class="settings-row__label">叫牌提醒<\/text>/);
+  assert.match(wxss, /\.room-sheet--settings\s*\{/);
+  assert.match(wxss, /\.settings-panel\s*\{/);
+  assert.match(wxss, /\.settings-row__badge\.is-on\s*\{/);
+});
+
 test("room shell gives the left menu button a dedicated hero style", () => {
   const source = fs.readFileSync(roomWxssPath, "utf8");
   assert.match(source, /\.room-chrome-btn--menu\s*\{/);

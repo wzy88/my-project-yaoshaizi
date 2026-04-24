@@ -294,13 +294,21 @@
 
   <view wx:if="{{settlementVisible}}" class="room-mask">
     <view class="room-sheet room-sheet--settlement">
-      <view class="sheet-head">
-        <text class="sheet-title">本局结算</text>
+      <view class="room-sheet__glow room-sheet__glow--settlement-a"></view>
+      <view class="room-sheet__glow room-sheet__glow--settlement-b"></view>
+      <view class="sheet-head sheet-head--settlement">
+        <view class="sheet-heading">
+          <text class="sheet-eyebrow">ROUND RESULT</text>
+          <text class="sheet-title">本局结算</text>
+        </view>
         <view class="sheet-close sheet-close--placeholder"></view>
       </view>
-      <view class="sheet-body">
-        <view class="settlement-summary">
-          <text>{{settlementSummaryText}}</text>
+      <view class="sheet-body sheet-body--settlement">
+        <view class="settlement-summary-card">
+          <text class="settlement-summary-card__eyebrow">开牌结果</text>
+          <view class="settlement-summary">
+            <text>{{settlementSummaryText}}</text>
+          </view>
         </view>
         <view class="settlement-list">
           <block wx:for="{{settlementRows}}" wx:key="playerId">
@@ -352,6 +360,58 @@
         <view wx:if="{{settlementCanContinue}}" class="sheet-actions">
           <view class="dock-btn dock-btn--settlement" bindtap="onSettlementContinue" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
             <text class="dock-btn__label">继续</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{toolsBasicVisible}}" class="room-mask room-mask--settings" bindtap="closeToolsBasicMenu">
+    <view class="room-sheet room-sheet--settings" catchtap="noop">
+      <view class="room-sheet__glow room-sheet__glow--settings-a"></view>
+      <view class="room-sheet__glow room-sheet__glow--settings-b"></view>
+      <view class="sheet-head sheet-head--settings">
+        <view class="sheet-heading">
+          <text class="sheet-eyebrow">AUDIO & FEEDBACK</text>
+          <text class="sheet-title">音效与偏好</text>
+        </view>
+        <view class="sheet-close sheet-close--pill" bindtap="closeToolsBasicMenu">完成</view>
+      </view>
+      <view class="sheet-body sheet-body--settings">
+        <view class="settings-hero">
+          <text class="settings-hero__title">让提醒更顺耳，也更贴合房间氛围</text>
+          <text class="settings-hero__desc">这里只调整表现方式，不影响房间数据、开局流程和牌桌逻辑。</text>
+        </view>
+        <view class="settings-panel">
+          <view class="settings-row" bindtap="onToggleRoomSfx">
+            <view class="settings-row__signal {{sfxEnabled ? 'is-on' : 'is-off'}}"></view>
+            <view class="settings-row__main">
+              <text class="settings-row__label">游戏音效</text>
+              <text class="settings-row__hint">按钮反馈、结算结果和局内关键提示</text>
+            </view>
+            <view class="settings-row__badge {{sfxEnabled ? 'is-on' : 'is-off'}}">
+              <text>{{sfxEnabled ? '开启' : '关闭'}}</text>
+            </view>
+          </view>
+          <view class="settings-row" bindtap="onToggleRoomTurnAlertSfx">
+            <view class="settings-row__signal {{turnAlertSfxEnabled ? 'is-on' : 'is-off'}}"></view>
+            <view class="settings-row__main">
+              <text class="settings-row__label">叫牌提醒</text>
+              <text class="settings-row__hint">轮到你叫牌时播放单独提醒音</text>
+            </view>
+            <view class="settings-row__badge {{turnAlertSfxEnabled ? 'is-on' : 'is-off'}}">
+              <text>{{turnAlertSfxEnabled ? '开启' : '关闭'}}</text>
+            </view>
+          </view>
+          <view class="settings-row" bindtap="onToggleRoomHaptic">
+            <view class="settings-row__signal {{hapticEnabled ? 'is-on' : 'is-off'}}"></view>
+            <view class="settings-row__main">
+              <text class="settings-row__label">震动反馈</text>
+              <text class="settings-row__hint">轮到你或关键操作时给出震动提醒</text>
+            </view>
+            <view class="settings-row__badge {{hapticEnabled ? 'is-on' : 'is-off'}}">
+              <text>{{hapticEnabled ? '开启' : '关闭'}}</text>
+            </view>
           </view>
         </view>
       </view>

@@ -3052,7 +3052,7 @@ test("room page: non-owner topbar menu routes settings without showing seating",
   }
 });
 
-test("room page: tools menu exposes sound, turn-alert, and vibration toggles", () => {
+test("room page: tools menu opens the custom audio-and-feedback sheet", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -3062,8 +3062,6 @@ test("room page: tools menu exposes sound, turn-alert, and vibration toggles", (
   });
 
   try {
-    let capturedItems = null;
-
     page.devtoolsMode = true;
     page.setData({
       selfIsOwner: true,
@@ -3073,13 +3071,10 @@ test("room page: tools menu exposes sound, turn-alert, and vibration toggles", (
         testMode: false
       }
     });
-    page.showActionSheetSafe = ({ itemList }) => {
-      capturedItems = itemList;
-    };
 
     page.openToolsMenu();
 
-    assert.deepEqual(capturedItems, ["关闭音效", "关闭轮到提醒音", "关闭震动"]);
+    assert.equal(page.data.toolsBasicVisible, true);
   } finally {
     cleanup();
   }
@@ -3639,7 +3634,7 @@ test("room page: settlement fallback highlights wildcard ones when they are coun
   }
 });
 
-test("room page: settlement audio plays once for non-losers while losers get a distinct alert", () => {
+test("room page: settlement audio follows winner-loser identity instead of continue permission", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -3704,6 +3699,15 @@ test("room page: settlement audio plays once for non-losers while losers get a d
     page.data.playerId = "loser";
     page.showSettlementPanel(openResult, roundSummary);
     assert.deepEqual(sfxCalls, ["settlement", "loseAlert"]);
+
+    page.setData({ settlementVisible: false });
+    page.data.playerId = "winner";
+    page.data.playersRaw = [
+      { id: "winner", nickname: "赢家", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "idle", seatIndex: 1, diceCupStatus: "closed", rollLocked: false },
+      { id: "loser", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "offline", turnStatus: "idle", seatIndex: 2, diceCupStatus: "closed", rollLocked: false }
+    ];
+    page.showSettlementPanel(openResult, roundSummary);
+    assert.deepEqual(sfxCalls, ["settlement", "loseAlert", "settlement"]);
   } finally {
     cleanup();
   }
