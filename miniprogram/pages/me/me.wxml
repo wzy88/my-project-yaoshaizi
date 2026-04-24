@@ -151,4 +151,35 @@
       </view>
     </scroll-view>
   </view>
+
+  <view class="login-gate" wx:if="{{showLoginGate}}">
+    <view class="login-gate__mask" bindtap="closeLoginGate"></view>
+    <view class="login-gate__sheet" catchtap="noop">
+      <view class="login-gate__handle"></view>
+      <view class="login-gate__header">
+        <text class="login-gate__title">登录后保存昵称</text>
+      </view>
+      <view class="login-gate__button-stack">
+        <button class="login-gate__btn {{loginAgreementChecked ? '' : 'is-disabled'}}" loading="{{loginBusy}}" disabled="{{loginBusy || !loginAgreementChecked}}" bindtap="onLoginAndSaveNickname">
+          <text class="login-gate__btn-text">{{loginBusy ? '登录中...' : '微信登录并保存'}}</text>
+        </button>
+        <button class="login-gate__btn login-gate__btn--secondary" disabled="{{loginBusy}}" bindtap="closeLoginGate">
+          <text class="login-gate__btn-text login-gate__btn-text--secondary">暂不登录</text>
+        </button>
+      </view>
+      <view class="login-gate__agreement-row">
+        <view class="login-gate__agreement-inline" bindtap="toggleLoginAgreement">
+          <view class="login-gate__checkbox {{loginAgreementChecked ? 'is-checked' : ''}}">
+            <text class="login-gate__checkbox-mark">✓</text>
+          </view>
+          <view class="login-gate__agreement-copy">
+            <text class="login-gate__agreement-copy-text">我已阅读并同意</text>
+            <text class="login-gate__link" catchtap="openTermsPage">《用户协议》</text>
+            <text class="login-gate__agreement-copy-text">和</text>
+            <text class="login-gate__link" catchtap="openPrivacyPage">《隐私政策》</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
 </view>

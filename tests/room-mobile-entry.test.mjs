@@ -1030,6 +1030,23 @@ test("room page: mode create enters on the room shell while the pending create a
   }
 });
 
+test("room page: mode create does not show the entry legal drawer", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {},
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({ mode: "create", direction: "cw", wildcardOneEnabled: "1", dicePerPlayer: "5", minOpeningCount: "5" });
+
+    assert.equal(page.data.showLegalModal, false);
+    assert.equal(page.data.legalAccepted, false);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: action ack keeps room identity on the room shell before room state arrives", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {

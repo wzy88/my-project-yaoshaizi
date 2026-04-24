@@ -17,8 +17,8 @@ const {
 const { validateNickname } = require("../../utils/nickname-validator");
 const {
   getStoredWechatProfile,
-  requestWechatUserProfile,
   persistWechatProfile,
+  persistLegalConsent,
   clearWechatProfile
 } = require("../../utils/wechat-auth");
 const { performWechatOneTapLogin } = require("../../utils/wechat-login-flow");
@@ -51,6 +51,11 @@ function formatShortDateTime(ts) {
 function readStoredBoolean(key, fallback = true) {
   const stored = wx.getStorageSync(key);
   return stored === "" || stored == null ? fallback : Boolean(stored);
+}
+
+function isAccountSessionExpiredMessage(message) {
+  const normalized = String(message || "").trim().toLowerCase();
+  return normalized.includes("账号登录已失效") || normalized.includes("unauthorized");
 }
 
 function buildAccountData(session) {
@@ -106,7 +111,11 @@ Page({
     hasSession: false,
     sessionRoomId: "",
     contactEmail: CONTACT_EMAIL,
-    nicknameSaving: false
+    nicknameSaving: false,
+    showLoginGate: false,
+    loginBusy: false,
+    loginAgreementChecked: false,
+    pendingSaveNickname: ""
   },
 
   onLoad() {
@@ -210,6 +219,19 @@ Page({
       return;
     }
 
+    const session = getStoredAccountSession();
+    if (!session.loggedIn) {
+      this.setData({
+        nickname: validation.value,
+        initial: String(validation.value || "玩家").slice(0, 1),
+        showLoginGate: true,
+        loginBusy: false,
+        loginAgreementChecked: false,
+        pendingSaveNickname: validation.value
+      });
+      return;
+    }
+
     this.setData({
       nickname: validation.value,
       initial: String(validation.value || "玩家").slice(0, 1),
@@ -218,29 +240,7 @@ Page({
     wx.setStorageSync(NICKNAME_KEY, validation.value);
     wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, true);
 
-    const session = getStoredAccountSession();
     try {
-      if (!session.loggedIn) {
-        const userProfile = await requestWechatUserProfile();
-        persistWechatProfile({
-          nickname: validation.value,
-          avatarUrl: String(userProfile && userProfile.avatarUrl || this.data.avatarUrl || "").trim(),
-          nicknameCustomized: true
-        });
-        const loginResult = await performWechatOneTapLogin();
-        const loggedProfile = loginResult && loginResult.profile ? loginResult.profile : getStoredWechatProfile();
-        const loggedSession = loginResult && loginResult.accountSession ? loginResult.accountSession : getStoredAccountSession();
-        this.setData({
-          nickname: loggedProfile.nickname || validation.value,
-          avatarUrl: loggedProfile.avatarUrl || this.data.avatarUrl,
-          initial: String((loggedProfile.nickname || validation.value || "玩家")).slice(0, 1),
-          ...buildAccountData(loggedSession)
-        });
-        wx.showToast({ title: "登录成功，昵称已保存", icon: "none" });
-        void this.refreshAccountProfile();
-        return;
-      }
-
       const latest = await syncMyAccountProfile({
         nickname: validation.value,
         nicknameCustomized: true
@@ -258,6 +258,81 @@ Page({
       wx.showToast({ title: message, icon: "none" });
     } finally {
       this.setData({ nicknameSaving: false });
+    }
+  },
+
+  closeLoginGate() {
+    if (this.data.loginBusy) {
+      return;
+    }
+
+    this.setData({
+      showLoginGate: false,
+      loginBusy: false,
+      loginAgreementChecked: false,
+      pendingSaveNickname: ""
+    });
+  },
+
+  toggleLoginAgreement() {
+    this.setData({
+      loginAgreementChecked: !this.data.loginAgreementChecked
+    });
+  },
+
+  noop() {},
+
+  async onLoginAndSaveNickname() {
+    if (this.data.loginBusy) {
+      return;
+    }
+
+    if (!this.data.loginAgreementChecked) {
+      wx.showToast({ title: "请先勾选协议", icon: "none" });
+      return;
+    }
+
+    const pendingNickname = String(this.data.pendingSaveNickname || this.data.nickname || "").trim();
+    const validation = validateNickname(pendingNickname);
+    if (!validation.ok) {
+      wx.showToast({ title: validation.message, icon: "none" });
+      return;
+    }
+
+    this.setData({
+      nickname: validation.value,
+      initial: String(validation.value || "玩家").slice(0, 1),
+      loginBusy: true
+    });
+    wx.setStorageSync(NICKNAME_KEY, validation.value);
+    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, true);
+
+    try {
+      persistWechatProfile({
+        nickname: validation.value,
+        avatarUrl: this.data.avatarUrl,
+        nicknameCustomized: true
+      });
+      persistLegalConsent();
+      const loginResult = await performWechatOneTapLogin();
+      const loggedProfile = loginResult && loginResult.profile ? loginResult.profile : getStoredWechatProfile();
+      const loggedSession = loginResult && loginResult.accountSession ? loginResult.accountSession : getStoredAccountSession();
+      this.setData({
+        nickname: loggedProfile.nickname || validation.value,
+        avatarUrl: loggedProfile.avatarUrl || this.data.avatarUrl,
+        initial: String((loggedProfile.nickname || validation.value || "玩家")).slice(0, 1),
+        showLoginGate: false,
+        loginBusy: false,
+        loginAgreementChecked: false,
+        pendingSaveNickname: "",
+        ...buildAccountData(loggedSession)
+      });
+      wx.showToast({ title: "登录成功，昵称已保存", icon: "none" });
+      void this.refreshAccountProfile();
+    } catch (error) {
+      const message = error && error.message ? String(error.message) : "登录失败，请稍后再试";
+      this.setData({ loginBusy: false });
+      wx.showToast({ title: message, icon: "none" });
     }
   },
 
@@ -306,8 +381,20 @@ Page({
         accountLoading: false
       });
     } catch (error) {
-      this.setData({ accountLoading: false });
       const message = error && error.message ? String(error.message) : "账号信息同步失败";
+      if (isAccountSessionExpiredMessage(message)) {
+        const localProfile = getStoredWechatProfile();
+        this.setData({
+          nickname: localProfile.nickname,
+          avatarUrl: localProfile.avatarUrl,
+          initial: String(localProfile.nickname || "玩家").slice(0, 1),
+          ...buildAccountData({}),
+          accountLoading: false
+        });
+        return;
+      }
+
+      this.setData({ accountLoading: false });
       wx.showToast({ title: message, icon: "none" });
     }
   },

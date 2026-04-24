@@ -11,7 +11,9 @@ const {
   AVATAR_URL_KEY,
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
   WECHAT_LOGIN_TS_KEY,
-  ACCOUNT_SESSION_KEY
+  ACCOUNT_SESSION_KEY,
+  LEGAL_ACCEPT_KEY,
+  LEGAL_VERSION
 } = require("../miniprogram/utils/constants.js");
 
 function instantiateIndexPage({
@@ -218,6 +220,12 @@ test("index page: wechat login stores a default avatar nickname and resumes the 
     assert.equal(requests[0].method, "POST");
     assert.match(String(requests[0].data.nickname || ""), /^玩家\d{3}$/);
     assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(String(requests[0].data.avatarUrl || "")), true);
+    assert.deepEqual(storageState[LEGAL_ACCEPT_KEY], {
+      accepted: true,
+      version: LEGAL_VERSION,
+      acceptedAt: storageState[LEGAL_ACCEPT_KEY].acceptedAt
+    });
+    assert.equal(Number(storageState[LEGAL_ACCEPT_KEY].acceptedAt) > 0, true);
     assert.equal(toasts.includes("登录成功"), true);
   } finally {
     cleanup();

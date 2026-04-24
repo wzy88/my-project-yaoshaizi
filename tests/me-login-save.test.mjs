@@ -7,6 +7,8 @@ const meModulePath = require.resolve("../miniprogram/pages/me/me.js");
 const loginFlowModulePath = require.resolve("../miniprogram/utils/wechat-login-flow.js");
 const accountApiModulePath = require.resolve("../miniprogram/utils/account-api.js");
 const {
+  LEGAL_ACCEPT_KEY,
+  LEGAL_VERSION,
   NICKNAME_KEY,
   AVATAR_URL_KEY,
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
@@ -131,7 +133,7 @@ function instantiateMePage({
   };
 }
 
-test("me page: saving nickname while browsing triggers login and persists the nickname", async () => {
+test("me page: saving nickname while browsing opens a login gate first, then persists after confirmation", async () => {
   let loginCalls = 0;
   const { page, storageState, toasts, cleanup } = instantiateMePage({
     storage: {
@@ -208,11 +210,21 @@ test("me page: saving nickname while browsing triggers login and persists the ni
     page.onLoad();
     await page.onNicknameSave({ detail: { value: "阿伟" } });
 
+    assert.equal(loginCalls, 0);
+    assert.equal(page.data.showLoginGate, true);
+    assert.equal(page.data.pendingSaveNickname, "阿伟");
+
+    page.toggleLoginAgreement();
+    await page.onLoginAndSaveNickname();
+
     assert.equal(loginCalls, 1);
     assert.equal(storageState[NICKNAME_KEY], "阿伟");
     assert.equal(storageState[PROFILE_NICKNAME_CUSTOMIZED_KEY], true);
+    assert.equal(storageState[LEGAL_ACCEPT_KEY].accepted, true);
+    assert.equal(storageState[LEGAL_ACCEPT_KEY].version, LEGAL_VERSION);
     assert.equal(page.data.nickname, "阿伟");
     assert.equal(page.data.accountReady, true);
+    assert.equal(page.data.showLoginGate, false);
     assert.ok(toasts.includes("登录成功，昵称已保存"));
   } finally {
     cleanup();

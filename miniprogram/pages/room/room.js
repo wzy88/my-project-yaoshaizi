@@ -1807,14 +1807,16 @@ Page({
       && String(legalConsent.version || "") === LEGAL_VERSION
     );
 
+    const mode = String(options.mode || "");
+    const shouldShowEntryLegalModal = !legalAccepted && mode === "join";
+
     this.setData({
       legalAccepted,
       legalAgreementChecked: legalAccepted,
-      showLegalModal: !legalAccepted
+      showLegalModal: shouldShowEntryLegalModal
     });
     this.refreshWsHint("");
 
-    const mode = String(options.mode || "");
     if (mode === "create") {
       const direction = String(options.direction || "").trim();
       const wildcardOneEnabled = String(options.wildcardOneEnabled || "1") === "1";

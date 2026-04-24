@@ -5,7 +5,8 @@ const backendRequest = require("../../utils/backend-request");
 const { performWechatOneTapLogin } = require("../../utils/wechat-login-flow");
 const {
   getStoredWechatProfile,
-  navigateAfterWechatLogin
+  navigateAfterWechatLogin,
+  persistLegalConsent
 } = require("../../utils/wechat-auth");
 
 function buildTimeText() {
@@ -165,6 +166,7 @@ Page({
     try {
       const result = await performWechatOneTapLogin();
       const profile = result && result.profile ? result.profile : getStoredWechatProfile();
+      persistLegalConsent();
       this.didAutoRoute = true;
       this.setData({
         profileTitle: profile.loggedIn ? `欢迎回来，${profile.nickname}` : "准备开局",
