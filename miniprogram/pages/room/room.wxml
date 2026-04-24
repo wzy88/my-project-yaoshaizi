@@ -310,37 +310,39 @@
             <text>{{settlementSummaryText}}</text>
           </view>
         </view>
-        <view class="settlement-list">
-          <block wx:for="{{settlementRows}}" wx:key="playerId">
-            <view class="settlement-row settlement-row--{{item.kind}}">
-              <view class="settlement-row__tag settlement-row__tag--{{item.kind}}">
-                <text>{{item.tagText || ' '}}</text>
-              </view>
-              <view class="settlement-row__left">
-                <view class="settlement-avatar">
-                  <image wx:if="{{item.avatarUrl}}" class="settlement-avatar__img" src="{{item.avatarUrl}}" mode="aspectFill"></image>
-                  <view wx:else class="settlement-avatar__text">{{item.avatarText}}</view>
+        <scroll-view class="settlement-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+          <view class="settlement-list">
+            <block wx:for="{{settlementRows}}" wx:key="playerId">
+              <view class="settlement-row settlement-row--{{item.kind}}">
+                <view class="settlement-row__tag settlement-row__tag--{{item.kind}}">
+                  <text>{{item.tagText || ' '}}</text>
                 </view>
-                <view class="settlement-text">
-                  <text class="settlement-name {{item.nameLengthClass}}">{{item.name}}</text>
-                  <text class="settlement-score settlement-score--{{item.scoreClass}}">✶ {{item.deltaText}}</text>
+                <view class="settlement-row__left">
+                  <view class="settlement-avatar">
+                    <image wx:if="{{item.avatarUrl}}" class="settlement-avatar__img" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+                    <view wx:else class="settlement-avatar__text">{{item.avatarText}}</view>
+                  </view>
+                  <view class="settlement-text">
+                    <text class="settlement-name {{item.nameLengthClass}}">{{item.name}}</text>
+                    <text class="settlement-score settlement-score--{{item.scoreClass}}">✶ {{item.deltaText}}</text>
+                  </view>
                 </view>
-              </view>
-              <view class="settlement-dice-list">
-                <block wx:if="{{item.diceItems && item.diceItems.length}}">
-                  <block wx:for="{{item.diceItems}}" wx:key="index">
-                    <view class="settlement-die-wrap {{item.highlighted ? 'is-counted' : ''}} {{item.wildcard ? 'is-wildcard' : ''}}">
-                      <image class="settlement-die" src="{{item.asset}}" mode="aspectFit"></image>
-                    </view>
+                <view class="settlement-dice-list">
+                  <block wx:if="{{item.diceItems && item.diceItems.length}}">
+                    <block wx:for="{{item.diceItems}}" wx:key="index">
+                      <view class="settlement-die-wrap {{item.highlighted ? 'is-counted' : ''}} {{item.wildcard ? 'is-wildcard' : ''}}">
+                        <image class="settlement-die" src="{{item.asset}}" mode="aspectFit"></image>
+                      </view>
+                    </block>
+                    <text wx:if="{{item.countBonusText}}" class="settlement-dice-bonus">{{item.countBonusText}}</text>
                   </block>
-                  <text wx:if="{{item.countBonusText}}" class="settlement-dice-bonus">{{item.countBonusText}}</text>
-                </block>
-                <text wx:else class="settlement-dice settlement-dice--empty">—</text>
+                  <text wx:else class="settlement-dice settlement-dice--empty">—</text>
+                </view>
+                <text wx:if="{{item.countNoteText}}" class="settlement-count-note">{{item.countNoteText}}</text>
               </view>
-              <text wx:if="{{item.countNoteText}}" class="settlement-count-note">{{item.countNoteText}}</text>
-            </view>
-          </block>
-        </view>
+            </block>
+          </view>
+        </scroll-view>
         <view class="settlement-matrix">
           <view class="settlement-matrix__row">
             <text class="settlement-matrix__label">叫骰</text>
@@ -420,31 +422,41 @@
 
   <view wx:if="{{seatingVisible}}" class="room-mask">
     <view class="room-sheet room-sheet--seating">
-      <view class="sheet-head">
-        <text class="sheet-title">房主排位</text>
-        <text class="sheet-close" bindtap="closeSeatingPanel">关闭</text>
+      <view class="room-sheet__glow room-sheet__glow--settings-a"></view>
+      <view class="room-sheet__glow room-sheet__glow--settings-b"></view>
+      <view class="sheet-head sheet-head--settings">
+        <view class="sheet-heading">
+          <text class="sheet-eyebrow">SEAT CONTROL</text>
+          <text class="sheet-title">调整座位</text>
+        </view>
+        <view class="sheet-close sheet-close--pill" bindtap="closeSeatingPanel">完成</view>
       </view>
-      <view class="sheet-body">
-        <view class="seat-info">
-          <text>{{seatingSelectedText}}</text>
-          <text class="seat-info__hint">先选中一名玩家，再点目标座位完成移动或交换</text>
+      <view class="sheet-body sheet-body--settings sheet-body--seating">
+        <view class="seat-hero">
+          <text class="seat-hero__title">{{seatingSelectedText}}</text>
+          <text class="seat-hero__desc">先点玩家，再点目标座位；空位是移动，已占用则交换。</text>
         </view>
 
-        <view class="seat-direction">
-          <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'cw' ? 'is-active' : ''}}" data-dir="cw" bindtap="onSeatingSelectDirection">顺时针</view>
-          <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'ccw' ? 'is-active' : ''}}" data-dir="ccw" bindtap="onSeatingSelectDirection">逆时针</view>
+        <view class="seat-direction-panel">
+          <text class="seat-direction-panel__label">入座方向</text>
+          <view class="seat-direction">
+            <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'cw' ? 'is-active' : ''}}" data-dir="cw" bindtap="onSeatingSelectDirection">顺时针</view>
+            <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'ccw' ? 'is-active' : ''}}" data-dir="ccw" bindtap="onSeatingSelectDirection">逆时针</view>
+          </view>
         </view>
 
-        <view class="seat-grid">
-          <block wx:for="{{seatRows}}" wx:key="seatIndex">
-            <view class="seat-grid__item {{item.selected ? 'is-selected' : ''}} {{item.occupied ? 'is-occupied' : ''}} {{item.hintClass}}" data-seat="{{item.seatIndex}}" bindtap="onTapSeatRow">
-              <view class="seat-grid__head">
-                <text class="seat-grid__num">{{item.seatIndex}}号</text>
-                <text wx:if="{{item.actionText}}" class="seat-grid__action">{{item.actionText}}</text>
+        <view class="seat-grid-panel">
+          <view class="seat-grid">
+            <block wx:for="{{seatRows}}" wx:key="seatIndex">
+              <view class="seat-grid__item {{item.selected ? 'is-selected' : ''}} {{item.occupied ? 'is-occupied' : ''}} {{item.hintClass}}" data-seat="{{item.seatIndex}}" bindtap="onTapSeatRow">
+                <view class="seat-grid__head">
+                  <text class="seat-grid__num">{{item.seatIndex}}号</text>
+                  <text wx:if="{{item.actionText}}" class="seat-grid__action">{{item.actionText}}</text>
+                </view>
+                <text class="seat-grid__label">{{item.label}}</text>
               </view>
-              <text class="seat-grid__label">{{item.label}}</text>
-            </view>
-          </block>
+            </block>
+          </view>
         </view>
       </view>
     </view>

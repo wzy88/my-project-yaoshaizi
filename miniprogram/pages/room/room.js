@@ -2055,7 +2055,7 @@ Page({
     };
 
     tick();
-    this.turnCountdownTimer = setInterval(tick, 200);
+    this.turnCountdownTimer = setInterval(tick, 1000);
   },
 
   onUnload() {

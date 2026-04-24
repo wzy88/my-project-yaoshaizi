@@ -1,35 +1,50 @@
 <view class="page create-page">
   <view class="mask-bg"></view>
-  <view class="panel">
-    <view class="panel-handle"></view>
-    <view class="panel-title">
-      <text class="panel-title__icon">🎲</text>
-      <text class="panel-title__text">创建房间</text>
-    </view>
-
-    <view class="block">
-      <text class="block-title">房间形式</text>
-      <view class="room-form-card">
-        <view class="room-form-card__glow"></view>
-        <view class="room-form-card__badge">固定房间</view>
-        <text class="room-form-card__title">固定 8 个座位</text>
-        <text class="room-form-card__desc">房间始终保留 8 个座位，来几个人算几个人，最多 8 人同局。</text>
+  <view class="create-sheet">
+    <view class="create-sheet__glow create-sheet__glow--a"></view>
+    <view class="create-sheet__glow create-sheet__glow--b"></view>
+    <view class="create-sheet__head">
+      <view class="create-sheet__heading">
+        <text class="create-sheet__eyebrow">ROOM SETUP</text>
+        <text class="create-sheet__title">创建房间</text>
+        <text class="create-sheet__desc">固定 8 个座位，空位保留空杯，有人进来再显示头像。</text>
       </view>
     </view>
 
-    <view class="toggle-card" data-field="wildcardOneEnabled" bindtap="onToggleField">
-      <view class="toggle-copy">
-        <text class="toggle-title">通配 1</text>
-        <text class="toggle-sub">有人叫 1 之后通配效果失效</text>
+    <view class="create-sheet__body">
+      <view class="block block--hero">
+        <text class="block-title">房间形式</text>
+        <view class="room-form-card">
+          <view class="room-form-card__glow"></view>
+          <view class="room-form-card__badge">固定房间</view>
+          <text class="room-form-card__title">固定 8 个座位</text>
+          <text class="room-form-card__desc">房间始终保留 8 个座位，来几个人算几个人，最多 8 人同局。</text>
+        </view>
       </view>
-      <view class="toggle-pill {{wildcardOneEnabled ? 'is-on' : ''}}">
-        <view class="toggle-pill__thumb"></view>
+
+      <view class="block">
+        <text class="block-title">局内规则</text>
+        <view class="toggle-card" data-field="wildcardOneEnabled" bindtap="onToggleField">
+          <view class="toggle-card__signal {{wildcardOneEnabled ? 'is-on' : 'is-off'}}"></view>
+          <view class="toggle-copy">
+            <text class="toggle-title">通配 1</text>
+            <text class="toggle-sub">有人叫 1 之后通配效果失效</text>
+          </view>
+          <view class="toggle-pill {{wildcardOneEnabled ? 'is-on' : ''}}">
+            <view class="toggle-pill__thumb"></view>
+          </view>
+        </view>
+      </view>
+
+      <view class="create-note-card">
+        <text class="create-note-card__title">开局说明</text>
+        <text class="create-note-card__desc">默认每人 5 颗骰子。创建后会直接进入房间，空位会保留杯位但不显示头像。</text>
+      </view>
+
+      <view class="create-actions">
+        <button class="create-btn" bindtap="createAndEnter">创建并进入</button>
+        <button class="cancel-btn" bindtap="back">取消</button>
       </view>
     </view>
-
-    <text class="panel-note">默认每人 5 颗骰子。创建后会直接进入房间，空位会保留杯位但不显示头像。</text>
-
-    <button class="create-btn" bindtap="createAndEnter">创建并进入</button>
-    <button class="cancel-btn" bindtap="back">取消</button>
   </view>
 </view>

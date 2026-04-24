@@ -214,13 +214,35 @@ test("settlement dialog keeps only the bottom continue action", () => {
   assert.match(source, /wx:if="\{\{settlementCanContinue\}\}" class="sheet-actions"/);
 });
 
+test("settlement dialog uses a bounded sheet with an internal player list scroller", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxml, /<scroll-view class="settlement-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">/);
+  assert.match(wxss, /\.room-sheet--settlement\s*\{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column[\s\S]*max-height:\s*82vh/);
+  assert.match(wxss, /\.sheet-body--settlement\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
+  assert.match(wxss, /\.settlement-scroll\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0/);
+});
+
+test("settlement dialog compresses row density for crowded eight-player results", () => {
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxss, /\.settlement-row\s*\{[\s\S]*gap:\s*10rpx[\s\S]*padding:\s*12rpx 14rpx/);
+  assert.match(wxss, /\.settlement-avatar\s*\{[\s\S]*width:\s*52rpx[\s\S]*height:\s*52rpx/);
+  assert.match(wxss, /\.settlement-die-wrap\s*\{[\s\S]*width:\s*40rpx[\s\S]*height:\s*40rpx/);
+  assert.match(wxss, /\.settlement-matrix__row\s*\{[\s\S]*min-height:\s*82rpx/);
+});
+
 test("seating dialog reuses the settlement sheet skin", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const source = fs.readFileSync(roomWxssPath, "utf8");
-  assert.match(source, /\.room-sheet--seating\s*\{/);
-  assert.match(
-    source,
-    /\.room-sheet--seating\s*\{[\s\S]*background:\s*linear-gradient\(180deg,\s*rgba\(45,\s*39,\s*59,\s*0\.96\)\s*0%,\s*rgba\(29,\s*24,\s*40,\s*0\.96\)\s*100%\)/
-  );
+  assert.match(wxml, /class="room-sheet room-sheet--seating"/);
+  assert.match(wxml, /class="sheet-head sheet-head--settings"/);
+  assert.match(wxml, /class="sheet-close sheet-close--pill" bindtap="closeSeatingPanel">完成<\/view>/);
+  assert.match(wxml, /class="seat-hero"/);
+  assert.match(wxml, /class="seat-direction-panel__label">入座方向<\/text>/);
+  assert.match(wxml, /class="seat-grid-panel"/);
+  assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*max-width:\s*682rpx/);
+  assert.match(source, /\.seat-hero\s*\{/);
+  assert.match(source, /\.seat-direction-panel,\s*\.seat-grid-panel\s*\{/);
 });
 
 test("seating dialog keeps only clockwise and counterclockwise shortcuts", () => {

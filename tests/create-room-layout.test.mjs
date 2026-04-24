@@ -18,10 +18,16 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.doesNotMatch(script, /lockRoom/);
 
   assert.match(wxml, /<text class="block-title">房间形式<\/text>/);
+  assert.match(wxml, /class="create-sheet"/);
+  assert.match(wxml, /class="create-sheet__eyebrow">ROOM SETUP<\/text>/);
+  assert.match(wxml, /class="create-sheet__title">创建房间<\/text>/);
   assert.match(wxml, /class="room-form-card"/);
   assert.match(wxml, /class="room-form-card__badge">固定房间<\/view>/);
   assert.match(wxml, /class="room-form-card__title">固定 8 个座位<\/text>/);
   assert.match(wxml, /房间始终保留 8 个座位，来几个人算几个人，最多 8 人同局。/);
+  assert.match(wxml, /class="toggle-card__signal \{\{wildcardOneEnabled \? 'is-on' : 'is-off'\}\}"/);
+  assert.match(wxml, /class="create-note-card"/);
+  assert.match(wxml, /class="create-actions"/);
   assert.doesNotMatch(wxml, /允许旁观/);
   assert.doesNotMatch(wxml, /锁定房间/);
   assert.doesNotMatch(wxml, /测试模式/);
@@ -34,6 +40,12 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.doesNotMatch(script, /allowSpectator=/);
   assert.doesNotMatch(script, /lockRoom=/);
 
+  assert.match(wxss, /\.create-sheet\s*\{/);
+  assert.match(wxss, /\.create-page\s*\{[\s\S]*display:\s*flex[\s\S]*align-items:\s*flex-end[\s\S]*justify-content:\s*center/);
+  assert.match(wxss, /\.create-sheet__glow--a\s*\{/);
+  assert.match(wxss, /\.toggle-card__signal\.is-on\s*\{/);
+  assert.match(wxss, /\.create-note-card\s*\{/);
+  assert.match(wxss, /\.create-btn\s*\{/);
   assert.match(wxss, /\.room-form-card\s*\{/);
   assert.match(wxss, /\.room-form-card__title\s*\{/);
   assert.match(wxss, /\.room-form-card__desc\s*\{/);
