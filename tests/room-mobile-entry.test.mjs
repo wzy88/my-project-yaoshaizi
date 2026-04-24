@@ -12,6 +12,8 @@ const {
   NICKNAME_KEY,
   AVATAR_URL_KEY,
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
+  ACCOUNT_SESSION_KEY,
+  WECHAT_LOGIN_TS_KEY,
   TURN_ALERT_SFX_ENABLED_KEY
 } = require("../miniprogram/utils/constants.js");
 
@@ -1072,6 +1074,71 @@ test("room page: action ack keeps room identity on the room shell before room st
     assert.equal(page.data.playerId, "player-a");
     assert.equal(page.data.resumeToken, "resume-token");
     assert.equal(page.data.joinRoomId, "123456");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: expired account session during join is downgraded to guest and retried once", () => {
+  const sentPackets = [];
+  const { page, storageState, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [ACCOUNT_SESSION_KEY]: {
+        accountId: "acct-1",
+        displayId: "WX-001",
+        sessionToken: "expired-token",
+        loginAt: 123456,
+        authMode: "wechat",
+        profile: {
+          accountId: "acct-1",
+          displayId: "WX-001",
+          nickname: "手机玩家",
+          avatarUrl: ""
+        }
+      },
+      [WECHAT_LOGIN_TS_KEY]: 123456
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.socketTask = {
+      send({ data }) {
+        sentPackets.push(JSON.parse(data));
+      }
+    };
+    page.setData({
+      connected: true,
+      legalAccepted: true,
+      joinRoomId: "123456",
+      nickname: "手机玩家",
+      avatarUrl: ""
+    });
+    page.actionEventMap = {
+      "join-1": "room:join"
+    };
+
+    page.handleServerPacket(JSON.stringify({
+      event: "action:ack",
+      payload: {
+        ok: false,
+        actionId: "join-1",
+        code: "FORBIDDEN",
+        reason: "账号登录已失效，请重新进入"
+      }
+    }));
+
+    assert.equal(storageState[ACCOUNT_SESSION_KEY], undefined);
+    assert.equal(storageState[WECHAT_LOGIN_TS_KEY], undefined);
+    assert.equal(toasts.includes("账号登录已失效，请重新进入"), false);
+    assert.equal(sentPackets.length, 1);
+    assert.equal(sentPackets[0].event, "room:join");
+    assert.equal(sentPackets[0].payload.roomId, "123456");
+    assert.equal(sentPackets[0].payload.nickname, "手机玩家");
+    assert.equal("accountId" in sentPackets[0].payload, false);
+    assert.equal("accountSessionToken" in sentPackets[0].payload, false);
   } finally {
     cleanup();
   }

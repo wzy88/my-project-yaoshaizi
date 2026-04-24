@@ -10,12 +10,13 @@ const {
   NICKNAME_KEY,
   AVATAR_URL_KEY,
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
+  WECHAT_LOGIN_TS_KEY,
   SFX_ENABLED_KEY,
   TURN_ALERT_SFX_ENABLED_KEY,
   HAPTIC_ENABLED_KEY
 } = require("../../utils/constants");
 const { DEFAULT_3D_DIE_ASSET, SELF_DICE_PLACEHOLDER, getDieAsset } = require("../../utils/dice-assets");
-const { getStoredAccountSession } = require("../../utils/account-api");
+const { getStoredAccountSession, clearAccountSession } = require("../../utils/account-api");
 const { getStoredWechatProfile } = require("../../utils/wechat-auth");
 const {
   DEFAULT_PROFILE_AVATAR_ASSETS,
@@ -60,6 +61,11 @@ function buildAccountAuthPayload() {
     accountId: session.accountId,
     accountSessionToken: session.sessionToken
   };
+}
+
+function isExpiredAccountSessionMessage(message) {
+  const normalized = String(message || "").trim().toLowerCase();
+  return normalized.includes("账号登录已失效") || normalized.includes("unauthorized");
 }
 
 function buildSelfDiceFallback(count = SELF_DICE_PLACEHOLDER.length) {
@@ -4672,6 +4678,19 @@ Page({
           const code = String(payload.code || "");
           const reason = String(payload.reason || "操作失败");
           const failText = code ? `${code}: ${reason}` : reason;
+          const isExpiredAccountFailure = code === "FORBIDDEN"
+            && isExpiredAccountSessionMessage(reason)
+            && (actionEvent === "room:create" || actionEvent === "room:join");
+
+          if (isExpiredAccountFailure) {
+            this.clearExpiredAccountBinding();
+            this.setData({ lastWsError: "" });
+            this.refreshWsHint("");
+            if (!this.retryEntryWithoutAccount(actionEvent)) {
+              wx.showToast({ title: "登录状态已更新，请重试", icon: "none" });
+            }
+            break;
+          }
 
           this.setData({ lastWsError: failText });
           this.refreshWsHint(failText);
@@ -5411,6 +5430,25 @@ Page({
       selfRollLocked: false,
       selfRollCountThisRound: 0,
     });
+  },
+
+  clearExpiredAccountBinding() {
+    clearAccountSession();
+    wx.removeStorageSync(WECHAT_LOGIN_TS_KEY);
+  },
+
+  retryEntryWithoutAccount(actionEvent) {
+    if (actionEvent === "room:create") {
+      this.createRoom();
+      return true;
+    }
+
+    if (actionEvent === "room:join") {
+      this.joinRoom();
+      return true;
+    }
+
+    return false;
   },
 
   openPrivacyPage() {
