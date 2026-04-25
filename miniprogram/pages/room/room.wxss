@@ -6886,3 +6886,133 @@ button.room-topbar-menu-popover__item::after {
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0) 100%);
   opacity: 0.78;
 }
+
+.page.room-screen .seat-stage-cup .figma-cup__rim,
+.page.room-screen .ghost-cup .figma-cup__rim {
+  background:
+    linear-gradient(180deg, rgba(255, 247, 207, 0.98) 0%, rgba(221, 167, 69, 0.96) 48%, rgba(99, 58, 12, 0.98) 100%);
+  box-shadow:
+    0 3rpx 8rpx rgba(43, 25, 6, 0.36),
+    inset 0 1rpx 0 rgba(255, 255, 238, 0.58),
+    inset 0 -2rpx 3rpx rgba(74, 39, 5, 0.42);
+}
+
+.page.room-screen .seat-stage-cup .figma-cup__body,
+.page.room-screen .ghost-cup .figma-cup__body {
+  background:
+    radial-gradient(circle at 30% 14%, rgba(255, 255, 242, 0.22) 0%, rgba(255, 255, 242, 0) 26%),
+    linear-gradient(92deg, rgba(255, 239, 188, 0.22) 0%, rgba(56, 40, 29, 0.32) 30%, rgba(11, 10, 13, 0.58) 72%, rgba(170, 112, 38, 0.28) 100%),
+    linear-gradient(180deg, rgba(71, 48, 38, 0.96) 0%, rgba(26, 22, 22, 0.98) 52%, rgba(7, 7, 9, 1) 100%);
+  border: 1.5rpx solid rgba(232, 184, 86, 0.38);
+  box-shadow:
+    inset 2rpx 0 12rpx rgba(255, 229, 154, 0.24),
+    inset -2rpx 0 12rpx rgba(0, 0, 0, 0.54),
+    0 5rpx 14rpx rgba(0, 0, 0, 0.24);
+}
+
+.page.room-screen .seat-stage-cup .figma-cup__shine,
+.page.room-screen .ghost-cup .figma-cup__shine {
+  left: 13rpx;
+  width: 9rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 238, 0.86) 0%, rgba(255, 216, 124, 0.16) 100%);
+  opacity: 0.84;
+}
+
+.page.room-screen .room-self__dice-cup.has-dice,
+.page.room-screen .room-self__dice-cup.is-covered {
+  filter:
+    drop-shadow(0 20rpx 36rpx rgba(0, 0, 0, 0.62))
+    drop-shadow(0 0 28rpx rgba(238, 186, 87, 0.24));
+}
+
+.page.room-screen .room-self__dice-cup.has-dice .room-self__dice-glass,
+.page.room-screen .room-self__dice-cup.is-covered .room-self__dice-glass {
+  background:
+    radial-gradient(circle at 26% 10%, rgba(255, 255, 234, 0.28) 0%, rgba(255, 255, 234, 0) 27%),
+    radial-gradient(circle at 76% 18%, rgba(255, 217, 116, 0.18) 0%, rgba(255, 217, 116, 0) 30%),
+    linear-gradient(104deg, rgba(255, 237, 181, 0.24) 0%, rgba(116, 70, 26, 0.12) 28%, rgba(10, 10, 13, 0.32) 68%, rgba(219, 163, 58, 0.16) 100%),
+    linear-gradient(180deg, rgba(73, 50, 37, 0.34) 0%, rgba(22, 19, 21, 0.46) 48%, rgba(5, 5, 7, 0.56) 100%);
+  border-top-color: rgba(255, 241, 190, 0.42);
+  border-left-color: rgba(255, 217, 129, 0.24);
+  border-right-color: rgba(81, 46, 8, 0.36);
+  border-bottom-color: rgba(226, 169, 65, 0.24);
+  box-shadow:
+    0 30rpx 50rpx rgba(0, 0, 0, 0.64),
+    0 0 44rpx rgba(229, 176, 67, 0.2),
+    inset 0 18rpx 30rpx rgba(255, 239, 190, 0.22),
+    inset 20rpx 0 34rpx rgba(255, 214, 128, 0.1),
+    inset -18rpx 0 34rpx rgba(0, 0, 0, 0.42),
+    inset 0 -12rpx 24rpx rgba(0, 0, 0, 0.46);
+}
+
+.page.room-screen .room-self__dice-rim {
+  background:
+    linear-gradient(180deg, rgba(255, 250, 219, 0.86) 0%, rgba(236, 184, 77, 0.56) 42%, rgba(80, 47, 10, 0.16) 100%);
+  box-shadow:
+    0 3rpx 12rpx rgba(45, 25, 4, 0.44),
+    inset 0 2rpx 0 rgba(255, 255, 232, 0.62),
+    inset 0 -5rpx 12rpx rgba(72, 38, 3, 0.36);
+}
+
+.page.room-screen .room-self__dice-gloss {
+  display: block;
+  left: 30rpx;
+  top: 32rpx;
+  width: 31rpx;
+  height: 120rpx;
+  transform: rotate(8deg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 246, 0.82) 0%, rgba(255, 222, 137, 0.24) 38%, rgba(255, 222, 137, 0) 100%);
+  opacity: 0.88;
+}
+
+.page.room-screen .room-self__dice-glass::after {
+  content: "";
+  position: absolute;
+  right: 28rpx;
+  top: 38rpx;
+  width: 42rpx;
+  height: 42rpx;
+  transform: rotate(45deg);
+  border-radius: 10rpx;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 218, 124, 0) 100%);
+  opacity: 0.56;
+}
+
+.page.room-screen .room-self__die {
+  z-index: 1;
+  filter:
+    drop-shadow(0 10rpx 18rpx rgba(0, 0, 0, 0.58))
+    drop-shadow(0 0 11rpx rgba(238, 184, 76, 0.22));
+}
+
+.page.room-screen .room-self__die-slot::before,
+.page.room-screen .room-self__die-slot::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 18rpx;
+}
+
+.page.room-screen .room-self__die-slot::before {
+  left: 4rpx;
+  right: 4rpx;
+  top: 8rpx;
+  bottom: 0;
+  z-index: 0;
+  background:
+    radial-gradient(circle, rgba(255, 218, 117, 0.4) 0%, rgba(203, 128, 30, 0.15) 48%, rgba(203, 128, 30, 0) 80%);
+  filter: blur(8rpx);
+}
+
+.page.room-screen .room-self__die-slot::after {
+  left: 8rpx;
+  top: 6rpx;
+  z-index: 2;
+  width: 23rpx;
+  height: 11rpx;
+  transform: rotate(-24deg);
+  background: linear-gradient(90deg, rgba(255, 255, 246, 0.66) 0%, rgba(255, 255, 246, 0) 100%);
+  opacity: 0.78;
+}

@@ -25,9 +25,8 @@ function countVisiblePips(svgSource) {
   return [...String(svgSource || "").matchAll(/fill="(?:var\(--fill-0,\s*)?#(?:1A1A2E|CC2020|55766D)\)?"|fill="#55766D"/g)].length;
 }
 
-function countThemePips(svgSource, color) {
-  const escaped = String(color).replace("#", "\\#");
-  return [...String(svgSource || "").matchAll(new RegExp(`<circle[^>]+fill="${escaped}"`, "g"))].length;
+function countPremiumPips(svgSource) {
+  return [...String(svgSource || "").matchAll(/<circle\s/g)].length;
 }
 
 test("shared dice assets: all stage dice map to complete dice bodies", () => {
@@ -52,27 +51,21 @@ test("shared dice assets: all stage dice map to complete dice bodies", () => {
   }
 });
 
-test("shared dice assets: self dice expose ruby and sapphire material sets", () => {
+test("shared dice assets: self dice use one premium material set across room themes", () => {
   const diceAssets = loadSharedDiceAssets();
-  const themed = diceAssets.THEMED_SELF_DICE_FACE_ASSETS;
+  const premium = diceAssets.PREMIUM_SELF_DICE_FACE_ASSETS;
 
-  assert.equal(diceAssets.getSelfDieAsset(3, "ruby-red"), themed["ruby-red"][3]);
-  assert.equal(diceAssets.getSelfDieAsset(3, "sapphire-blue"), themed["sapphire-blue"][3]);
-  assert.equal(diceAssets.getSelfDieAsset(3, "jade-green"), diceAssets.DICE_FACE_ASSETS[3]);
+  assert.equal(diceAssets.getSelfDieAsset(3, "ruby-red"), premium[3]);
+  assert.equal(diceAssets.getSelfDieAsset(3, "sapphire-blue"), premium[3]);
+  assert.equal(diceAssets.getSelfDieAsset(3, "jade-green"), premium[3]);
+  assert.deepEqual(Object.keys(premium).map(Number).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6]);
 
-  for (const [themeId, pipColor] of Object.entries({
-    "ruby-red": "#6E0819",
-    "sapphire-blue": "#053D8E"
-  })) {
-    const assetMap = themed[themeId];
-    assert.deepEqual(Object.keys(assetMap).map(Number).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6]);
-
-    for (const [point, asset] of Object.entries(assetMap)) {
-      const assetPath = resolveMiniprogramAssetPath(asset);
-      const svg = fs.readFileSync(assetPath, "utf8");
-      assert.match(svg, /linearGradient id="(rubyBody|sapphireBody)"/);
-      assert.equal(countThemePips(svg, pipColor), Number(point));
-    }
+  for (const [point, asset] of Object.entries(premium)) {
+    const assetPath = resolveMiniprogramAssetPath(asset);
+    const svg = fs.readFileSync(assetPath, "utf8");
+    assert.match(svg, /linearGradient id="goldEdge"/);
+    assert.match(svg, /radialGradient id="ivoryFace"/);
+    assert.equal(countPremiumPips(svg), Number(point));
   }
 });
 
