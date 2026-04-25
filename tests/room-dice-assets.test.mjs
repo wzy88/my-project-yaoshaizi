@@ -26,7 +26,7 @@ function countVisiblePips(svgSource) {
 }
 
 function countPremiumPips(svgSource) {
-  return [...String(svgSource || "").matchAll(/<circle\s/g)].length;
+  return [...String(svgSource || "").matchAll(/class="top-pip"/g)].length;
 }
 
 test("shared dice assets: all stage dice map to complete dice bodies", () => {
@@ -63,8 +63,10 @@ test("shared dice assets: self dice use one premium material set across room the
   for (const [point, asset] of Object.entries(premium)) {
     const assetPath = resolveMiniprogramAssetPath(asset);
     const svg = fs.readFileSync(assetPath, "utf8");
-    assert.match(svg, /linearGradient id="goldEdge"/);
-    assert.match(svg, /radialGradient id="ivoryFace"/);
+    assert.match(svg, /id="topFace"/);
+    assert.match(svg, /id="frontFace"/);
+    assert.match(svg, /id="rightFace"/);
+    assert.match(svg, /<ellipse cx="46" cy="67"/);
     assert.equal(countPremiumPips(svg), Number(point));
   }
 });
