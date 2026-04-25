@@ -1,4 +1,4 @@
-<view class="page room-screen room-phase-{{phase}} {{devtoolsMode ? 'is-perf-lite' : ''}}">
+<view class="page room-screen room-phase-{{phase}} {{roomThemeClass}} {{devtoolsMode ? 'is-perf-lite' : ''}}">
   <view class="room-screen__aurora"></view>
   <image class="room-screen__grain" src="/assets/figma-room-v2/4aa13b7c-1fb7-4d86-b2ae-da70ffc61b8f.svg" mode="aspectFill"></image>
   <view class="room-screen__stars">

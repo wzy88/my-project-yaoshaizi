@@ -49,6 +49,24 @@ test("room shell keeps the room id centered while moving share into the left-top
   assert.match(wxss, /\.room-topbar-menu-popover__text\s*\{/);
 });
 
+test("room shell supports experimental room theme classes without changing the default skin", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  const scriptPath = path.join(process.cwd(), "miniprogram/pages/room/room.js");
+  const script = fs.readFileSync(scriptPath, "utf8");
+
+  assert.match(wxml, /room-phase-\{\{phase\}\} \{\{roomThemeClass\}\}/);
+  assert.match(script, /roomThemeId:\s*DEFAULT_ROOM_THEME_ID/);
+  assert.match(script, /roomThemeClass:\s*buildRoomThemeClass\(DEFAULT_ROOM_THEME_ID\)/);
+  assert.match(script, /themeId:\s*normalizeRoomThemeId\(this\.data\.createRoomThemeId\)/);
+  assert.match(script, /const incomingThemeId = roomConfig && roomConfig\.themeId/);
+  assert.match(script, /normalizeRoomThemeId\(this\.data\.createRoomThemeId \|\| this\.data\.roomThemeId\)/);
+  assert.match(wxss, /\.page\.room-theme-ruby-red \.room-stage__table-frame\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-sapphire-blue \.room-stage__table-frame\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-ruby-red \.seat__bubble\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-sapphire-blue \.room-fab\s*\{/);
+});
+
 test("room shell renders an in-room custom settings sheet instead of a native-looking menu", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const wxss = fs.readFileSync(roomWxssPath, "utf8");

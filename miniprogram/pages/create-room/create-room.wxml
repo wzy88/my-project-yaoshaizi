@@ -41,6 +41,11 @@
         <text class="create-note-card__desc">默认每人 5 颗骰子。创建后会直接进入房间，空位会保留杯位但不显示头像。</text>
       </view>
 
+      <view wx:if="{{devtoolsMode}}" class="create-note-card create-note-card--experiment">
+        <text class="create-note-card__title">测试主题</text>
+        <text class="create-note-card__desc">测试环境会随机带入 {{themePreviewId}}，用于验证牌桌、气泡和按钮换皮。</text>
+      </view>
+
       <view class="create-actions">
         <button class="create-btn" bindtap="createAndEnter">创建并进入</button>
         <button class="cancel-btn" bindtap="back">取消</button>

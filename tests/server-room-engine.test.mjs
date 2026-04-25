@@ -38,6 +38,22 @@ test("room engine: startGame requires >=2 players and enters rolling", () => {
   assert.equal(engine.getState().phase, "rolling");
 });
 
+test("room engine: theme config is normalized with a safe default", () => {
+  const defaultThemeEngine = createEngine();
+  assert.equal(defaultThemeEngine.getState().config.themeId, "jade-green");
+
+  const themedEngine = new RoomEngine("T20002", { id: "P1", nickname: "p1", avatar: "" }, {
+    direction: "cw",
+    wildcardOneEnabled: true,
+    openMode: "single",
+    dicePerPlayer: 5,
+    minOpeningCount: 2,
+    testMode: true,
+    themeId: "sapphire-blue"
+  });
+  assert.equal(themedEngine.getState().config.themeId, "sapphire-blue");
+});
+
 test("room engine: roll capped at 5; lock prevents further roll", () => {
   const engine = createEngine();
   engine.startGame("P_OWNER");

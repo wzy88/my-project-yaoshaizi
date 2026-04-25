@@ -8,6 +8,7 @@ import {
   type OpenResultDTO,
   type RoomConfigDTO,
   type RoomDirection,
+  type RoomThemeId,
   type PlayerState,
   type RoomPhase,
   type RoomStateDTO,
@@ -74,6 +75,14 @@ class SeededRng {
     const range = max - min;
     return min + (this.nextUint32() % range);
   }
+}
+
+const DEFAULT_ROOM_THEME_ID: RoomThemeId = "jade-green";
+const ROOM_THEME_IDS = new Set<RoomThemeId>(["jade-green", "ruby-red", "sapphire-blue"]);
+
+function normalizeRoomThemeId(input: unknown): RoomThemeId {
+  const value = String(input || "").trim() as RoomThemeId;
+  return ROOM_THEME_IDS.has(value) ? value : DEFAULT_ROOM_THEME_ID;
 }
 
 export class RoomEngine {
@@ -1107,7 +1116,8 @@ export class RoomEngine {
       openMode: input.openMode === "multi" ? "multi" : "single",
       dicePerPlayer,
       minOpeningCount,
-      testMode: Boolean(input.testMode)
+      testMode: Boolean(input.testMode),
+      themeId: normalizeRoomThemeId(input.themeId)
     };
   }
 

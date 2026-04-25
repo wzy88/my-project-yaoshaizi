@@ -13,9 +13,12 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   const script = fs.readFileSync(createRoomScriptPath, "utf8");
 
   assert.match(script, /const app = getApp\(\);/);
+  assert.match(script, /require\("\.\.\/\.\.\/utils\/room-themes"\)/);
   assert.match(script, /playerCount:\s*8/);
   assert.match(script, /devtoolsMode:\s*false/);
   assert.match(script, /app\.globalData && app\.globalData\.isDevtoolsMode/);
+  assert.match(script, /themePreviewId:\s*DEFAULT_ROOM_THEME_ID/);
+  assert.match(script, /devtoolsMode \? pickRandomRoomThemeId\(\) : DEFAULT_ROOM_THEME_ID/);
   assert.doesNotMatch(script, /playerCountOptions/);
   assert.doesNotMatch(script, /allowSpectator/);
   assert.doesNotMatch(script, /lockRoom/);
@@ -31,12 +34,14 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxml, /房间始终保留 8 个座位，来几个人算几个人，最多 8 人同局。/);
   assert.match(wxml, /class="toggle-card__signal \{\{wildcardOneEnabled \? 'is-on' : 'is-off'\}\}"/);
   assert.match(wxml, /class="create-note-card"/);
+  assert.match(wxml, /wx:if="\{\{devtoolsMode\}\}" class="create-note-card create-note-card--experiment"/);
   assert.match(wxml, /class="create-actions"/);
   assert.doesNotMatch(wxml, /允许旁观/);
   assert.doesNotMatch(wxml, /锁定房间/);
   assert.doesNotMatch(wxml, /测试模式/);
   assert.doesNotMatch(script, /\btestMode:\s*false/);
   assert.match(script, /&testMode=0/);
+  assert.match(script, /&themeId=\$\{themeId\}/);
   assert.doesNotMatch(script, /playerCount=\$\{/);
   assert.doesNotMatch(script, /allowSpectator=/);
   assert.doesNotMatch(script, /lockRoom=/);
@@ -48,6 +53,7 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxss, /\.create-sheet__glow--a\s*\{/);
   assert.match(wxss, /\.toggle-card__signal\.is-on\s*\{/);
   assert.match(wxss, /\.create-note-card\s*\{/);
+  assert.match(wxss, /\.create-note-card--experiment\s*\{/);
   assert.match(wxss, /\.create-btn\s*\{/);
   assert.match(wxss, /\.room-form-card\s*\{/);
   assert.match(wxss, /\.room-form-card__title\s*\{/);

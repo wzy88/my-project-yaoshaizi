@@ -1,5 +1,11 @@
 const app = getApp();
 const { NICKNAME_KEY } = require("../../utils/constants");
+const {
+  DEFAULT_ROOM_THEME_ID,
+  ROOM_THEME_IDS,
+  normalizeRoomThemeId,
+  pickRandomRoomThemeId
+} = require("../../utils/room-themes");
 
 function safeDecodeComponent(raw) {
   const value = String(raw || "");
@@ -17,16 +23,20 @@ Page({
     nickname: "",
     devtoolsMode: false,
     playerCount: 8,
-    wildcardOneEnabled: true
+    wildcardOneEnabled: true,
+    themePreviewId: DEFAULT_ROOM_THEME_ID,
+    themePreviewOptions: ROOM_THEME_IDS
   },
 
   onLoad(options) {
     const optNickname = safeDecodeComponent(options && options.nickname).trim();
     const cachedNickname = safeDecodeComponent(wx.getStorageSync(NICKNAME_KEY)).trim();
     const nickname = optNickname || cachedNickname;
+    const devtoolsMode = Boolean(app && app.globalData && app.globalData.isDevtoolsMode);
     this.setData({
-      devtoolsMode: Boolean(app && app.globalData && app.globalData.isDevtoolsMode),
-      nickname: nickname || `玩家${Math.floor(Math.random() * 1000)}`
+      devtoolsMode,
+      nickname: nickname || `玩家${Math.floor(Math.random() * 1000)}`,
+      themePreviewId: devtoolsMode ? pickRandomRoomThemeId() : DEFAULT_ROOM_THEME_ID
     });
   },
 
@@ -40,9 +50,12 @@ Page({
     const direction = "cw";
     const dicePerPlayer = 5;
     const minOpeningCount = 5;
+    const themeId = this.data.devtoolsMode
+      ? normalizeRoomThemeId(this.data.themePreviewId || pickRandomRoomThemeId())
+      : DEFAULT_ROOM_THEME_ID;
 
     wx.navigateTo({
-      url: `/pages/room/room?mode=create&forceNew=1&nickname=${encodeURIComponent(this.data.nickname || "")}&direction=${direction}&wildcardOneEnabled=${this.data.wildcardOneEnabled ? "1" : "0"}&dicePerPlayer=${dicePerPlayer}&minOpeningCount=${minOpeningCount}&testMode=0`
+      url: `/pages/room/room?mode=create&forceNew=1&nickname=${encodeURIComponent(this.data.nickname || "")}&direction=${direction}&wildcardOneEnabled=${this.data.wildcardOneEnabled ? "1" : "0"}&dicePerPlayer=${dicePerPlayer}&minOpeningCount=${minOpeningCount}&testMode=0&themeId=${themeId}`
     });
   },
 

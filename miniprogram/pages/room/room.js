@@ -16,6 +16,11 @@ const {
   HAPTIC_ENABLED_KEY
 } = require("../../utils/constants");
 const { DEFAULT_3D_DIE_ASSET, SELF_DICE_PLACEHOLDER, getDieAsset } = require("../../utils/dice-assets");
+const {
+  DEFAULT_ROOM_THEME_ID,
+  normalizeRoomThemeId,
+  buildRoomThemeClass
+} = require("../../utils/room-themes");
 const { getStoredAccountSession, clearAccountSession } = require("../../utils/account-api");
 const { getStoredWechatProfile } = require("../../utils/wechat-auth");
 const {
@@ -1386,6 +1391,9 @@ Page({
     createDicePerPlayer: "5",
     createMinOpeningCount: "5",
     createTestMode: false,
+    createRoomThemeId: DEFAULT_ROOM_THEME_ID,
+    roomThemeId: DEFAULT_ROOM_THEME_ID,
+    roomThemeClass: buildRoomThemeClass(DEFAULT_ROOM_THEME_ID),
     devtoolsMode: false,
     roomId: "",
     displayRoomId: "------",
@@ -1829,13 +1837,17 @@ Page({
       const dicePerPlayer = String(options.dicePerPlayer || "5").trim();
       const minOpeningCount = String(options.minOpeningCount || "5").trim();
       const testMode = String(options.testMode || "0") === "1";
+      const themeId = normalizeRoomThemeId(options.themeId);
 
       this.setData({
         createDirection: direction,
         createWildcardOneEnabled: wildcardOneEnabled,
         createDicePerPlayer: dicePerPlayer,
         createMinOpeningCount: minOpeningCount,
-        createTestMode: testMode
+        createTestMode: testMode,
+        createRoomThemeId: themeId,
+        roomThemeId: themeId,
+        roomThemeClass: buildRoomThemeClass(themeId)
       });
 
       try {
@@ -2457,7 +2469,8 @@ Page({
       openMode: "single",
       dicePerPlayer,
       minOpeningCount,
-      testMode: Boolean(this.data.createTestMode)
+      testMode: Boolean(this.data.createTestMode),
+      themeId: normalizeRoomThemeId(this.data.createRoomThemeId)
     };
   },
 
@@ -4288,6 +4301,10 @@ Page({
         const waitingPlayersRaw = payload.waitingPlayers || [];
         this.clearStoredSessionIfSelfMissing(roomId, playersRaw, waitingPlayersRaw);
         const roomConfig = payload.config || null;
+        const incomingThemeId = roomConfig && roomConfig.themeId;
+        const roomThemeId = incomingThemeId
+          ? normalizeRoomThemeId(incomingThemeId)
+          : normalizeRoomThemeId(this.data.createRoomThemeId || this.data.roomThemeId);
         const playerCount = Array.isArray(playersRaw) ? playersRaw.length : 0;
         const validTargets = (this.data.selectedTargetIds || []).filter((id) => {
           return playersRaw.some((player) => player.id === id && player.id !== this.data.playerId);
@@ -4528,6 +4545,8 @@ Page({
           primaryActionText,
           canPrimaryAction,
           roomConfig,
+          roomThemeId,
+          roomThemeClass: buildRoomThemeClass(roomThemeId),
           playersRaw,
           playersDecorated,
           ghostSeats,
@@ -5191,6 +5210,8 @@ Page({
       primaryActionText: "开始",
       canPrimaryAction: false,
       roomConfig: null,
+      roomThemeId: DEFAULT_ROOM_THEME_ID,
+      roomThemeClass: buildRoomThemeClass(DEFAULT_ROOM_THEME_ID),
       playersRaw: [],
       playersDecorated: [],
       ghostSeats: [],
