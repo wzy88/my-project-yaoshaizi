@@ -65,6 +65,12 @@ test("room shell supports experimental room theme classes without changing the d
   assert.match(wxss, /\.page\.room-theme-sapphire-blue \.room-stage__table-frame\s*\{/);
   assert.match(wxss, /\.page\.room-theme-ruby-red \.seat__bubble\s*\{/);
   assert.match(wxss, /\.page\.room-theme-sapphire-blue \.room-fab\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-ruby-red \.room-self__die\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-sapphire-blue \.room-self__die-slot::before\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-ruby-red \.seat-stage-cup \.figma-cup__rim/);
+  assert.match(wxss, /\.page\.room-theme-sapphire-blue \.room-self__dice-rim\s*\{/);
+  assert.match(script, /getSelfDieAsset/);
+  assert.match(script, /buildDiceFaceItems\(this\.data\.privateDice,\s*roomThemeId\)/);
 });
 
 test("room shell renders an in-room custom settings sheet instead of a native-looking menu", () => {

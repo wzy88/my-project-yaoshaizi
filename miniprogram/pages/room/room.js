@@ -15,7 +15,7 @@ const {
   TURN_ALERT_SFX_ENABLED_KEY,
   HAPTIC_ENABLED_KEY
 } = require("../../utils/constants");
-const { DEFAULT_3D_DIE_ASSET, SELF_DICE_PLACEHOLDER, getDieAsset } = require("../../utils/dice-assets");
+const { SELF_DICE_PLACEHOLDER, getDieAsset, getSelfDieAsset } = require("../../utils/dice-assets");
 const {
   DEFAULT_ROOM_THEME_ID,
   normalizeRoomThemeId,
@@ -79,25 +79,24 @@ function buildSelfDiceFallback(count = SELF_DICE_PLACEHOLDER.length) {
   return Array.from({ length: expected }, (_, index) => SELF_DICE_PLACEHOLDER[index % SELF_DICE_PLACEHOLDER.length]);
 }
 
-function buildSelfCupDieItem(value, index, revealed = true) {
+function buildSelfCupDieItem(value, index, revealed = true, themeId = DEFAULT_ROOM_THEME_ID) {
   return {
     value: Number(value) || 0,
-    asset: getDieAsset(value),
+    asset: getSelfDieAsset(value, themeId),
     stackClass: `stack-${index % 5}`,
     motionClass: `motion-${index % 5}`,
     revealed: Boolean(revealed)
   };
 }
 
-function buildSelfDiceDisplayItems() {
+function buildSelfDiceDisplayItems(themeId = DEFAULT_ROOM_THEME_ID) {
   return Array.from({ length: 5 }, (_, index) => ({
-    ...buildSelfCupDieItem(0, index, false),
-    asset: DEFAULT_3D_DIE_ASSET
+    ...buildSelfCupDieItem(SELF_DICE_PLACEHOLDER[index % SELF_DICE_PLACEHOLDER.length], index, false, themeId)
   }));
 }
 
-function buildDiceFaceItems(values) {
-  return (Array.isArray(values) ? values : []).map((value, index) => buildSelfCupDieItem(value, index, true));
+function buildDiceFaceItems(values, themeId = DEFAULT_ROOM_THEME_ID) {
+  return (Array.isArray(values) ? values : []).map((value, index) => buildSelfCupDieItem(value, index, true, themeId));
 }
 
 function isSelfRollSlotRevealed(slotIndex, revealCount) {
@@ -105,14 +104,14 @@ function isSelfRollSlotRevealed(slotIndex, revealCount) {
   return ROOM_SELF_REVEAL_ORDER.slice(0, count).includes(slotIndex);
 }
 
-function buildSelfRollDisplayItems({ count = 5, finalDice = [], revealCount = 0 }) {
+function buildSelfRollDisplayItems({ count = 5, finalDice = [], revealCount = 0 }, themeId = DEFAULT_ROOM_THEME_ID) {
   const size = Math.max(1, Number(count) || 5);
   const rollingValues = buildRandomDiceValues(size);
 
   return Array.from({ length: size }, (_, index) => {
     const finalValue = Number(finalDice[index]) || 0;
     const revealed = finalValue >= 1 && finalValue <= 6 && isSelfRollSlotRevealed(index, revealCount);
-    return buildSelfCupDieItem(revealed ? finalValue : rollingValues[index], index, revealed);
+    return buildSelfCupDieItem(revealed ? finalValue : rollingValues[index], index, revealed, themeId);
   });
 }
 
@@ -3037,7 +3036,9 @@ Page({
       myDiceRevealing: false,
       myDiceJustRevealed: false,
       myDiceCovered: hasStableDice && shouldShowDice ? Boolean(this.data.myDiceCovered) : false,
-      roomSelfDiceFaces: hasStableDice ? buildDiceFaceItems(stableDice) : buildSelfDiceDisplayItems()
+      roomSelfDiceFaces: hasStableDice
+        ? buildDiceFaceItems(stableDice, this.data.roomThemeId)
+        : buildSelfDiceDisplayItems(this.data.roomThemeId)
     });
   },
 
@@ -3059,7 +3060,7 @@ Page({
         count: expected,
         finalDice: this.pendingPrivateDice,
         revealCount: this.selfRollRevealCount
-      })
+      }, this.data.roomThemeId)
     });
   },
 
@@ -3099,7 +3100,7 @@ Page({
           myDiceRevealing: false,
           myDiceJustRevealed: true,
           myDiceCovered: false,
-          roomSelfDiceFaces: buildDiceFaceItems(this.pendingPrivateDice)
+          roomSelfDiceFaces: buildDiceFaceItems(this.pendingPrivateDice, this.data.roomThemeId)
         });
         this.myDiceRevealTimer = setTimeout(() => {
           if (actionId !== this.currentSelfRollActionId) {
@@ -3152,7 +3153,7 @@ Page({
       myDiceRevealing: false,
       myDiceJustRevealed: false,
       myDiceCovered: false,
-      roomSelfDiceFaces: buildSelfRollDisplayItems({ count: expected })
+      roomSelfDiceFaces: buildSelfRollDisplayItems({ count: expected }, this.data.roomThemeId)
     });
     this.startRoomSelfRolling(expected, actionId);
 
@@ -3186,7 +3187,7 @@ Page({
       myDiceRevealing: false,
       myDiceJustRevealed: false,
       myDiceCovered: false,
-      roomSelfDiceFaces: buildDiceFaceItems(display)
+      roomSelfDiceFaces: buildDiceFaceItems(display, this.data.roomThemeId)
     });
   },
 
@@ -3352,7 +3353,7 @@ Page({
       settlementCanContinue: false,
       settlementContinueSec: 0,
       privateDice: [],
-      roomSelfDiceFaces: buildSelfDiceDisplayItems(),
+      roomSelfDiceFaces: buildSelfDiceDisplayItems(this.data.roomThemeId),
       selfHasDice: false,
       selfHasCalled: false,
       selfRollCountThisRound: 0,
@@ -4483,7 +4484,7 @@ Page({
         const myDicePeekVisible = !selfIsWaiting && phase !== "ended" && !this.data.myDiceVisible && hasDice;
         const roomSelfDiceFaces = (this.data.myDiceRolling || this.data.myDiceRevealing)
           ? this.data.roomSelfDiceFaces
-          : (hasDice ? buildDiceFaceItems(this.data.privateDice) : buildSelfDiceDisplayItems());
+          : (hasDice ? buildDiceFaceItems(this.data.privateDice, roomThemeId) : buildSelfDiceDisplayItems(roomThemeId));
 
         let primaryActionText = "开始";
         let canPrimaryAction = false;
@@ -4587,7 +4588,7 @@ Page({
           callTimeline,
           lastCallKey,
           turnCountdownSec: this.data.turnCountdownSec,
-          roomSelfDiceFaces: (selfIsWaiting || roundChanged) ? buildSelfDiceDisplayItems() : roomSelfDiceFaces,
+          roomSelfDiceFaces: (selfIsWaiting || roundChanged) ? buildSelfDiceDisplayItems(roomThemeId) : roomSelfDiceFaces,
           myDiceVisible: (selfIsWaiting || phase === "ended" || roundChanged) ? false : this.data.myDiceVisible,
           myDicePeekVisible: selfIsWaiting ? false : myDicePeekVisible,
           myDiceRolling: (selfIsWaiting || phase === "ended" || roundChanged) ? false : this.data.myDiceRolling,
@@ -4751,7 +4752,7 @@ Page({
             myDiceCovered: false,
             roomSelfDiceFaces: buildDiceFaceItems(finalDice.length === expected
               ? finalDice
-              : buildSelfDiceFallback(expected))
+              : buildSelfDiceFallback(expected), this.data.roomThemeId)
           });
 
           this.myDiceRevealTimer = setTimeout(() => {
@@ -5241,7 +5242,7 @@ Page({
       myDiceRevealing: false,
       myDiceJustRevealed: false,
       myDiceCovered: false,
-      roomSelfDiceFaces: buildSelfDiceDisplayItems(),
+      roomSelfDiceFaces: buildSelfDiceDisplayItems(this.data.roomThemeId),
       historyItems: [],
       historyNextBeforeRound: null,
       historyVisible: false,
@@ -5447,7 +5448,7 @@ Page({
       myDiceRevealing: false,
       myDiceJustRevealed: false,
       myDiceCovered: false,
-      roomSelfDiceFaces: buildSelfDiceDisplayItems(),
+      roomSelfDiceFaces: buildSelfDiceDisplayItems(this.data.roomThemeId),
       selfRollLocked: false,
       selfRollCountThisRound: 0,
     });

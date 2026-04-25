@@ -25,6 +25,11 @@ function countVisiblePips(svgSource) {
   return [...String(svgSource || "").matchAll(/fill="(?:var\(--fill-0,\s*)?#(?:1A1A2E|CC2020|55766D)\)?"|fill="#55766D"/g)].length;
 }
 
+function countThemePips(svgSource, color) {
+  const escaped = String(color).replace("#", "\\#");
+  return [...String(svgSource || "").matchAll(new RegExp(`<circle[^>]+fill="${escaped}"`, "g"))].length;
+}
+
 test("shared dice assets: all stage dice map to complete dice bodies", () => {
   const diceAssets = loadSharedDiceAssets();
   const assetMap = new Map(Object.entries(diceAssets.DICE_FACE_ASSETS).map(([point, asset]) => [Number(point), asset]));
@@ -44,6 +49,30 @@ test("shared dice assets: all stage dice map to complete dice bodies", () => {
       point,
       `point ${point} asset should render ${point} visible pip(s)`
     );
+  }
+});
+
+test("shared dice assets: self dice expose ruby and sapphire material sets", () => {
+  const diceAssets = loadSharedDiceAssets();
+  const themed = diceAssets.THEMED_SELF_DICE_FACE_ASSETS;
+
+  assert.equal(diceAssets.getSelfDieAsset(3, "ruby-red"), themed["ruby-red"][3]);
+  assert.equal(diceAssets.getSelfDieAsset(3, "sapphire-blue"), themed["sapphire-blue"][3]);
+  assert.equal(diceAssets.getSelfDieAsset(3, "jade-green"), diceAssets.DICE_FACE_ASSETS[3]);
+
+  for (const [themeId, pipColor] of Object.entries({
+    "ruby-red": "#6E0819",
+    "sapphire-blue": "#053D8E"
+  })) {
+    const assetMap = themed[themeId];
+    assert.deepEqual(Object.keys(assetMap).map(Number).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6]);
+
+    for (const [point, asset] of Object.entries(assetMap)) {
+      const assetPath = resolveMiniprogramAssetPath(asset);
+      const svg = fs.readFileSync(assetPath, "utf8");
+      assert.match(svg, /linearGradient id="(rubyBody|sapphireBody)"/);
+      assert.equal(countThemePips(svg, pipColor), Number(point));
+    }
   }
 });
 
