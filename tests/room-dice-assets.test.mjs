@@ -25,10 +25,6 @@ function countVisiblePips(svgSource) {
   return [...String(svgSource || "").matchAll(/fill="(?:var\(--fill-0,\s*)?#(?:1A1A2E|CC2020|55766D)\)?"|fill="#55766D"/g)].length;
 }
 
-function countPremiumPips(svgSource) {
-  return [...String(svgSource || "").matchAll(/class="top-pip"/g)].length;
-}
-
 test("shared dice assets: all stage dice map to complete dice bodies", () => {
   const diceAssets = loadSharedDiceAssets();
   const assetMap = new Map(Object.entries(diceAssets.DICE_FACE_ASSETS).map(([point, asset]) => [Number(point), asset]));
@@ -51,24 +47,13 @@ test("shared dice assets: all stage dice map to complete dice bodies", () => {
   }
 });
 
-test("shared dice assets: self dice use one premium material set across room themes", () => {
+test("shared dice assets: self dice fall back to the standard room dice assets across themes", () => {
   const diceAssets = loadSharedDiceAssets();
-  const premium = diceAssets.PREMIUM_SELF_DICE_FACE_ASSETS;
-
-  assert.equal(diceAssets.getSelfDieAsset(3, "ruby-red"), premium[3]);
-  assert.equal(diceAssets.getSelfDieAsset(3, "sapphire-blue"), premium[3]);
-  assert.equal(diceAssets.getSelfDieAsset(3, "jade-green"), premium[3]);
-  assert.deepEqual(Object.keys(premium).map(Number).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6]);
-
-  for (const [point, asset] of Object.entries(premium)) {
-    const assetPath = resolveMiniprogramAssetPath(asset);
-    const svg = fs.readFileSync(assetPath, "utf8");
-    assert.match(svg, /id="topFace"/);
-    assert.match(svg, /id="frontFace"/);
-    assert.match(svg, /id="rightFace"/);
-    assert.match(svg, /<ellipse cx="46" cy="67"/);
-    assert.equal(countPremiumPips(svg), Number(point));
-  }
+  assert.equal(diceAssets.getSelfDieAsset(3, "ruby-red"), diceAssets.DICE_FACE_ASSETS[3]);
+  assert.equal(diceAssets.getSelfDieAsset(3, "sapphire-blue"), diceAssets.DICE_FACE_ASSETS[3]);
+  assert.equal(diceAssets.getSelfDieAsset(3, "jade-green"), diceAssets.DICE_FACE_ASSETS[3]);
+  assert.equal(diceAssets.getSelfDieAsset(3, "imperial-red"), diceAssets.DICE_FACE_ASSETS[3]);
+  assert.equal(diceAssets.getSelfDieAsset(3, "mist-ivory"), diceAssets.DICE_FACE_ASSETS[3]);
 });
 
 test("shared dice assets: room, index, and lobby all consume the common module", () => {

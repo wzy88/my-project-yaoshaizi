@@ -6,7 +6,7 @@ export type NetworkHealth = "good" | "lag" | "disconnected";
 export type RoomDirection = "cw" | "ccw";
 export type OpenMode = "single" | "multi";
 export type AccountProvider = "wechat";
-export type RoomThemeId = "jade-green" | "ruby-red" | "sapphire-blue";
+export type RoomThemeId = "jade-green" | "ruby-red" | "sapphire-blue" | "imperial-red" | "mist-ivory";
 
 export interface RoomConfigDTO {
   direction: RoomDirection;

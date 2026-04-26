@@ -78,7 +78,7 @@ class SeededRng {
 }
 
 const DEFAULT_ROOM_THEME_ID: RoomThemeId = "jade-green";
-const ROOM_THEME_IDS = new Set<RoomThemeId>(["jade-green", "ruby-red", "sapphire-blue"]);
+const ROOM_THEME_IDS = new Set<RoomThemeId>(["jade-green", "ruby-red", "sapphire-blue", "imperial-red", "mist-ivory"]);
 
 function normalizeRoomThemeId(input: unknown): RoomThemeId {
   const value = String(input || "").trim() as RoomThemeId;

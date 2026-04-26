@@ -3,7 +3,9 @@ const DEFAULT_ROOM_THEME_ID = "jade-green";
 const ROOM_THEME_IDS = [
   DEFAULT_ROOM_THEME_ID,
   "ruby-red",
-  "sapphire-blue"
+  "sapphire-blue",
+  "imperial-red",
+  "mist-ivory"
 ];
 
 function normalizeRoomThemeId(raw) {

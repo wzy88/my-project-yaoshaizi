@@ -7,15 +7,6 @@ const DICE_FACE_ASSETS = {
   6: "/assets/figma-room-v2/die-face-figma-6.svg"
 };
 
-const PREMIUM_SELF_DICE_FACE_ASSETS = {
-  1: "/assets/figma-room-v2/die-face-premium-1.svg",
-  2: "/assets/figma-room-v2/die-face-premium-2.svg",
-  3: "/assets/figma-room-v2/die-face-premium-3.svg",
-  4: "/assets/figma-room-v2/die-face-premium-4.svg",
-  5: "/assets/figma-room-v2/die-face-premium-5.svg",
-  6: "/assets/figma-room-v2/die-face-premium-6.svg"
-};
-
 const DEFAULT_3D_DIE_ASSET = DICE_FACE_ASSETS[3];
 const SELF_DICE_PLACEHOLDER = [2, 4, 5, 2, 6];
 
@@ -25,8 +16,7 @@ function getDieAsset(point) {
 }
 
 function getSelfDieAsset(point) {
-  const key = Number(point);
-  return PREMIUM_SELF_DICE_FACE_ASSETS[key] || getDieAsset(key);
+  return getDieAsset(point);
 }
 
 function mapDicePointsToAssets(points) {
@@ -39,7 +29,6 @@ const LOBBY_CREATE_DIE_ASSET = getDieAsset(5);
 
 module.exports = {
   DICE_FACE_ASSETS,
-  PREMIUM_SELF_DICE_FACE_ASSETS,
   DEFAULT_3D_DIE_ASSET,
   SELF_DICE_PLACEHOLDER,
   HOME_HERO_DICE_ASSETS,
