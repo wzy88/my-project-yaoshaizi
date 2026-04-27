@@ -7,6 +7,41 @@ const DICE_FACE_ASSETS = {
   6: "/assets/figma-room-v2/die-face-figma-6.svg"
 };
 
+const SELF_DICE_THEME_ASSETS = {
+  "ruby-red": {
+    1: "/assets/room-themes/ruby-red-die-face-1.svg",
+    2: "/assets/room-themes/ruby-red-die-face-2.svg",
+    3: "/assets/room-themes/ruby-red-die-face-3.svg",
+    4: "/assets/room-themes/ruby-red-die-face-4.svg",
+    5: "/assets/room-themes/ruby-red-die-face-5.svg",
+    6: "/assets/room-themes/ruby-red-die-face-6.svg"
+  },
+  "sapphire-blue": {
+    1: "/assets/room-themes/sapphire-blue-die-face-1.svg",
+    2: "/assets/room-themes/sapphire-blue-die-face-2.svg",
+    3: "/assets/room-themes/sapphire-blue-die-face-3.svg",
+    4: "/assets/room-themes/sapphire-blue-die-face-4.svg",
+    5: "/assets/room-themes/sapphire-blue-die-face-5.svg",
+    6: "/assets/room-themes/sapphire-blue-die-face-6.svg"
+  },
+  "imperial-red": {
+    1: "/assets/room-themes/imperial-red-die-face-1.svg",
+    2: "/assets/room-themes/imperial-red-die-face-2.svg",
+    3: "/assets/room-themes/imperial-red-die-face-3.svg",
+    4: "/assets/room-themes/imperial-red-die-face-4.svg",
+    5: "/assets/room-themes/imperial-red-die-face-5.svg",
+    6: "/assets/room-themes/imperial-red-die-face-6.svg"
+  },
+  "mist-ivory": {
+    1: "/assets/room-themes/mist-ivory-die-face-1.svg",
+    2: "/assets/room-themes/mist-ivory-die-face-2.svg",
+    3: "/assets/room-themes/mist-ivory-die-face-3.svg",
+    4: "/assets/room-themes/mist-ivory-die-face-4.svg",
+    5: "/assets/room-themes/mist-ivory-die-face-5.svg",
+    6: "/assets/room-themes/mist-ivory-die-face-6.svg"
+  }
+};
+
 const DEFAULT_3D_DIE_ASSET = DICE_FACE_ASSETS[3];
 const SELF_DICE_PLACEHOLDER = [2, 4, 5, 2, 6];
 
@@ -15,7 +50,12 @@ function getDieAsset(point) {
   return DICE_FACE_ASSETS[key] || "";
 }
 
-function getSelfDieAsset(point) {
+function getSelfDieAsset(point, themeId = "") {
+  const key = Number(point);
+  const themeAssets = SELF_DICE_THEME_ASSETS[String(themeId || "").trim()];
+  if (themeAssets && themeAssets[key]) {
+    return themeAssets[key];
+  }
   return getDieAsset(point);
 }
 

@@ -4,7 +4,8 @@ const {
   DEFAULT_ROOM_THEME_ID,
   ROOM_THEME_IDS,
   normalizeRoomThemeId,
-  pickRandomRoomThemeId
+  pickRandomRoomThemeId,
+  getRoomThemeLabel
 } = require("../../utils/room-themes");
 
 function safeDecodeComponent(raw) {
@@ -25,6 +26,7 @@ Page({
     playerCount: 8,
     wildcardOneEnabled: true,
     themePreviewId: DEFAULT_ROOM_THEME_ID,
+    themePreviewLabel: getRoomThemeLabel(DEFAULT_ROOM_THEME_ID),
     themePreviewOptions: ROOM_THEME_IDS
   },
 
@@ -37,6 +39,15 @@ Page({
       devtoolsMode,
       nickname: nickname || `玩家${Math.floor(Math.random() * 1000)}`,
       themePreviewId: devtoolsMode ? pickRandomRoomThemeId() : DEFAULT_ROOM_THEME_ID
+    }, () => {
+      this.syncThemePreviewLabel();
+    });
+  },
+
+  syncThemePreviewLabel() {
+    const themePreviewId = normalizeRoomThemeId(this.data.themePreviewId || DEFAULT_ROOM_THEME_ID);
+    this.setData({
+      themePreviewLabel: getRoomThemeLabel(themePreviewId)
     });
   },
 

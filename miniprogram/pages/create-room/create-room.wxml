@@ -43,7 +43,7 @@
 
       <view wx:if="{{devtoolsMode}}" class="create-note-card create-note-card--experiment">
         <text class="create-note-card__title">测试主题</text>
-        <text class="create-note-card__desc">测试环境会随机带入 {{themePreviewId}}，用于验证牌桌、气泡和按钮换皮。</text>
+        <text class="create-note-card__desc">测试环境会随机带入 {{themePreviewLabel}} 主题，用于验证牌桌、气泡和按钮换皮。</text>
       </view>
 
       <view class="create-actions">

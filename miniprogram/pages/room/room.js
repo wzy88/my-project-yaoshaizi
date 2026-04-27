@@ -21,6 +21,7 @@ const {
   normalizeRoomThemeId,
   buildRoomThemeClass
 } = require("../../utils/room-themes");
+const { getRoomThemeAssets } = require("../../utils/room-theme-assets");
 const { getStoredAccountSession, clearAccountSession } = require("../../utils/account-api");
 const { getStoredWechatProfile } = require("../../utils/wechat-auth");
 const {
@@ -55,6 +56,15 @@ const ROOM_AUDIO_STOP_RATIOS = {};
 const ROOM_PLAYFIELD_LIFT_RPX = 48;
 const ROOM_STAGE_HEIGHT_RPX = 1608;
 const ROOM_STAGE_MIN_SCALE = 0.9;
+
+function buildRoomThemePresentation(themeId) {
+  const normalizedThemeId = normalizeRoomThemeId(themeId);
+  return {
+    roomThemeId: normalizedThemeId,
+    roomThemeClass: buildRoomThemeClass(normalizedThemeId),
+    roomThemeAssets: getRoomThemeAssets(normalizedThemeId)
+  };
+}
 
 function buildAccountAuthPayload() {
   const session = getStoredAccountSession();
@@ -1393,6 +1403,7 @@ Page({
     createRoomThemeId: DEFAULT_ROOM_THEME_ID,
     roomThemeId: DEFAULT_ROOM_THEME_ID,
     roomThemeClass: buildRoomThemeClass(DEFAULT_ROOM_THEME_ID),
+    roomThemeAssets: getRoomThemeAssets(DEFAULT_ROOM_THEME_ID),
     devtoolsMode: false,
     roomId: "",
     displayRoomId: "------",
@@ -1845,8 +1856,7 @@ Page({
         createMinOpeningCount: minOpeningCount,
         createTestMode: testMode,
         createRoomThemeId: themeId,
-        roomThemeId: themeId,
-        roomThemeClass: buildRoomThemeClass(themeId)
+        ...buildRoomThemePresentation(themeId)
       });
 
       try {
@@ -4546,8 +4556,7 @@ Page({
           primaryActionText,
           canPrimaryAction,
           roomConfig,
-          roomThemeId,
-          roomThemeClass: buildRoomThemeClass(roomThemeId),
+          ...buildRoomThemePresentation(roomThemeId),
           playersRaw,
           playersDecorated,
           ghostSeats,
@@ -5211,8 +5220,7 @@ Page({
       primaryActionText: "开始",
       canPrimaryAction: false,
       roomConfig: null,
-      roomThemeId: DEFAULT_ROOM_THEME_ID,
-      roomThemeClass: buildRoomThemeClass(DEFAULT_ROOM_THEME_ID),
+      ...buildRoomThemePresentation(DEFAULT_ROOM_THEME_ID),
       playersRaw: [],
       playersDecorated: [],
       ghostSeats: [],

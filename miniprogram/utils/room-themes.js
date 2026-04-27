@@ -8,6 +8,14 @@ const ROOM_THEME_IDS = [
   "mist-ivory"
 ];
 
+const ROOM_THEME_LABELS = {
+  "jade-green": "绿色",
+  "ruby-red": "黑色",
+  "sapphire-blue": "蓝色",
+  "imperial-red": "红金",
+  "mist-ivory": "水墨"
+};
+
 function normalizeRoomThemeId(raw) {
   const value = String(raw || "").trim();
   return ROOM_THEME_IDS.includes(value) ? value : DEFAULT_ROOM_THEME_ID;
@@ -22,10 +30,17 @@ function buildRoomThemeClass(themeId) {
   return `room-theme-${normalizeRoomThemeId(themeId)}`;
 }
 
+function getRoomThemeLabel(themeId) {
+  const normalized = normalizeRoomThemeId(themeId);
+  return ROOM_THEME_LABELS[normalized] || ROOM_THEME_LABELS[DEFAULT_ROOM_THEME_ID];
+}
+
 module.exports = {
   DEFAULT_ROOM_THEME_ID,
   ROOM_THEME_IDS,
+  ROOM_THEME_LABELS,
   normalizeRoomThemeId,
   pickRandomRoomThemeId,
-  buildRoomThemeClass
+  buildRoomThemeClass,
+  getRoomThemeLabel
 };

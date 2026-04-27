@@ -16,7 +16,7 @@
     <view class="room-topbar">
       <view class="room-topbar__corner" style="{{roomTopbarCornerStyle}}">
         <view class="room-chrome-btn room-chrome-btn--menu" bindtap="onTapMore">
-          <image class="room-chrome-btn__icon" src="/assets/figma-room-v2/topbar-menu-icon.svg" mode="aspectFit"></image>
+          <image class="room-chrome-btn__icon" src="{{roomThemeAssets.menuIconSrc}}" mode="aspectFit"></image>
         </view>
         <view wx:if="{{topbarMenuVisible}}" class="room-topbar-menu-popover" catchtap="noop">
           <view wx:if="{{selfIsOwner && phase === 'ready' && round === 0}}" class="room-topbar-menu-popover__item" bindtap="onTapMenuSeating">
@@ -122,7 +122,7 @@
         <view wx:if="{{!callPanelVisible}}" class="room-shell__bottom-fade" style="{{roomBottomFadeStyle}}">
           <view
             wx:if="{{showQuickOpenAction}}"
-            class="room-fab-secondary"
+            class="room-fab-secondary {{roomThemeAssets.secondaryButtonClass}}"
             bindtap="openDice"
             hover-class="room-fab-secondary--pressing"
             hover-start-time="0"
@@ -131,13 +131,13 @@
             <text class="room-fab-secondary__text">开牌</text>
           </view>
           <view
-            class="room-fab {{canPrimaryAction ? '' : 'is-disabled'}}"
+            class="room-fab {{canPrimaryAction ? '' : 'is-disabled'}} {{primaryActionText === '叫牌' ? roomThemeAssets.primaryButtonClass : ''}}"
             bindtap="onHudPrimaryAction"
             hover-class="{{canPrimaryAction ? 'room-fab--pressing' : 'none'}}"
             hover-start-time="0"
             hover-stay-time="70"
           >
-            <image class="room-fab__icon-image" src="/assets/figma-room-v2/die-cube-gold.svg" mode="aspectFit"></image>
+            <image class="room-fab__icon-image" src="{{roomThemeAssets.primaryIconSrc}}" mode="aspectFit"></image>
             <text wx:if="{{phase === 'rolling' && canPrimaryAction && !selfHasDice}}" class="room-fab__label">摇一摇</text>
             <text wx:else class="room-fab__label {{primaryActionText && primaryActionText.length > 3 ? 'is-compact' : ''}}">{{primaryActionText}}</text>
           </view>
