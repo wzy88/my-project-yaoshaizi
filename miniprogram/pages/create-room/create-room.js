@@ -38,7 +38,7 @@ Page({
     this.setData({
       devtoolsMode,
       nickname: nickname || `玩家${Math.floor(Math.random() * 1000)}`,
-      themePreviewId: devtoolsMode ? pickRandomRoomThemeId() : DEFAULT_ROOM_THEME_ID
+      themePreviewId: pickRandomRoomThemeId()
     }, () => {
       this.syncThemePreviewLabel();
     });
@@ -61,9 +61,7 @@ Page({
     const direction = "cw";
     const dicePerPlayer = 5;
     const minOpeningCount = 5;
-    const themeId = this.data.devtoolsMode
-      ? normalizeRoomThemeId(this.data.themePreviewId || pickRandomRoomThemeId())
-      : DEFAULT_ROOM_THEME_ID;
+    const themeId = normalizeRoomThemeId(this.data.themePreviewId || pickRandomRoomThemeId());
 
     wx.navigateTo({
       url: `/pages/room/room?mode=create&forceNew=1&nickname=${encodeURIComponent(this.data.nickname || "")}&direction=${direction}&wildcardOneEnabled=${this.data.wildcardOneEnabled ? "1" : "0"}&dicePerPlayer=${dicePerPlayer}&minOpeningCount=${minOpeningCount}&testMode=0&themeId=${themeId}`

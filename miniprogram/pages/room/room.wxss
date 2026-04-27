@@ -6440,9 +6440,9 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-ruby-red .room-stage__table-frame {
+  overflow: hidden;
   background:
-    linear-gradient(180deg, rgba(22, 20, 18, 0.26) 0%, rgba(10, 10, 12, 0.46) 52%, rgba(4, 4, 6, 0.62) 100%),
-    url("/assets/room-themes/ruby-red-bg-black.jpg") center center / cover no-repeat;
+    linear-gradient(180deg, rgba(30, 24, 16, 0.18) 0%, rgba(18, 14, 10, 0.22) 100%);
   border-color: rgba(198, 155, 73, 0.62);
   box-shadow:
     0 42rpx 88rpx rgba(0, 0, 0, 0.44),
@@ -6452,14 +6452,51 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-ruby-red .room-stage__table-felt {
+  overflow: hidden;
   background:
-    radial-gradient(circle at 50% 40%, rgba(255, 219, 146, 0.1) 0%, rgba(255, 219, 146, 0.02) 26%, rgba(255, 219, 146, 0) 42%),
-    linear-gradient(180deg, rgba(12, 12, 14, 0.34) 0%, rgba(6, 6, 8, 0.58) 100%),
-    url("/assets/room-themes/ruby-red-bg-black.jpg") center center / cover no-repeat;
+    linear-gradient(180deg, rgba(0, 0, 0, 0.04) 0%, rgba(0, 0, 0, 0.1) 100%);
 }
 
 .page.room-theme-ruby-red .room-stage__table-line {
   border-color: rgba(198, 155, 73, 0.2);
+}
+
+.page.room-theme-ruby-red .room-stage__table-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: url("/assets/room-themes/ruby-red-bg-black.jpg") center center / cover no-repeat;
+  opacity: 0.92;
+}
+
+.page.room-theme-ruby-red .room-stage__table-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(230, 190, 102, 0.08) 0%, rgba(230, 190, 102, 0) 24%),
+    linear-gradient(180deg, rgba(12, 10, 8, 0.12) 0%, rgba(4, 4, 6, 0.18) 100%);
+}
+
+.page.room-theme-ruby-red .room-stage__table-felt::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: url("/assets/room-themes/ruby-red-bg-black.jpg") center center / 118% 118% no-repeat;
+  opacity: 0.98;
+}
+
+.page.room-theme-ruby-red .room-stage__table-felt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(238, 198, 110, 0.1) 0%, rgba(238, 198, 110, 0.02) 22%, rgba(238, 198, 110, 0) 38%),
+    linear-gradient(180deg, rgba(10, 10, 12, 0.06) 0%, rgba(0, 0, 0, 0.12) 100%);
 }
 
 .page.room-theme-ruby-red .room-stage__watermark-cn,
@@ -6688,37 +6725,83 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-ruby-red .ghost-cup .figma-cup,
 .page.room-theme-ruby-red .seat-stage-cup .figma-cup {
-  background: url("/assets/room-themes/ruby-red-cup-black.png") center center / 60rpx 72rpx no-repeat;
+  width: 84rpx;
+  height: 104rpx;
+  left: -12rpx;
+  top: -14rpx;
+  background: url("/assets/room-themes/ruby-red-cup-black.png") center center / 84rpx 104rpx no-repeat;
   filter:
-    brightness(1.18)
-    contrast(1.16)
-    saturate(1.06)
+    brightness(1.28)
+    contrast(1.22)
+    saturate(1.1)
     drop-shadow(0 8rpx 18rpx rgba(0, 0, 0, 0.34))
-    drop-shadow(0 0 16rpx rgba(232, 192, 102, 0.14));
+    drop-shadow(0 0 22rpx rgba(232, 192, 102, 0.22));
 }
 
 .page.room-theme-ruby-red .ghost-cup {
-  opacity: 0.96;
+  opacity: 1;
 }
 
 .page.room-theme-ruby-red .ghost-cup .figma-cup__body,
 .page.room-theme-ruby-red .seat-stage-cup .figma-cup__body {
-  background: transparent;
+  display: block;
+  left: 18rpx;
+  top: 18rpx;
+  width: 48rpx;
+  height: 68rpx;
+  transform: none;
+  border-radius: 16rpx;
+  border: 2rpx solid rgba(224, 178, 86, 0.58);
+  background: linear-gradient(180deg, rgba(28, 26, 24, 0.24) 0%, rgba(8, 8, 10, 0.1) 100%);
+  box-shadow:
+    inset 0 0 0 1rpx rgba(255, 232, 178, 0.16),
+    0 0 18rpx rgba(224, 178, 86, 0.12);
 }
 
 .page.room-theme-ruby-red .ghost-cup .figma-cup__shadow,
-.page.room-theme-ruby-red .ghost-cup .figma-cup__rim,
-.page.room-theme-ruby-red .ghost-cup .figma-cup__body,
-.page.room-theme-ruby-red .ghost-cup .figma-cup__shine,
 .page.room-theme-ruby-red .seat-stage-cup .figma-cup__shadow,
+.page.room-theme-ruby-red .ghost-cup .figma-cup__rim,
 .page.room-theme-ruby-red .seat-stage-cup .figma-cup__rim,
-.page.room-theme-ruby-red .seat-stage-cup .figma-cup__body,
+.page.room-theme-ruby-red .ghost-cup .figma-cup__shine,
 .page.room-theme-ruby-red .seat-stage-cup .figma-cup__shine {
-  display: none;
+  display: block;
+}
+
+.page.room-theme-ruby-red .ghost-cup .figma-cup__shadow,
+.page.room-theme-ruby-red .seat-stage-cup .figma-cup__shadow {
+  left: 50%;
+  bottom: 4rpx;
+  width: 54rpx;
+  height: 18rpx;
+  background: rgba(224, 178, 86, 0.26);
+  filter: blur(10rpx);
+}
+
+.page.room-theme-ruby-red .ghost-cup .figma-cup__rim,
+.page.room-theme-ruby-red .seat-stage-cup .figma-cup__rim {
+  left: 20rpx;
+  top: 12rpx;
+  width: 44rpx;
+  height: 8rpx;
+  transform: none;
+  background: linear-gradient(180deg, rgba(255, 238, 188, 0.94) 0%, rgba(226, 180, 86, 0.74) 100%);
+  box-shadow:
+    0 0 10rpx rgba(226, 180, 86, 0.18),
+    inset 0 1rpx 0 rgba(255, 248, 220, 0.7);
+}
+
+.page.room-theme-ruby-red .ghost-cup .figma-cup__shine,
+.page.room-theme-ruby-red .seat-stage-cup .figma-cup__shine {
+  left: 24rpx;
+  top: 24rpx;
+  width: 10rpx;
+  height: 40rpx;
+  background: linear-gradient(180deg, rgba(255, 238, 188, 0.52) 0%, rgba(255, 238, 188, 0.06) 100%);
+  opacity: 0.92;
 }
 
 .page.room-theme-ruby-red .seat-stage-cup {
-  filter: brightness(1.06) contrast(1.06) saturate(1.04);
+  filter: brightness(1.1) contrast(1.1) saturate(1.04);
 }
 
 .page.room-theme-ruby-red .room-self__avatar-shell {
