@@ -1073,6 +1073,58 @@ test("room page: missing server theme never leaks the local provisional theme in
   }
 });
 
+test("room page: mode create keeps the selected theme through room state sync", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({
+      mode: "create",
+      direction: "cw",
+      wildcardOneEnabled: "1",
+      dicePerPlayer: "5",
+      minOpeningCount: "5",
+      themeId: "imperial-red"
+    });
+
+    assert.equal(page.data.createRoomThemeId, "imperial-red");
+    assert.equal(page.data.roomThemeId, "imperial-red");
+    assert.equal(page.data.roomThemeClass, "room-theme-imperial-red");
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...buildRoomStatePayload({
+          currentPlayerId: "P1",
+          lastCall: null
+        }),
+        phase: "ready",
+        round: 0,
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false,
+          themeId: "imperial-red"
+        }
+      }
+    }));
+
+    assert.equal(page.data.roomThemeId, "imperial-red");
+    assert.equal(page.data.roomThemeClass, "room-theme-imperial-red");
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: mode join enters on the room shell while the pending join action waits", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
