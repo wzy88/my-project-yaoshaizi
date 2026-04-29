@@ -1438,6 +1438,7 @@ Page({
     containerEnvId: app.globalData.containerConfig ? app.globalData.containerConfig.envId : "",
     containerService: app.globalData.containerConfig ? app.globalData.containerConfig.service : "",
     containerWsPath: app.globalData.containerConfig ? app.globalData.containerConfig.wsPath : DEFAULT_CONTAINER_WS_PATH,
+    runtimeConnectionSource: app.globalData.runtimeConnectionSource || "missing",
     connectionSummaryText: buildContainerSummary(app.globalData.containerConfig || {}),
     wsHintText: "",
     connected: false,
@@ -1901,6 +1902,7 @@ Page({
       containerEnvId: containerConfig.envId,
       containerService: containerConfig.service,
       containerWsPath: containerConfig.wsPath,
+      runtimeConnectionSource: String(app && app.globalData ? app.globalData.runtimeConnectionSource || "missing" : "missing"),
       connectionSummaryText: buildContainerSummary(containerConfig)
     });
 
@@ -2618,6 +2620,7 @@ Page({
       this.debugClientEvent("ws:connect_attempt", {
         socketId,
         connectionMode: "cloud",
+        runtimeConnectionSource: this.data.runtimeConnectionSource,
         service: containerConfig.service,
         wsPath: containerConfig.wsPath,
         roomId: this.data.roomId,
@@ -2709,6 +2712,7 @@ Page({
     this.debugClientEvent("ws:connect_attempt", {
       socketId,
       connectionMode: "direct",
+      runtimeConnectionSource: this.data.runtimeConnectionSource,
       wsUrl: this.data.wsUrl,
       roomId: this.data.roomId,
       playerId: this.data.playerId,
@@ -2919,7 +2923,10 @@ Page({
       this.queuePendingRoomAction({ kind: "create", config });
       this.debugClientEvent("room:create_queued", {
         roomId: this.data.roomId,
-        playerId: this.data.playerId
+        playerId: this.data.playerId,
+        themeId: config.themeId,
+        runtimeConnectionSource: this.data.runtimeConnectionSource,
+        connectionSummaryText: this.data.connectionSummaryText
       });
       this.connectSocket();
       wx.showToast({ title: "连接中，成功后自动创建", icon: "none" });
@@ -2929,7 +2936,10 @@ Page({
     this.clearPendingRoomAction();
     this.debugClientEvent("room:create_send", {
       roomId: this.data.roomId,
-      playerId: this.data.playerId
+      playerId: this.data.playerId,
+      themeId: config.themeId,
+      runtimeConnectionSource: this.data.runtimeConnectionSource,
+      connectionSummaryText: this.data.connectionSummaryText
     });
     this.sendEvent("room:create", {
       nickname: this.data.nickname || "玩家",
@@ -4467,6 +4477,23 @@ Page({
         const roomConfig = payload.config || null;
         const incomingThemeId = roomConfig && roomConfig.themeId;
         const roomThemeId = normalizeRoomThemeId(incomingThemeId || DEFAULT_ROOM_THEME_ID);
+        const previousRoomThemeId = normalizeRoomThemeId(this.data.roomThemeId || DEFAULT_ROOM_THEME_ID);
+        const shouldLogThemeSync = !this.hasReceivedRoomState
+          || !incomingThemeId
+          || roomThemeId !== previousRoomThemeId;
+        if (shouldLogThemeSync) {
+          this.debugClientEvent("room:state_theme_sync", {
+            payloadRoomId: roomId,
+            incomingThemeId: incomingThemeId || "",
+            appliedThemeId: roomThemeId,
+            previousThemeId: previousRoomThemeId,
+            runtimeConnectionSource: this.data.runtimeConnectionSource,
+            connectionSummaryText: this.data.connectionSummaryText,
+            phase: payload.phase || "ready",
+            round: Number(payload.round || 0),
+            version: Number(payload.version || 0)
+          });
+        }
         const playerCount = Array.isArray(playersRaw) ? playersRaw.length : 0;
         const validTargets = (this.data.selectedTargetIds || []).filter((id) => {
           return playersRaw.some((player) => player.id === id && player.id !== this.data.playerId);
@@ -4858,6 +4885,19 @@ Page({
       case "action:ack": {
         const actionId = payload.actionId;
         const actionEvent = actionId ? this.actionEventMap[actionId] : "";
+        if (actionEvent === "room:create" || actionEvent === "room:join" || actionEvent === "room:rejoin" || actionEvent === "game:start") {
+          this.debugClientEvent("action:ack", {
+            actionEvent,
+            actionId: String(actionId || ""),
+            ok: Boolean(payload.ok),
+            code: String(payload.code || ""),
+            reason: String(payload.reason || ""),
+            ackRoomId: String(payload.roomId || ""),
+            ackPlayerId: String(payload.playerId || ""),
+            runtimeConnectionSource: this.data.runtimeConnectionSource,
+            connectionSummaryText: this.data.connectionSummaryText
+          });
+        }
         if (actionId) {
           delete this.actionEventMap[actionId];
         }

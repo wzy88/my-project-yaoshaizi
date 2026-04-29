@@ -13,7 +13,8 @@ App({
   globalData: {
     wsUrl: "",
     containerConfig: getDefaultContainerConfig(),
-    isDevtoolsMode: false
+    isDevtoolsMode: false,
+    runtimeConnectionSource: "missing"
   },
   onLaunch() {
     try {
@@ -23,6 +24,7 @@ App({
       });
       this.globalData.wsUrl = runtimeConnection.wsUrl;
       this.globalData.containerConfig = runtimeConnection.containerConfig;
+      this.globalData.runtimeConnectionSource = String(runtimeConnection.source || "missing");
 
       if (hasFixedRuntimeConnection()) {
         clearLegacyRuntimeConnectionStorage();
@@ -32,6 +34,7 @@ App({
     } catch (error) {
       this.globalData.wsUrl = "";
       this.globalData.containerConfig = getDefaultContainerConfig();
+      this.globalData.runtimeConnectionSource = "missing";
     }
 
     try {

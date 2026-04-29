@@ -349,6 +349,8 @@ export class RoomService {
       ownerPlayerId: playerId,
       accountId: boundAccount?.accountId || "",
       nickname,
+      requestedThemeId: String(payload.config?.themeId || ""),
+      storedThemeId: String(room.getState().config.themeId || ""),
       ...this.getRoomDiagnostics(roomId),
       ...this.getSocketMeta(ws)
     });
@@ -650,6 +652,17 @@ export class RoomService {
     const { room, session } = this.getRoomAndSession(ws);
     this.ensureActivePlayer(room, session.playerId);
     room.startGame(session.playerId);
+    const state = room.getState();
+
+    this.logDiagnostic("log", "game:start", {
+      actionId: actionId || "",
+      actorPlayerId: session.playerId,
+      roomId: session.roomId,
+      phase: state.phase,
+      round: state.round,
+      themeId: String(state.config?.themeId || ""),
+      playerCount: state.players.length
+    });
 
     this.sendAck(ws, {
       actionId,
