@@ -3112,11 +3112,17 @@ page {
 }
 
 .room-screen__aurora,
+.room-screen__theme-bg,
 .room-screen__grain,
 .room-screen__stars {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+
+.room-screen__theme-bg {
+  width: 100%;
+  height: 100%;
 }
 
 .room-screen__aurora {
@@ -5021,6 +5027,15 @@ button.room-topbar-menu-popover__item::after {
   overflow: visible;
 }
 
+.figma-cup__skin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 .figma-cup__shadow {
   position: absolute;
   left: 50%;
@@ -5381,6 +5396,15 @@ button.room-topbar-menu-popover__item::after {
   box-shadow: 0 12rpx 24rpx rgba(0, 0, 0, 0.45), inset 0 4rpx 8rpx rgba(255, 255, 255, 0.18);
 }
 
+.seat__bubble-skin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .seat__bubble.latest {
   border-color: rgba(255, 214, 102, 0.92);
   box-shadow:
@@ -5593,6 +5617,15 @@ button.room-topbar-menu-popover__item::after {
   box-shadow: 0 22rpx 38rpx rgba(0, 0, 0, 0.42), inset 0 10rpx 20rpx rgba(255, 255, 255, 0.14), inset 0 -6rpx 16rpx rgba(0, 0, 0, 0.18);
 }
 
+.room-self__dice-texture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .room-self__dice-rim {
   position: absolute;
   left: 52.94rpx;
@@ -5688,6 +5721,14 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .room-fab-secondary__skin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.room-fab__skin {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -6335,11 +6376,7 @@ button.room-topbar-menu-popover__item::after {
 /* Coordinated theme pass: match the full stage instead of tinting isolated parts. */
 .page.room-theme-ruby-red {
   background:
-    linear-gradient(180deg, rgba(5, 5, 7, 0.3) 0%, rgba(5, 5, 7, 0.5) 100%),
-    url("../../assets/room-themes/ruby-red-bg-black.jpg");
-  background-size: 100% 100%, cover;
-  background-position: center top, center top;
-  background-repeat: no-repeat, no-repeat;
+    linear-gradient(180deg, rgba(5, 5, 7, 0.3) 0%, rgba(5, 5, 7, 0.5) 100%);
   color: #ebc26a;
 }
 
@@ -6474,7 +6511,7 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-ruby-red .seat__bubble {
-  background: url("../../assets/room-themes/ruby-red-bubble-black.png") center / 100% 100% no-repeat;
+  background: transparent;
   border-color: rgba(198, 155, 73, 0.72);
   box-shadow: 0 10rpx 20rpx rgba(0, 0, 0, 0.26);
   overflow: hidden;
@@ -6500,7 +6537,7 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-ruby-red .seat__bubble.latest {
-  background: url("../../assets/room-themes/ruby-red-bubble-black.png") center / 100% 100% no-repeat;
+  background: transparent;
   border-color: rgba(245, 216, 143, 0.96);
   box-shadow:
     0 12rpx 24rpx rgba(0, 0, 0, 0.28),
@@ -6540,6 +6577,10 @@ button.room-topbar-menu-popover__item::after {
   z-index: 1;
 }
 
+.page.room-theme-ruby-red .seat__bubble-skin {
+  border-radius: 19rpx;
+}
+
 .page.room-theme-ruby-red .seat__bubble-die {
   width: 32rpx;
   height: 32rpx;
@@ -6556,6 +6597,17 @@ button.room-topbar-menu-popover__item::after {
     0 0 0 4rpx rgba(97, 71, 23, 0.22),
     inset 0 3rpx 0 rgba(255, 236, 194, 0.16),
     inset 0 -6rpx 0 rgba(0, 0, 0, 0.18);
+}
+
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__icon-image,
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__label {
+  opacity: 0;
 }
 
 .page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice {
@@ -6718,8 +6770,13 @@ button.room-topbar-menu-popover__item::after {
   top: -14rpx;
   transform: none;
   transform-origin: 50% 50%;
-  background: url("../../assets/room-themes/ruby-red-cup-black.png") center center / 84rpx 104rpx no-repeat;
   filter: drop-shadow(0 8rpx 18rpx rgba(0, 0, 0, 0.28));
+}
+
+.page.room-theme-ruby-red .ghost-cup .figma-cup__skin,
+.page.room-theme-ruby-red .seat-stage-cup .figma-cup__skin {
+  width: 84rpx;
+  height: 104rpx;
 }
 
 .page.room-theme-ruby-red .ghost-cup {
@@ -6755,7 +6812,7 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-ruby-red .room-self__bubble {
-  background: url("../../assets/room-themes/ruby-red-bubble-black.png") center / 100% 100% no-repeat;
+  background: transparent;
   border: 2rpx solid rgba(198, 155, 73, 0.72);
   box-shadow: 0 10rpx 20rpx rgba(0, 0, 0, 0.26);
 }
@@ -6916,8 +6973,7 @@ button.room-topbar-menu-popover__item::after {
 .page.room-theme-ruby-red .room-self__dice-cup.is-covered .room-self__dice-glass {
   background:
     radial-gradient(circle at 50% 16%, rgba(255, 243, 214, 0.16) 0%, rgba(255, 243, 214, 0.04) 22%, rgba(255, 243, 214, 0) 38%),
-    linear-gradient(180deg, rgba(28, 27, 25, 0.26) 0%, rgba(12, 12, 14, 0.48) 38%, rgba(4, 4, 6, 0.62) 100%),
-    url("../../assets/room-themes/ruby-red-bg-black.jpg") center center / cover no-repeat;
+    linear-gradient(180deg, rgba(28, 27, 25, 0.26) 0%, rgba(12, 12, 14, 0.48) 38%, rgba(4, 4, 6, 0.62) 100%);
   border-top-color: rgba(245, 216, 143, 0.4);
   border-left-color: rgba(198, 155, 73, 0.28);
   border-right-color: rgba(198, 155, 73, 0.22);
@@ -6927,6 +6983,10 @@ button.room-topbar-menu-popover__item::after {
     inset 0 14rpx 28rpx rgba(255, 236, 194, 0.06),
     inset 0 -10rpx 22rpx rgba(0, 0, 0, 0.28),
     0 0 18rpx rgba(232, 192, 102, 0.08);
+}
+
+.page.room-theme-ruby-red .room-self__dice-texture {
+  opacity: 0.28;
 }
 
 .page.room-theme-ruby-red .room-self__dice-rim {
@@ -6962,11 +7022,7 @@ button.room-topbar-menu-popover__item::after {
 .page.room-theme-imperial-red {
   background-color: #651417;
   background-image:
-    linear-gradient(180deg, rgba(66, 10, 14, 0.12) 0%, rgba(66, 10, 14, 0.28) 100%),
-    url("../../assets/room-themes/imperial-red-bg-v2.jpg");
-  background-position: center top, center top;
-  background-repeat: no-repeat, no-repeat;
-  background-size: 100% 100%, cover;
+    linear-gradient(180deg, rgba(66, 10, 14, 0.12) 0%, rgba(66, 10, 14, 0.28) 100%);
   color: #f6d98b;
 }
 
@@ -7013,8 +7069,7 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-imperial-red .room-stage__table-frame {
   background:
-    linear-gradient(180deg, rgba(120, 23, 24, 0.18) 0%, rgba(92, 16, 18, 0.3) 52%, rgba(58, 10, 12, 0.4) 100%),
-    url("../../assets/room-themes/imperial-red-bg-v2.jpg") center center / cover no-repeat;
+    linear-gradient(180deg, rgba(120, 23, 24, 0.18) 0%, rgba(92, 16, 18, 0.3) 52%, rgba(58, 10, 12, 0.4) 100%);
   border-color: #e5bf66;
   box-shadow:
     0 42rpx 88rpx rgba(61, 8, 11, 0.22),
@@ -7025,8 +7080,7 @@ button.room-topbar-menu-popover__item::after {
 .page.room-theme-imperial-red .room-stage__table-felt {
   background:
     radial-gradient(circle at 50% 48%, rgba(247, 217, 138, 0.08) 0%, rgba(247, 217, 138, 0) 28%),
-    linear-gradient(180deg, rgba(167, 25, 29, 0.16) 0%, rgba(194, 42, 38, 0.22) 100%),
-    url("../../assets/room-themes/imperial-red-bg-v2.jpg") center center / cover no-repeat;
+    linear-gradient(180deg, rgba(167, 25, 29, 0.16) 0%, rgba(194, 42, 38, 0.22) 100%);
 }
 
 .page.room-theme-imperial-red .room-stage__table-line {
@@ -7115,7 +7169,7 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice {
-  background: url("../../assets/room-themes/imperial-red-open-btn.png") center / 100% 100% no-repeat;
+  background: transparent;
   border-color: transparent;
   box-shadow: none;
 }
@@ -7133,7 +7187,7 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-imperial-red .room-fab.room-fab--imperial-slice {
-  background: url("../../assets/room-themes/imperial-red-call-btn.png") center / 100% 100% no-repeat;
+  background: transparent;
   border-color: transparent;
   box-shadow: none;
 }
@@ -7268,13 +7322,19 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-imperial-red .ghost-cup .figma-cup,
 .page.room-theme-imperial-red .seat-stage-cup .figma-cup {
-  background: url("../../assets/room-themes/imperial-red-cup.png") center 6rpx / 50rpx 62rpx no-repeat;
   filter:
     brightness(1.08)
     contrast(1.08)
     saturate(1.02)
     drop-shadow(0 8rpx 18rpx rgba(61, 8, 11, 0.18))
     drop-shadow(0 0 12rpx rgba(229, 191, 102, 0.12));
+}
+
+.page.room-theme-imperial-red .ghost-cup .figma-cup__skin,
+.page.room-theme-imperial-red .seat-stage-cup .figma-cup__skin {
+  width: 50rpx;
+  height: 62rpx;
+  margin-top: 6rpx;
 }
 
 .page.room-theme-imperial-red .ghost-cup {
@@ -7360,7 +7420,7 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .room-topbar__corner {
-  width: 220rpx;
+  width: 292rpx;
 }
 
 .room-topbar__shortcut-group {
@@ -7380,6 +7440,16 @@ button.room-topbar-menu-popover__item::after {
   background: rgba(18, 22, 28, 0.42);
   border: 1rpx solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 8rpx 18rpx rgba(0, 0, 0, 0.22);
+}
+
+.room-topbar__shortcut--share {
+  min-width: 120rpx;
+  padding: 0 16rpx;
+  line-height: 1;
+}
+
+.room-topbar__shortcut--share::after {
+  border: 0;
 }
 
 .room-topbar__shortcut--ghost {
@@ -7413,6 +7483,30 @@ button.room-topbar-menu-popover__item::after {
     0 0 20rpx rgba(255, 228, 146, 0.12);
 }
 
+.room-stage__rule-entry {
+  position: absolute;
+  top: 204rpx;
+  right: 52rpx;
+  z-index: 7;
+  min-width: 88rpx;
+  height: 56rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(18, 22, 28, 0.36);
+  border: 1rpx solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8rpx 18rpx rgba(0, 0, 0, 0.22);
+}
+
+.room-stage__rule-entry-text {
+  font-size: 22rpx;
+  font-weight: 700;
+  letter-spacing: 0.4rpx;
+  color: rgba(255, 246, 223, 0.94);
+}
+
 .room-fab-secondary--left {
   left: 24rpx;
   right: auto;
@@ -7444,7 +7538,8 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .room-fab-secondary.is-disabled {
-  opacity: 0.56;
+  opacity: 0.84;
+  filter: saturate(0.72) brightness(0.94);
 }
 
 .room-fab-secondary--left .room-fab-secondary__text,
@@ -7532,6 +7627,115 @@ button.room-topbar-menu-popover__item::after {
   padding-top: 12rpx;
 }
 
+.room-sheet--history {
+  max-width: 700rpx;
+  max-height: 84vh;
+}
+
+.sheet-body--history {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+  padding-top: 16rpx;
+}
+
+.history-card {
+  padding: 20rpx 22rpx;
+  border-radius: 24rpx;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 226, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1rpx solid rgba(246, 220, 132, 0.12);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.05),
+    0 14rpx 28rpx rgba(0, 0, 0, 0.16);
+}
+
+.history-card + .history-card {
+  margin-top: 18rpx;
+}
+
+.history-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+  margin-bottom: 16rpx;
+}
+
+.history-card__round {
+  font-size: 20rpx;
+  font-weight: 800;
+  letter-spacing: 2rpx;
+  color: rgba(240, 201, 102, 0.82);
+}
+
+.history-card__summary {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #f7f3e8;
+}
+
+.history-card__matrix {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 14rpx;
+}
+
+.history-card__matrix-row {
+  flex: 1;
+  min-width: 0;
+  padding: 14rpx 16rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+}
+
+.history-card__matrix-label {
+  display: block;
+  margin-bottom: 8rpx;
+  font-size: 18rpx;
+  font-weight: 700;
+  letter-spacing: 1.4rpx;
+  color: rgba(240, 201, 102, 0.72);
+}
+
+.history-card__matrix-value {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  font-size: 24rpx;
+  font-weight: 800;
+  color: #f7f3e8;
+}
+
+.history-card__matrix-die {
+  width: 28rpx;
+  height: 28rpx;
+}
+
+.history-card__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.settlement-row--history {
+  padding: 10rpx 12rpx;
+}
+
+.settlement-dice-list--history {
+  gap: 4rpx;
+}
+
+.settlement-row--history .settlement-avatar {
+  width: 46rpx;
+  height: 46rpx;
+}
+
+.settlement-row--history .settlement-name {
+  max-width: 118rpx;
+  font-size: 22rpx;
+}
+
 .rules-card {
   padding: 22rpx 22rpx 10rpx;
   border-radius: 24rpx;
@@ -7571,7 +7775,9 @@ button.room-topbar-menu-popover__item::after {
 .page.room-theme-ruby-red .room-topbar__shortcut-text,
 .page.room-theme-ruby-red .room-turn-countdown__text,
 .page.room-theme-ruby-red .settlement-feature-tag,
-.page.room-theme-ruby-red .rules-card__title {
+.page.room-theme-ruby-red .rules-card__title,
+.page.room-theme-ruby-red .room-stage__rule-entry-text,
+.page.room-theme-ruby-red .history-card__round {
   color: #ebc26a;
 }
 
@@ -7580,9 +7786,18 @@ button.room-topbar-menu-popover__item::after {
   border-color: rgba(198, 155, 73, 0.24);
 }
 
+.page.room-theme-ruby-red .room-stage__rule-entry,
+.page.room-theme-ruby-red .history-card,
+.page.room-theme-ruby-red .history-card__matrix-row {
+  background: rgba(16, 14, 14, 0.84);
+  border-color: rgba(198, 155, 73, 0.24);
+}
+
 .page.room-theme-ruby-red .call-phase-panel__summary-text,
 .page.room-theme-ruby-red .rules-card__item,
-.page.room-theme-ruby-red .settlement-count-note {
+.page.room-theme-ruby-red .settlement-count-note,
+.page.room-theme-ruby-red .history-card__summary,
+.page.room-theme-ruby-red .history-card__matrix-value {
   color: rgba(243, 209, 139, 0.76);
 }
 
@@ -7623,7 +7838,9 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-imperial-red .room-topbar__shortcut-text,
 .page.room-theme-imperial-red .room-turn-countdown__text,
-.page.room-theme-imperial-red .rules-card__title {
+.page.room-theme-imperial-red .rules-card__title,
+.page.room-theme-imperial-red .room-stage__rule-entry-text,
+.page.room-theme-imperial-red .history-card__round {
   color: #f6d98b;
 }
 
@@ -7632,9 +7849,18 @@ button.room-topbar-menu-popover__item::after {
   border-color: rgba(232, 194, 101, 0.28);
 }
 
+.page.room-theme-imperial-red .room-stage__rule-entry,
+.page.room-theme-imperial-red .history-card,
+.page.room-theme-imperial-red .history-card__matrix-row {
+  background: rgba(94, 19, 22, 0.84);
+  border-color: rgba(232, 194, 101, 0.28);
+}
+
 .page.room-theme-imperial-red .call-phase-panel__summary-text,
 .page.room-theme-imperial-red .rules-card__item,
-.page.room-theme-imperial-red .settlement-count-note {
+.page.room-theme-imperial-red .settlement-count-note,
+.page.room-theme-imperial-red .history-card__summary,
+.page.room-theme-imperial-red .history-card__matrix-value {
   color: rgba(248, 221, 177, 0.76);
 }
 
@@ -7652,7 +7878,7 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice {
-  background: url("../../assets/room-themes/imperial-red-open-btn.png") center / 100% 100% no-repeat;
+  background: transparent;
   border-color: transparent;
   box-shadow: none;
 }

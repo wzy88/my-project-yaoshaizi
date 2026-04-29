@@ -1326,7 +1326,7 @@ test("room page: share payload points directly to the current room entry", () =>
     assert.equal(payload.title, "房主阿伟 邀你加入房间 123456");
     assert.equal(
       payload.path,
-      "/pages/room/room?mode=join&forceNew=1&roomId=123456"
+      "/pages/room/room?mode=join&forceNew=1&roomId=123456&themeId=jade-green"
     );
   } finally {
     cleanup();

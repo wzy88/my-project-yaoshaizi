@@ -785,7 +785,7 @@ export class RoomService {
     this.ensureActivePlayer(room, session.playerId);
     const { items, nextBeforeRound } = await this.historyStore.listHistory({
       roomId: session.roomId,
-      limit: payload.limit ?? 10,
+      limit: payload.limit ?? 3,
       beforeRound: payload.beforeRound
     });
 

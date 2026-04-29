@@ -11,6 +11,7 @@ interface ListHistoryOptions {
 }
 
 const HISTORY_DIR = resolveDataPath("history");
+const MAX_HISTORY_ITEMS = 3;
 
 export class HistoryStore {
   private ready = false;
@@ -23,15 +24,16 @@ export class HistoryStore {
 
     existing.push(summary);
     existing.sort((a, b) => b.round - a.round);
+    const trimmed = existing.slice(0, MAX_HISTORY_ITEMS);
 
-    await writeFile(file, JSON.stringify(existing, null, 2), "utf8");
+    await writeFile(file, JSON.stringify(trimmed, null, 2), "utf8");
   }
 
   async listHistory(options: ListHistoryOptions): Promise<{ items: RoundSummaryDTO[]; nextBeforeRound?: number }> {
     await this.ensureReady();
 
     const all = await this.readRoomItems(options.roomId);
-    const normalizedLimit = Math.min(Math.max(options.limit, 1), 50);
+    const normalizedLimit = Math.min(Math.max(options.limit, 1), MAX_HISTORY_ITEMS);
 
     const beforeRound = options.beforeRound;
     const filtered = typeof beforeRound === "number"

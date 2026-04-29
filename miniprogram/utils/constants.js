@@ -12,6 +12,7 @@ module.exports = {
   DEFAULT_CLOUD_ENV_ID,
   DEFAULT_CLOUD_SERVICE,
   SESSION_KEY: "diceSession",
+  ROOM_THEME_CACHE_KEY: "diceRoomThemeCacheV1",
   NICKNAME_KEY: "diceNicknameV1",
   AVATAR_URL_KEY: "diceAvatarUrlV1",
   PROFILE_SEED_KEY: "diceProfileSeedV1",

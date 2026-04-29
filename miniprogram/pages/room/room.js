@@ -7,6 +7,7 @@ const {
   CLOUD_SERVICE_KEY,
   CLOUD_WS_PATH_KEY,
   SESSION_KEY,
+  ROOM_THEME_CACHE_KEY,
   NICKNAME_KEY,
   AVATAR_URL_KEY,
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
@@ -92,6 +93,8 @@ function buildRoomThemePresentation(themeId) {
     roomThemeAssets: getRoomThemeAssets(normalizedThemeId)
   };
 }
+
+const ROOM_THEME_CACHE_LIMIT = 18;
 
 function buildAccountAuthPayload() {
   const session = getStoredAccountSession();
@@ -316,35 +319,15 @@ function buildCallEventKey(call, fallbackBy = "") {
 
 function buildCallSelectionSummary(countTouched, pointTouched, count, point) {
   if (!countTouched && !pointTouched) {
-    return "先选数量，再选点数";
+    return "可直接确认，也可改数量和点数";
   }
   if (!countTouched) {
-    return "请选择数量";
+    return "先选数量";
   }
   if (!pointTouched) {
-    return "请选择点数";
+    return `数量已定为 ${count}，再选点数`;
   }
-  return `将叫 ${count} 个 ${point}`;
-}
-
-function normalizeHistoryItems(items) {
-  return (items || []).map((item) => {
-    const openResult = item && item.openResult ? item.openResult : {};
-    const openerShortId = String(openResult.openerId || "").slice(0, 8);
-    const resultText = (Array.isArray(openResult.targets) ? openResult.targets : [])
-      .map((target) => {
-        const targetShortId = String(target.targetId || "").slice(0, 8);
-        const winnerShortId = String(target.winnerId || "").slice(0, 8);
-        return `${targetShortId}:${target.declared.count}个${target.declared.point}/实${target.actual}/胜${winnerShortId}`;
-      })
-      .join(" | ");
-
-    return {
-      ...item,
-      openerShortId,
-      resultText: resultText || "-"
-    };
-  });
+  return `准备叫 ${count} 个 ${point}`;
 }
 
 function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPlayerId, roomThemeId = DEFAULT_ROOM_THEME_ID }) {
@@ -357,6 +340,7 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
   const players = Array.isArray(playersRaw) ? playersRaw : [];
   const playerMap = new Map(players.map((p) => [String(p.id || ""), p]));
   const summaryPlayers = roundSummary && Array.isArray(roundSummary.players) ? roundSummary.players : [];
+  const summaryPlayerMap = new Map(summaryPlayers.map((p) => [String(p.playerId || ""), p]));
   const summaryDiceMap = new Map(
     summaryPlayers.map((p) => [String(p.playerId || ""), Array.isArray(p.dice) ? p.dice : []])
   );
@@ -371,6 +355,11 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     const player = playerMap.get(id);
     if (player) {
       const nickname = safeDecodeComponent(player.nickname).trim();
+      if (nickname) return nickname;
+    }
+    const summaryPlayer = summaryPlayerMap.get(id);
+    if (summaryPlayer) {
+      const nickname = safeDecodeComponent(summaryPlayer.nickname).trim();
       if (nickname) return nickname;
     }
     return id.slice(0, 6) || "玩家";
@@ -698,16 +687,57 @@ function safeDecodeComponent(raw) {
   }
 }
 
-function buildRoomJoinUrl(roomId) {
+function parseOptionalRoomThemeId(raw) {
+  const value = String(raw || "").trim();
+  if (!value) {
+    return "";
+  }
+  return normalizeRoomThemeId(value);
+}
+
+function readRoomThemeCache() {
+  const raw = wx.getStorageSync(ROOM_THEME_CACHE_KEY);
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+
+  return Object.keys(raw).reduce((acc, roomId) => {
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const themeId = parseOptionalRoomThemeId(raw[roomId]);
+    if (normalizedRoomId && themeId) {
+      acc[normalizedRoomId] = themeId;
+    }
+    return acc;
+  }, {});
+}
+
+function writeRoomThemeCache(nextCache) {
+  const roomIds = Object.keys(nextCache || {}).filter((roomId) => normalizeRoomId(roomId));
+  const trimmed = roomIds
+    .sort((a, b) => Number(b) - Number(a))
+    .slice(0, ROOM_THEME_CACHE_LIMIT)
+    .reduce((acc, roomId) => {
+      const themeId = parseOptionalRoomThemeId(nextCache[roomId]);
+      if (themeId) {
+        acc[roomId] = themeId;
+      }
+      return acc;
+    }, {});
+  wx.setStorageSync(ROOM_THEME_CACHE_KEY, trimmed);
+}
+
+function buildRoomJoinUrl(roomId, themeId = "") {
   const normalizedRoomId = String(roomId || "").trim();
   if (!normalizedRoomId) {
     return "/pages/lobby/lobby";
   }
-  return `/pages/room/room?mode=join&forceNew=1&roomId=${encodeURIComponent(normalizedRoomId)}`;
+  const normalizedThemeId = parseOptionalRoomThemeId(themeId);
+  const themeQuery = normalizedThemeId ? `&themeId=${encodeURIComponent(normalizedThemeId)}` : "";
+  return `/pages/room/room?mode=join&forceNew=1&roomId=${encodeURIComponent(normalizedRoomId)}${themeQuery}`;
 }
 
-function buildRoomShareEntryUrl(roomId) {
-  return buildRoomJoinUrl(roomId);
+function buildRoomShareEntryUrl(roomId, themeId = "") {
+  return buildRoomJoinUrl(roomId, themeId);
 }
 
 function clampPercent(value, min = 0, max = 100) {
@@ -1886,12 +1916,14 @@ Page({
       )
     );
     if (shouldResumeSession) {
+      const cachedThemeId = parseOptionalRoomThemeId(cached.themeId);
       this.setData({
         roomId: cached.roomId,
         displayRoomId: formatRoomIdDisplay(cached.roomId),
         joinRoomId: cached.roomId,
         playerId: cached.playerId,
-        resumeToken: cached.resumeToken
+        resumeToken: cached.resumeToken,
+        ...(cachedThemeId ? buildRoomThemePresentation(cachedThemeId) : {})
       });
     }
 
@@ -1949,9 +1981,14 @@ Page({
       }
     } else if (mode === "join") {
       const roomId = safeDecodeComponent(options.roomId).trim();
+      const themeId = parseOptionalRoomThemeId(options.themeId);
       this.setData({
-        joinRoomId: roomId
+        joinRoomId: roomId,
+        ...(themeId ? buildRoomThemePresentation(themeId) : {})
       });
+      if (roomId && themeId) {
+        this.cacheRoomTheme(roomId, themeId);
+      }
       if (roomId) {
         this.queuePendingRoomAction({ kind: "join", roomId });
       }
@@ -2351,7 +2388,8 @@ Page({
     const max = this.getMaxCallCount();
     const next = this.clampNumber(value, 1, max);
     this.setData({
-      callSelectorMode: "count",
+      callSelectorMode: "point",
+      callPanelExpanded: true,
       callCount: String(next),
       callCountOptions: this.buildCallCountOptions(next, max),
       callCountTouched: true,
@@ -2367,6 +2405,7 @@ Page({
     const next = this.clampNumber(value, 1, 6);
     this.setData({
       callSelectorMode: "point",
+      callPanelExpanded: true,
       callPoint: String(next),
       callPointTouched: true,
       callSelectionSummaryText: buildCallSelectionSummary(this.data.callCountTouched, true, this.data.callCount, next)
@@ -3862,10 +3901,6 @@ Page({
   },
 
   toggleHistory() {
-    if (this.data.selfIsWaiting) {
-      wx.showToast({ title: "旁观者不可操作", icon: "none" });
-      return;
-    }
     const nextVisible = !this.data.historyVisible;
     this.setData({
       historyVisible: nextVisible,
@@ -3881,19 +3916,7 @@ Page({
 
   loadHistory() {
     this.setData({ historyAppendMode: false });
-    this.sendEvent("history:list", { limit: 10 });
-  },
-
-  loadMoreHistory() {
-    if (!this.data.historyNextBeforeRound) {
-      return;
-    }
-
-    this.setData({ historyAppendMode: true });
-    this.sendEvent("history:list", {
-      limit: 10,
-      beforeRound: this.data.historyNextBeforeRound
-    });
+    this.sendEvent("history:list", { limit: 3 });
   },
 
   onSettlementViewHistory() {
@@ -4060,6 +4083,56 @@ Page({
     this.openRulesPanel();
   },
 
+  cacheRoomTheme(roomId, themeId) {
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const normalizedThemeId = parseOptionalRoomThemeId(themeId);
+    if (!normalizedRoomId || !normalizedThemeId) {
+      return;
+    }
+    const cache = readRoomThemeCache();
+    cache[normalizedRoomId] = normalizedThemeId;
+    writeRoomThemeCache(cache);
+  },
+
+  getCachedRoomTheme(roomId) {
+    const normalizedRoomId = normalizeRoomId(roomId);
+    if (!normalizedRoomId) {
+      return "";
+    }
+    const cache = readRoomThemeCache();
+    return parseOptionalRoomThemeId(cache[normalizedRoomId]);
+  },
+
+  resolveRoomThemeId(roomId, incomingThemeId = "", provisionalThemeId = "") {
+    const explicitThemeId = parseOptionalRoomThemeId(incomingThemeId);
+    const normalizedRoomId = normalizeRoomId(roomId);
+    if (normalizedRoomId && explicitThemeId) {
+      this.cacheRoomTheme(normalizedRoomId, explicitThemeId);
+      return explicitThemeId;
+    }
+
+    const cachedThemeId = this.getCachedRoomTheme(normalizedRoomId);
+    if (cachedThemeId) {
+      return cachedThemeId;
+    }
+
+    const sameRoomThemeId = normalizedRoomId && normalizedRoomId === normalizeRoomId(this.data.roomId)
+      ? parseOptionalRoomThemeId(this.data.roomThemeId)
+      : "";
+    if (sameRoomThemeId) {
+      return sameRoomThemeId;
+    }
+
+    const createThemeId = normalizedRoomId && normalizedRoomId === normalizeRoomId(this.data.roomId)
+      ? parseOptionalRoomThemeId(this.data.createRoomThemeId)
+      : "";
+    if (createThemeId) {
+      return createThemeId;
+    }
+
+    return DEFAULT_ROOM_THEME_ID;
+  },
+
   closeTopbarMenu() {
     if (!this.data.topbarMenuVisible) {
       return;
@@ -4147,6 +4220,7 @@ Page({
   buildRoomShareMessage() {
     const roomId = String(this.data.roomId || "").trim();
     const nickname = safeDecodeComponent(this.data.nickname).trim() || "好友";
+    const themeId = parseOptionalRoomThemeId(this.data.roomThemeId);
 
     if (!roomId) {
       return {
@@ -4157,7 +4231,7 @@ Page({
 
     return {
       title: `${nickname} 邀你加入房间 ${roomId}`,
-      path: buildRoomShareEntryUrl(roomId)
+      path: buildRoomShareEntryUrl(roomId, themeId)
     };
   },
 
@@ -4476,7 +4550,7 @@ Page({
         this.clearStoredSessionIfSelfMissing(roomId, playersRaw, waitingPlayersRaw);
         const roomConfig = payload.config || null;
         const incomingThemeId = roomConfig && roomConfig.themeId;
-        const roomThemeId = normalizeRoomThemeId(incomingThemeId || DEFAULT_ROOM_THEME_ID);
+        const roomThemeId = this.resolveRoomThemeId(roomId, incomingThemeId, this.data.createRoomThemeId);
         const previousRoomThemeId = normalizeRoomThemeId(this.data.roomThemeId || DEFAULT_ROOM_THEME_ID);
         const shouldLogThemeSync = !this.hasReceivedRoomState
           || !incomingThemeId
@@ -4671,10 +4745,10 @@ Page({
         );
         const callCountTouched = isMyCallingTurn && !callForcedOpen && !shouldResetCallSelection
           ? Boolean(this.data.callCountTouched)
-          : false;
+          : Boolean(isMyCallingTurn && !callForcedOpen);
         const callPointTouched = isMyCallingTurn && !callForcedOpen && !shouldResetCallSelection
           ? Boolean(this.data.callPointTouched)
-          : false;
+          : Boolean(isMyCallingTurn && !callForcedOpen);
         const callSelectionSummaryText = callForcedOpen
           ? "已到上限，请直接开牌"
           : buildCallSelectionSummary(callCountTouched, callPointTouched, nextCallCount, nextCallPoint);
@@ -4908,18 +4982,28 @@ Page({
         }
 
         if (payload.roomId || payload.playerId || payload.resumeToken) {
+          const nextRoomId = payload.roomId || this.data.roomId;
+          const nextThemeId = actionEvent === "room:create"
+            ? parseOptionalRoomThemeId(this.data.createRoomThemeId)
+            : parseOptionalRoomThemeId(this.data.roomThemeId);
           const nextData = {
-            roomId: payload.roomId || this.data.roomId,
-            displayRoomId: formatRoomIdDisplay(payload.roomId || this.data.roomId),
+            roomId: nextRoomId,
+            displayRoomId: formatRoomIdDisplay(nextRoomId),
             playerId: payload.playerId || this.data.playerId,
             resumeToken: payload.resumeToken || this.data.resumeToken,
-            joinRoomId: payload.roomId || this.data.joinRoomId
+            joinRoomId: nextRoomId
           };
 
           this.setData({
             ...nextData
           });
-          this.persistSession(nextData);
+          if (nextRoomId && nextThemeId) {
+            this.cacheRoomTheme(nextRoomId, nextThemeId);
+          }
+          this.persistSession({
+            ...nextData,
+            themeId: nextThemeId
+          });
         }
 
         if (!payload.ok) {
@@ -4998,16 +5082,53 @@ Page({
         break;
       }
       case "history:list": {
-        const incoming = normalizeHistoryItems(payload.items);
-        const current = this.data.historyItems || [];
+        const incoming = Array.isArray(payload.items) ? payload.items.slice(0, 3) : [];
+        let merged = incoming
+          .map((summary) => {
+            const model = buildSettlementViewModel({
+              openResult: summary && summary.openResult,
+              roundSummary: summary,
+              playersRaw: this.data.playersRaw,
+              selfPlayerId: this.data.playerId,
+              roomThemeId: this.data.roomThemeId
+            });
+            if (!model) {
+              return null;
+            }
+            return {
+              round: Number(summary.round || 0),
+              summaryText: model.summaryText,
+              declaredText: model.declaredText,
+              actualText: model.actualText,
+              pointAsset: model.pointAsset,
+              rows: model.rows
+            };
+          })
+          .filter(Boolean);
 
-        const merged = this.data.historyAppendMode
-          ? [...current, ...incoming]
-          : incoming;
+        if (!merged.length && this.latestOpenResult) {
+          const latestModel = buildSettlementViewModel({
+            openResult: this.latestOpenResult,
+            roundSummary: this.latestRoundSummary,
+            playersRaw: this.data.playersRaw,
+            selfPlayerId: this.data.playerId,
+            roomThemeId: this.data.roomThemeId
+          });
+          if (latestModel) {
+            merged = [{
+              round: Number(this.latestOpenResult.round || 0),
+              summaryText: latestModel.summaryText,
+              declaredText: latestModel.declaredText,
+              actualText: latestModel.actualText,
+              pointAsset: latestModel.pointAsset,
+              rows: latestModel.rows
+            }];
+          }
+        }
 
         this.setData({
           historyItems: merged,
-          historyNextBeforeRound: payload.nextBeforeRound || null,
+          historyNextBeforeRound: null,
           historyAppendMode: false
         });
 
@@ -5299,8 +5420,8 @@ Page({
     if (this.data.phase !== "calling" || this.data.currentPlayerId !== this.data.playerId || this.data.selfIsWaiting) {
       return;
     }
-    const nextCountTouched = false;
-    const nextPointTouched = false;
+    const nextCountTouched = !this.data.callForcedOpen;
+    const nextPointTouched = !this.data.callForcedOpen;
     this.setData({
       callPanelVisible: true,
       callPanelExpanded: true,
@@ -5315,9 +5436,7 @@ Page({
     this.setData({
       callPanelVisible: false,
       callPanelExpanded: false,
-      callCountTouched: false,
-      callPointTouched: false,
-      callSelectionSummaryText: buildCallSelectionSummary(false, false, this.data.callCount, this.data.callPoint)
+      callSelectionSummaryText: buildCallSelectionSummary(this.data.callCountTouched, this.data.callPointTouched, this.data.callCount, this.data.callPoint)
     });
   },
 
@@ -5703,15 +5822,20 @@ Page({
     const roomId = sessionLike.roomId || this.data.roomId;
     const playerId = sessionLike.playerId || this.data.playerId;
     const resumeToken = sessionLike.resumeToken || this.data.resumeToken;
+    const themeId = parseOptionalRoomThemeId(sessionLike.themeId || this.data.roomThemeId);
 
     if (!roomId || !playerId || !resumeToken) {
       return;
     }
 
+    if (themeId) {
+      this.cacheRoomTheme(roomId, themeId);
+    }
     wx.setStorageSync(SESSION_KEY, {
       roomId,
       playerId,
-      resumeToken
+      resumeToken,
+      themeId
     });
   },
 

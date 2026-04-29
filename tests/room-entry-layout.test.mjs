@@ -24,20 +24,21 @@ test("room page disables page-level scrolling while leaving internal panels to m
   assert.match(wxss, /\.page\.room-screen\s+\.room-shell\s*\{[\s\S]*overflow:\s*hidden/);
 });
 
-test("room shell keeps the room id centered while moving share into the left-top menu", () => {
+test("room shell keeps the room id centered while moving invite outside and rules onto the table", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
   assert.doesNotMatch(wxml, /class="room-safe-panel"/);
   assert.match(wxml, /class="room-topbar__shortcut" bindtap="onTapMore"/);
   assert.match(wxml, /class="room-topbar__shortcut-text">设置<\/text>/);
-  assert.match(wxml, /class="room-topbar__shortcut room-topbar__shortcut--ghost" bindtap="onTapRules"/);
-  assert.match(wxml, /class="room-topbar__shortcut-text">规则<\/text>/);
+  assert.match(wxml, /class="room-topbar__shortcut room-topbar__shortcut--ghost room-topbar__shortcut--share" open-type="share" bindtap="onTapShareRoom"/);
+  assert.match(wxml, /class="room-topbar__shortcut-text">邀请好友<\/text>/);
   assert.match(wxml, /class="room-topbar-menu-popover"/);
-  assert.match(wxml, /class="room-topbar-menu-popover__item room-topbar-menu-popover__item--share" open-type="share" bindtap="onTapMenuShare"/);
-  assert.match(wxml, /class="room-topbar-menu-popover__text">邀请好友<\/text>/);
   assert.match(wxml, /class="room-topbar-menu-popover__text">记录<\/text>/);
   assert.match(wxml, /class="room-topbar-menu-popover__text">音效开关<\/text>/);
+  assert.match(wxml, /class="room-stage__rule-entry" bindtap="onTapRules"/);
+  assert.match(wxml, /class="room-stage__rule-entry-text">规则<\/text>/);
   assert.doesNotMatch(wxml, /class="room-topbar-menu-popover__text">设置<\/text>/);
+  assert.doesNotMatch(wxml, /class="room-topbar-menu-popover__text">邀请好友<\/text>/);
   assert.doesNotMatch(wxml, /class="room-chrome-btn room-chrome-btn--menu" bindtap="onTapMore"/);
   assert.match(wxml, /class="room-topbar__room/);
   assert.match(wxml, /<text class="room-topbar__room-label">房间号:<\/text>/);
@@ -50,7 +51,8 @@ test("room shell keeps the room id centered while moving share into the left-top
   assert.match(wxss, /\.room-topbar__center\s*\{[\s\S]*justify-content:\s*center/);
   assert.match(wxss, /\.room-topbar__toggle\s*\{[\s\S]*display:\s*none/);
   assert.match(wxss, /\.room-topbar-menu-popover\s*\{/);
-  assert.match(wxss, /\.room-topbar-menu-popover__item--share\s*\{/);
+  assert.match(wxss, /\.room-topbar__shortcut--share\s*\{/);
+  assert.match(wxss, /\.room-stage__rule-entry\s*\{/);
   assert.match(wxss, /\.room-topbar-menu-popover__text\s*\{/);
 });
 
@@ -65,7 +67,9 @@ test("room shell supports experimental room theme classes without changing the d
   assert.match(script, /roomThemeClass:\s*buildRoomThemeClass\(DEFAULT_ROOM_THEME_ID\)/);
   assert.match(script, /themeId:\s*normalizeRoomThemeId\(this\.data\.createRoomThemeId\)/);
   assert.match(script, /const incomingThemeId = roomConfig && roomConfig\.themeId/);
-  assert.match(script, /normalizeRoomThemeId\(incomingThemeId \|\| DEFAULT_ROOM_THEME_ID\)/);
+  assert.match(script, /resolveRoomThemeId\(roomId,\s*incomingThemeId,\s*this\.data\.createRoomThemeId\)/);
+  assert.match(script, /ROOM_THEME_CACHE_KEY/);
+  assert.match(script, /buildRoomShareEntryUrl\(roomId,\s*themeId\)/);
   assert.match(wxss, /\.page\.room-theme-imperial-red \.room-stage__table-frame\s*\{/);
   assert.match(wxss, /\.page\.room-theme-imperial-red \.ghost-cup \.figma-cup__body\s*\{/);
   assert.match(wxss, /\.page\.room-theme-ruby-red \.room-stage__table-frame\s*\{/);
@@ -365,11 +369,13 @@ test("owner start button copy no longer includes the minimum-player hint", () =>
   assert.doesNotMatch(source, /开始\(需2人\)/);
 });
 
-test("room page keeps only the history drawer and no longer renders chat or voice channels", () => {
+test("room page keeps only the recent-history modal and no longer renders chat or voice channels", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
 
-  assert.match(wxml, /wx:if="\{\{historyVisible\}\}" class="room-drawer-overlay"/);
-  assert.match(wxml, /class="room-social__tab \{\{historyVisible \? 'is-active' : ''\}\}" bindtap="toggleHistory">战绩<\/view>/);
+  assert.match(wxml, /wx:if="\{\{historyVisible\}\}" class="room-mask room-mask--settings" bindtap="toggleHistory"/);
+  assert.match(wxml, /class="room-sheet room-sheet--settings room-sheet--history"/);
+  assert.match(wxml, /class="sheet-title">最近 3 局记录<\/text>/);
+  assert.match(wxml, /class="history-card__round">第\{\{historyItem\.round\}\}局<\/text>/);
   assert.doesNotMatch(wxml, /bindtap="toggleVoiceList"/);
   assert.doesNotMatch(wxml, /bindtap="toggleChatList"/);
   assert.doesNotMatch(wxml, /暂无语音/);
