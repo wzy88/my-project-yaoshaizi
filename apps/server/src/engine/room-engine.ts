@@ -77,8 +77,8 @@ class SeededRng {
   }
 }
 
-const DEFAULT_ROOM_THEME_ID: RoomThemeId = "imperial-red";
-const ROOM_THEME_IDS = new Set<RoomThemeId>(["ruby-red", "imperial-red"]);
+const DEFAULT_ROOM_THEME_ID: RoomThemeId = "jade-green";
+const ROOM_THEME_IDS = new Set<RoomThemeId>(["jade-green", "ruby-red", "imperial-red"]);
 
 function normalizeRoomThemeId(input: unknown): RoomThemeId {
   const value = String(input || "").trim() as RoomThemeId;
@@ -675,17 +675,13 @@ export class RoomEngine {
       throw new GameError(ErrorCode.PLAYER_NOT_IN_ROOM, "玩家不在房间中");
     }
 
-    if (this.currentPlayerId !== actorId) {
-      throw new GameError(ErrorCode.NOT_YOUR_TURN, "未轮到当前玩家开牌");
-    }
-
     if (!this.lastCall) {
       throw new GameError(ErrorCode.INVALID_CALL, "当前没有可开牌的上一手声明");
     }
 
     const targetId = this.lastCall.by;
     if (targetId === actorId) {
-      throw new GameError(ErrorCode.INVALID_OPEN_TARGET, "不能开自己");
+      throw new GameError(ErrorCode.INVALID_OPEN_TARGET, "上一手叫牌玩家不能自己开牌");
     }
 
     for (const player of this.players.values()) {

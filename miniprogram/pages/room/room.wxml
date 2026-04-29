@@ -30,6 +30,9 @@
           <button wx:if="{{roomId}}" class="room-topbar-menu-popover__item room-topbar-menu-popover__item--share" open-type="share" bindtap="onTapMenuShare">
             <text class="room-topbar-menu-popover__text">邀请好友</text>
           </button>
+          <view class="room-topbar-menu-popover__item" bindtap="onTapMenuHistory">
+            <text class="room-topbar-menu-popover__text">记录</text>
+          </view>
           <view class="room-topbar-menu-popover__item" bindtap="onTapMenuSettings">
             <text class="room-topbar-menu-popover__text">音效开关</text>
           </view>
@@ -67,15 +70,7 @@
           </view>
 
           <view wx:if="{{phase === 'calling' && turnCountdownSec > 0}}" class="room-turn-countdown">
-            <text class="room-turn-countdown__label">{{turnCountdownLabel || '剩余'}}</text>
-            <view class="room-turn-countdown__value-row">
-              <text class="room-turn-countdown__value">{{turnCountdownSec}}</text>
-              <text class="room-turn-countdown__unit">秒</text>
-            </view>
-          </view>
-
-          <view wx:if="{{pendingOpenRequestText}}" class="room-open-request-banner">
-            <text class="room-open-request-banner__text">{{pendingOpenRequestText}}</text>
+            <text class="room-turn-countdown__text">{{turnCountdownSec}}秒</text>
           </view>
 
           <block wx:for="{{ghostSeats}}" wx:key="visualSlotIndex">
@@ -141,18 +136,18 @@
         <view wx:if="{{!callPanelVisible}}" class="room-shell__bottom-fade" style="{{roomBottomFadeStyle}}">
           <view
             wx:if="{{secondaryActionText}}"
-            class="room-fab-secondary room-fab-secondary--left {{secondaryActionEnabled ? '' : 'is-disabled'}} {{secondaryActionKind === 'open' ? roomThemeAssets.secondaryButtonClass : ''}}"
+            class="room-fab-secondary {{secondaryActionKind === 'reroll' ? 'room-fab-secondary--right' : 'room-fab-secondary--left'}} {{secondaryActionEnabled ? '' : 'is-disabled'}} {{secondaryActionKind === 'open' && secondaryActionText === '开牌' ? roomThemeAssets.secondaryButtonClass : ''}}"
             bindtap="onSecondaryAction"
             hover-class="{{secondaryActionEnabled ? 'room-fab-secondary--pressing' : 'none'}}"
             hover-start-time="0"
             hover-stay-time="70"
           >
-            <image wx:if="{{secondaryActionKind === 'open' && roomThemeAssets.openButtonSrc}}" class="room-fab-secondary__skin" src="{{roomThemeAssets.openButtonSrc}}" mode="scaleToFill"></image>
-            <image wx:if="{{secondaryActionKind === 'open' && roomThemeAssets.secondaryIconSrc}}" class="room-fab-secondary__icon-image" src="{{roomThemeAssets.secondaryIconSrc}}" mode="aspectFit"></image>
+            <image wx:if="{{secondaryActionKind === 'open' && secondaryActionText === '开牌' && roomThemeAssets.openButtonSrc}}" class="room-fab-secondary__skin" src="{{roomThemeAssets.openButtonSrc}}" mode="scaleToFill"></image>
+            <image wx:if="{{secondaryActionKind === 'open' && secondaryActionText === '开牌' && roomThemeAssets.secondaryIconSrc}}" class="room-fab-secondary__icon-image" src="{{roomThemeAssets.secondaryIconSrc}}" mode="aspectFit"></image>
             <text class="room-fab-secondary__text">{{secondaryActionText}}</text>
           </view>
           <view
-            class="room-fab {{canPrimaryAction ? '' : 'is-disabled'}} {{primaryActionText === '叫牌' ? roomThemeAssets.primaryButtonClass : ''}}"
+            class="room-fab {{phase === 'rolling' && secondaryActionKind === 'reroll' ? 'room-fab--left' : ''}} {{canPrimaryAction ? '' : 'is-disabled'}} {{primaryActionText === '叫牌' ? roomThemeAssets.primaryButtonClass : ''}}"
             bindtap="onHudPrimaryAction"
             hover-class="{{canPrimaryAction ? 'room-fab--pressing' : 'none'}}"
             hover-start-time="0"
@@ -251,46 +246,39 @@
           <view class="call-phase-panel__summary">
             <text class="call-phase-panel__summary-text">{{callSelectionSummaryText}}</text>
           </view>
-          <view
-            class="call-phase-panel__value-box"
-            data-mode="count"
-            bindtap="toggleCallSelectorMode"
-            hover-class="call-phase-panel__box--pressing"
-            hover-start-time="0"
-            hover-stay-time="60"
-          >
-            <text class="call-phase-panel__value-text">{{callCount}}</text>
-          </view>
-          <text class="call-phase-panel__unit">个</text>
-          <view
-            class="call-phase-panel__point-box {{callForcedOpen ? 'is-disabled' : ''}}"
-            data-mode="point"
-            bindtap="toggleCallSelectorMode"
-            hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__box--pressing'}}"
-            hover-start-time="0"
-            hover-stay-time="60"
-          >
-            <block wx:for="{{callPointOptionItems}}" wx:key="value">
-              <image wx:if="{{item.value === callPoint}}" class="call-phase-panel__point-die" src="{{item.asset}}" mode="aspectFit"></image>
-            </block>
-          </view>
-          <view
-            class="call-phase-panel__btn call-phase-panel__btn--ghost {{canOpenAction ? '' : 'is-disabled'}}"
-            bindtap="openDice"
-            hover-class="{{canOpenAction ? 'call-phase-panel__btn--pressing' : 'none'}}"
-            hover-start-time="0"
-            hover-stay-time="60"
-          >
-            <text class="call-phase-panel__btn-text call-phase-panel__btn-text--ghost">开牌</text>
-          </view>
-          <view
-            class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen || !callCountTouched || !callPointTouched ? 'is-disabled' : ''}}"
-            bindtap="makeCallWithInput"
-            hover-class="{{callForcedOpen || !callCountTouched || !callPointTouched ? 'none' : 'call-phase-panel__btn--pressing'}}"
-            hover-start-time="0"
-            hover-stay-time="60"
-          >
-            <text class="call-phase-panel__btn-text">叫点</text>
+          <view class="call-phase-panel__actions-row">
+            <view
+              class="call-phase-panel__value-box"
+              data-mode="count"
+              bindtap="toggleCallSelectorMode"
+              hover-class="call-phase-panel__box--pressing"
+              hover-start-time="0"
+              hover-stay-time="60"
+            >
+              <text class="call-phase-panel__value-text">{{callCount}}</text>
+            </view>
+            <text class="call-phase-panel__unit">个</text>
+            <view
+              class="call-phase-panel__point-box {{callForcedOpen ? 'is-disabled' : ''}}"
+              data-mode="point"
+              bindtap="toggleCallSelectorMode"
+              hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__box--pressing'}}"
+              hover-start-time="0"
+              hover-stay-time="60"
+            >
+              <block wx:for="{{callPointOptionItems}}" wx:key="value">
+                <image wx:if="{{item.value === callPoint}}" class="call-phase-panel__point-die" src="{{item.asset}}" mode="aspectFit"></image>
+              </block>
+            </view>
+            <view
+              class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen || !callCountTouched || !callPointTouched ? 'is-disabled' : ''}}"
+              bindtap="makeCallWithInput"
+              hover-class="{{callForcedOpen || !callCountTouched || !callPointTouched ? 'none' : 'call-phase-panel__btn--pressing'}}"
+              hover-start-time="0"
+              hover-stay-time="60"
+            >
+              <text class="call-phase-panel__btn-text">叫点</text>
+            </view>
           </view>
         </view>
       </view>
@@ -355,7 +343,6 @@
                   </view>
                   <view class="settlement-text">
                     <text class="settlement-name {{item.nameLengthClass}}">{{item.name}}</text>
-                    <text class="settlement-score settlement-score--{{item.scoreClass}}">{{item.deltaText}}</text>
                   </view>
                 </view>
                 <view class="settlement-dice-list">
@@ -395,9 +382,6 @@
         <view wx:if="{{settlementCanContinue}}" class="sheet-actions">
           <view class="dock-btn dock-btn--settlement" bindtap="onSettlementContinue" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
             <text class="dock-btn__label">继续</text>
-          </view>
-          <view class="dock-btn dock-btn--ghost" bindtap="onSettlementViewHistory" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
-            <text class="dock-btn__label">记录</text>
           </view>
         </view>
       </view>

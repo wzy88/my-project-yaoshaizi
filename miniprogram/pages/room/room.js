@@ -70,7 +70,7 @@ const ROOM_RULE_SECTIONS = [
     title: "开牌与跳开",
     items: [
       "轮到你时，如果你认为上一手在吹牛，可以直接点“开牌”。",
-      "如果别人迟迟不开，你可以点“跳开”；申请发出 3 秒后若仍无人处理，系统会自动代为开牌。",
+      "除上一手叫牌的人外，其他在座玩家都可以直接点“跳开”；谁先点到，系统就按开牌结算。",
       "叫牌达到上限后，下家不能再继续叫，只能开牌。"
     ]
   },
@@ -167,6 +167,17 @@ function isSettlementStraight(diceList) {
     }
   }
   return true;
+}
+
+function getSettlementLeopardFace(diceList) {
+  const normalized = (Array.isArray(diceList) ? diceList : [])
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 6);
+  if (normalized.length <= 0) {
+    return 0;
+  }
+  const face = normalized[0];
+  return normalized.every((value) => value === face) ? face : 0;
 }
 
 function estimateSettlementPointTotal(allDice, point, oneAsWildcard) {
@@ -409,31 +420,29 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
       .map((num) => Number(num))
       .filter((num) => Number.isInteger(num) && num >= 1 && num <= 6);
     const countDetail = countDetailMap.get(id) || null;
+    const isStraight = isSettlementStraight(dice);
+    const leopardFace = getSettlementLeopardFace(dice);
     let kind = "neutral";
     let tagText = "";
-    let deltaText = "+0";
-    let deltaClass = "neutral";
     let featureTagText = "";
     let countSummaryText = "";
 
     if (id === winnerId) {
       kind = "winner";
       tagText = "胜";
-      deltaText = "+1";
-      deltaClass = "winner";
     } else if (id === loserId) {
       kind = "loser";
       tagText = "负";
-      deltaText = "-1";
-      deltaClass = "loser";
     }
-    if (countDetail && countDetail.straight) {
+    if (isStraight) {
       featureTagText = "顺";
     }
-    if (countDetail && countDetail.leopardBonus) {
+    if (leopardFace > 0) {
+      featureTagText = featureTagText ? `${featureTagText} / 豹${leopardFace}` : `豹${leopardFace}`;
+    } else if (countDetail && countDetail.leopardBonus) {
       featureTagText = featureTagText ? `${featureTagText} / 豹` : "豹";
     }
-    if (countDetail && !countDetail.straight && Number(countDetail.contribution) > 0) {
+    if (countDetail && !isStraight && Number(countDetail.contribution) > 0) {
       countSummaryText = `计数 ${Number(countDetail.contribution)}`;
     }
 
@@ -448,9 +457,6 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
       countSummaryText,
       kind,
       tagText,
-      deltaText,
-      deltaClass,
-      scoreClass: deltaClass,
       seatSort: getSeatIndex(id)
     };
   }).sort((a, b) => {
@@ -1492,8 +1498,6 @@ Page({
     callTimeline: [],
     turnCountdownSec: 0,
     turnCountdownLabel: "",
-    pendingOpenRequest: null,
-    pendingOpenRequestText: "",
     myDiceVisible: false,
     myDicePeekVisible: false,
     myDiceRolling: false,
@@ -3810,10 +3814,7 @@ Page({
   },
 
   openDice() {
-    const isCallingTurn = this.data.phase === "calling"
-      && this.data.currentPlayerId === this.data.playerId
-      && !this.data.selfIsWaiting;
-    if (isCallingTurn && !this.data.canOpenAction) {
+    if (!this.data.canOpenAction) {
       wx.showToast({ title: "当前还不能开牌", icon: "none" });
       return;
     }
@@ -3827,21 +3828,6 @@ Page({
     this.sendEvent("open:request", {});
   },
 
-  requestOpenAssist() {
-    if (this.data.phase !== "calling" || this.data.selfIsWaiting) {
-      wx.showToast({ title: "当前不可申请跳开", icon: "none" });
-      return;
-    }
-    const pending = this.data.pendingOpenRequest;
-    if (pending && String(pending.requesterId || "") === String(this.data.playerId || "")) {
-      wx.showToast({ title: "已发起跳开申请", icon: "none" });
-      return;
-    }
-
-    this.haptic("light");
-    this.sendEvent("open:assistRequest", {});
-  },
-
   onSecondaryAction() {
     if (!this.data.secondaryActionEnabled) {
       return;
@@ -3853,9 +3839,6 @@ Page({
         return;
       case "open":
         this.openDice();
-        return;
-      case "assist-open":
-        this.requestOpenAssist();
         return;
       case "history":
         this.toggleHistory();
@@ -4082,6 +4065,11 @@ Page({
   onTapMenuSettings() {
     this.closeTopbarMenu();
     this.openToolsMenu();
+  },
+
+  onTapMenuHistory() {
+    this.closeTopbarMenu();
+    this.toggleHistory();
   },
 
   onTapMenuLeave() {
@@ -4478,9 +4466,7 @@ Page({
         this.clearStoredSessionIfSelfMissing(roomId, playersRaw, waitingPlayersRaw);
         const roomConfig = payload.config || null;
         const incomingThemeId = roomConfig && roomConfig.themeId;
-        const roomThemeId = incomingThemeId
-          ? normalizeRoomThemeId(incomingThemeId)
-          : normalizeRoomThemeId(this.data.createRoomThemeId || this.data.roomThemeId);
+        const roomThemeId = normalizeRoomThemeId(incomingThemeId || DEFAULT_ROOM_THEME_ID);
         const playerCount = Array.isArray(playersRaw) ? playersRaw.length : 0;
         const validTargets = (this.data.selectedTargetIds || []).filter((id) => {
           return playersRaw.some((player) => player.id === id && player.id !== this.data.playerId);
@@ -4647,15 +4633,8 @@ Page({
         const callForcedOpen = Boolean(isMyCallingTurn && suggestedCall.forcedOpen);
         const callPanelVisible = isMyCallingTurn ? Boolean(this.data.callPanelVisible) : false;
         const callPanelExpanded = isMyCallingTurn ? Boolean(this.data.callPanelExpanded) : false;
-        const canOpenAction = Boolean(isMyCallingTurn && lastCallIsOpenableTarget);
+        const canOpenAction = lastCallIsOpenableTarget;
         const showQuickOpenAction = false;
-        const pendingOpenRequest = payload && payload.pendingOpenRequest ? payload.pendingOpenRequest : null;
-        const pendingOpenRequester = pendingOpenRequest
-          ? playersRaw.find((player) => String(player.id || "") === String(pendingOpenRequest.requesterId || ""))
-          : null;
-        const pendingOpenRequestText = pendingOpenRequester
-          ? `${safeDecodeComponent(pendingOpenRequester.nickname).trim() || "有玩家"}申请跳开`
-          : "";
         const shouldResetCallSelection = Boolean(
           !isMyCallingTurn
           || roundChanged
@@ -4733,7 +4712,7 @@ Page({
           canOpenAction,
           callForcedOpen,
           lastCallExists: Boolean(lastCallObj),
-          pendingOpenRequest
+          lastCallBySelf: Boolean(lastCallObj && String(lastCallObj.by || "") === String(this.data.playerId || ""))
         });
 
         const seatingSelectedSeatIndex = Number(this.data.seatingSelectedSeatIndex || 0);
@@ -4789,8 +4768,6 @@ Page({
           callSelectionSummaryText,
           canOpenAction,
           showQuickOpenAction,
-          pendingOpenRequest,
-          pendingOpenRequestText,
           secondaryActionText: secondaryAction.secondaryActionText,
           secondaryActionKind: secondaryAction.secondaryActionKind,
           secondaryActionEnabled: secondaryAction.secondaryActionEnabled,
@@ -5313,11 +5290,7 @@ Page({
     const canOpenAction = Boolean(context.canOpenAction);
     const callForcedOpen = Boolean(context.callForcedOpen);
     const lastCallExists = Boolean(context.lastCallExists);
-    const pendingOpenRequest = context.pendingOpenRequest || null;
-    const selfRequestedOpen = Boolean(
-      pendingOpenRequest
-      && String(pendingOpenRequest.requesterId || "") === String(this.data.playerId || "")
-    );
+    const lastCallBySelf = Boolean(context.lastCallBySelf);
 
     if (selfIsWaiting) {
       return {
@@ -5338,6 +5311,14 @@ Page({
     }
 
     if (phase === "calling") {
+      if (!isMyCallingTurn && lastCallBySelf) {
+        return {
+          secondaryActionText: "",
+          secondaryActionKind: "",
+          secondaryActionEnabled: false
+        };
+      }
+
       if (isMyCallingTurn) {
         if (callForcedOpen || canOpenAction) {
           return {
@@ -5347,25 +5328,25 @@ Page({
           };
         }
         return {
-          secondaryActionText: "记录",
-          secondaryActionKind: "history",
-          secondaryActionEnabled: true
+          secondaryActionText: "",
+          secondaryActionKind: "",
+          secondaryActionEnabled: false
         };
       }
 
-      if (lastCallExists) {
+      if (lastCallExists && canOpenAction) {
         return {
-          secondaryActionText: selfRequestedOpen ? "跳开中" : "跳开",
-          secondaryActionKind: "assist-open",
-          secondaryActionEnabled: !selfRequestedOpen
+          secondaryActionText: "跳开",
+          secondaryActionKind: "open",
+          secondaryActionEnabled: true
         };
       }
     }
 
     return {
-      secondaryActionText: "记录",
-      secondaryActionKind: "history",
-      secondaryActionEnabled: true
+      secondaryActionText: "",
+      secondaryActionKind: "",
+      secondaryActionEnabled: false
     };
   },
 
@@ -5526,8 +5507,6 @@ Page({
       callTimeline: [],
       turnCountdownSec: 0,
       turnCountdownLabel: "",
-      pendingOpenRequest: null,
-      pendingOpenRequestText: "",
       myDiceVisible: false,
       myDicePeekVisible: false,
       myDiceRolling: false,
@@ -5751,8 +5730,6 @@ Page({
       callTimeline: [],
       turnCountdownSec: 0,
       turnCountdownLabel: "",
-      pendingOpenRequest: null,
-      pendingOpenRequestText: "",
       historyVisible: false,
       rulesVisible: false,
       myDiceVisible: false,

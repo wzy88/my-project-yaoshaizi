@@ -1033,6 +1033,46 @@ test("room page: join entry for the same room restores the cached session automa
   }
 });
 
+test("room page: missing server theme never leaks the local provisional theme into a joined room", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({
+      playerId: "P1",
+      createRoomThemeId: "ruby-red",
+      roomThemeId: "ruby-red"
+    });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...buildRoomStatePayload({
+          currentPlayerId: "P1",
+          lastCall: null
+        }),
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        }
+      }
+    }));
+
+    assert.equal(page.data.roomThemeId, "jade-green");
+    assert.equal(page.data.roomThemeClass, "room-theme-jade-green");
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: mode join enters on the room shell while the pending join action waits", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -3668,6 +3708,28 @@ test("room page: all players see the settlement dialog and only the loser can co
     assert.equal(loserRow.featureTagText, "豹");
     assert.equal(loserRow.diceItems.filter((item) => item.highlighted).length, 5);
     assert.equal(loserRow.diceItems.find((item) => item.value === 1).wildcard, true);
+
+    const naturalLeopardOpenResult = {
+      ...openResult,
+      targets: [
+        {
+          ...openResult.targets[0],
+          countDetails: []
+        }
+      ]
+    };
+    const naturalLeopardRoundSummary = {
+      ...roundSummary,
+      players: [
+        { playerId: "winner", dice: [2, 2, 2, 2, 2] },
+        { playerId: "loser", dice: [5, 5, 5, 5, 5] }
+      ]
+    };
+    page.showSettlementPanel(naturalLeopardOpenResult, naturalLeopardRoundSummary);
+    const naturalWinnerRow = page.data.settlementRows.find((row) => row.playerId === "winner");
+    const naturalLoserRow = page.data.settlementRows.find((row) => row.playerId === "loser");
+    assert.equal(naturalWinnerRow.featureTagText, "豹2");
+    assert.equal(naturalLoserRow.featureTagText, "豹5");
   } finally {
     cleanup();
   }
@@ -3969,7 +4031,8 @@ test("room page: calling-turn room state routes open into the left secondary act
         lastCall: null
       })
     }));
-    assert.equal(page.data.secondaryActionKind, "history");
+    assert.equal(page.data.secondaryActionKind, "");
+    assert.equal(page.data.secondaryActionText, "");
   } finally {
     cleanup();
   }
@@ -4009,6 +4072,84 @@ test("room page: calling-turn room state hides open action for self-call and one
     }));
     assert.equal(page.data.canOpenAction, false);
     assert.equal(page.data.showQuickOpenAction, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: non-turn players can jump-open while the latest caller sees no left action", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({ playerId: "P2" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P1",
+        lastCall: { count: 4, point: 5, by: "P2", ts: 201 }
+      })
+    }));
+    assert.equal(page.data.canOpenAction, false);
+    assert.equal(page.data.secondaryActionKind, "");
+    assert.equal(page.data.secondaryActionText, "");
+
+    page.setData({ playerId: "P3" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...buildRoomStatePayload({
+          currentPlayerId: "P2",
+          lastCall: { count: 4, point: 5, by: "P2", ts: 202 }
+        }),
+        players: [
+          {
+            id: "P1",
+            nickname: "甲方",
+            avatar: "",
+            isOwner: true,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 1,
+            diceCupStatus: "closed",
+            rollLocked: true,
+            rollCountThisRound: 1
+          },
+          {
+            id: "P2",
+            nickname: "乙方",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "active",
+            seatIndex: 2,
+            diceCupStatus: "closed",
+            rollLocked: true,
+            rollCountThisRound: 1
+          },
+          {
+            id: "P3",
+            nickname: "丙方",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 3,
+            diceCupStatus: "closed",
+            rollLocked: true,
+            rollCountThisRound: 1
+          }
+        ]
+      }
+    }));
+    assert.equal(page.data.canOpenAction, true);
+    assert.equal(page.data.secondaryActionKind, "open");
+    assert.equal(page.data.secondaryActionText, "跳开");
   } finally {
     cleanup();
   }

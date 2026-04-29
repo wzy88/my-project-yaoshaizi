@@ -40,7 +40,18 @@ test("room engine: startGame requires >=2 players and enters rolling", () => {
 
 test("room engine: theme config is normalized with a safe default", () => {
   const defaultThemeEngine = createEngine();
-  assert.equal(defaultThemeEngine.getState().config.themeId, "imperial-red");
+  assert.equal(defaultThemeEngine.getState().config.themeId, "jade-green");
+
+  const greenThemeEngine = new RoomEngine("T20001A", { id: "P1", nickname: "p1", avatar: "" }, {
+    direction: "cw",
+    wildcardOneEnabled: true,
+    openMode: "single",
+    dicePerPlayer: 5,
+    minOpeningCount: 2,
+    testMode: true,
+    themeId: "jade-green"
+  });
+  assert.equal(greenThemeEngine.getState().config.themeId, "jade-green");
 
   const themedEngine = new RoomEngine("T20002", { id: "P1", nickname: "p1", avatar: "" }, {
     direction: "cw",
@@ -62,7 +73,7 @@ test("room engine: theme config is normalized with a safe default", () => {
     testMode: true,
     themeId: "unsupported-theme"
   });
-  assert.equal(fallbackThemeEngine.getState().config.themeId, "imperial-red");
+  assert.equal(fallbackThemeEngine.getState().config.themeId, "jade-green");
 });
 
 test("room engine: roll capped at 5; lock prevents further roll", () => {

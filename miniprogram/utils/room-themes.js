@@ -1,11 +1,13 @@
-const DEFAULT_ROOM_THEME_ID = "imperial-red";
+const DEFAULT_ROOM_THEME_ID = "jade-green";
 
 const ROOM_THEME_IDS = [
   DEFAULT_ROOM_THEME_ID,
-  "ruby-red"
+  "ruby-red",
+  "imperial-red"
 ];
 
 const ROOM_THEME_LABELS = {
+  "jade-green": "绿色",
   "imperial-red": "红金",
   "ruby-red": "黑色"
 };

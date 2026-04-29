@@ -50,6 +50,7 @@ test("shared dice assets: all stage dice map to complete dice bodies", () => {
 test("shared dice assets: themed self dice resolve to the premium room assets", () => {
   const diceAssets = loadSharedDiceAssets();
   const themedExpectations = [
+    ["jade-green", "/assets/figma-room-v2/die-face-figma-3.svg", /fill="var\(--fill-0, #F5F3EE\)"/],
     ["ruby-red", "/assets/room-themes/ruby-red-die-face-3.svg", /fill="#F7F3EA"/],
     ["imperial-red", "/assets/room-themes/imperial-red-die-face-3.svg", /fill="#FFF6E3"/]
   ];

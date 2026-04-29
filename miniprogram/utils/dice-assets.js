@@ -8,6 +8,14 @@ const DICE_FACE_ASSETS = {
 };
 
 const SELF_DICE_THEME_ASSETS = {
+  "jade-green": {
+    1: "/assets/figma-room-v2/die-face-figma-1.svg",
+    2: "/assets/figma-room-v2/die-face-figma-2.svg",
+    3: "/assets/figma-room-v2/die-face-figma-3.svg",
+    4: "/assets/figma-room-v2/die-face-figma-4.svg",
+    5: "/assets/figma-room-v2/die-face-figma-5.svg",
+    6: "/assets/figma-room-v2/die-face-figma-6.svg"
+  },
   "ruby-red": {
     1: "/assets/room-themes/ruby-red-die-face-1.svg",
     2: "/assets/room-themes/ruby-red-die-face-2.svg",

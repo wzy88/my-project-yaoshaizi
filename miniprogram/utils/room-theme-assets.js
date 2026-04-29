@@ -2,6 +2,15 @@ const DEFAULT_MENU_ICON_SRC = "/assets/figma-room-v2/topbar-menu-icon.svg";
 const DEFAULT_PRIMARY_ICON_SRC = "/assets/figma-room-v2/die-cube-gold.svg";
 
 const ROOM_THEME_ASSET_MAP = {
+  "jade-green": {
+    menuIconSrc: DEFAULT_MENU_ICON_SRC,
+    primaryIconSrc: DEFAULT_PRIMARY_ICON_SRC,
+    openButtonSrc: "",
+    secondaryIconSrc: "",
+    tableclothSrc: "",
+    primaryButtonClass: "",
+    secondaryButtonClass: ""
+  },
   "ruby-red": {
     menuIconSrc: "/assets/room-themes/ruby-red-menu-btn-black.png",
     primaryIconSrc: "/assets/room-themes/ruby-red-die-black.svg",
@@ -23,7 +32,7 @@ const ROOM_THEME_ASSET_MAP = {
 };
 
 function getRoomThemeAssets(themeId) {
-  return ROOM_THEME_ASSET_MAP[String(themeId || "").trim()] || ROOM_THEME_ASSET_MAP["imperial-red"];
+  return ROOM_THEME_ASSET_MAP[String(themeId || "").trim()] || ROOM_THEME_ASSET_MAP["jade-green"];
 }
 
 module.exports = {

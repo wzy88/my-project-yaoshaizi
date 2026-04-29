@@ -28,12 +28,17 @@ test("room shell keeps the room id centered while moving share into the left-top
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
   assert.doesNotMatch(wxml, /class="room-safe-panel"/);
-  assert.match(wxml, /class="room-chrome-btn room-chrome-btn--menu" bindtap="onTapMore"/);
+  assert.match(wxml, /class="room-topbar__shortcut" bindtap="onTapMore"/);
+  assert.match(wxml, /class="room-topbar__shortcut-text">设置<\/text>/);
+  assert.match(wxml, /class="room-topbar__shortcut room-topbar__shortcut--ghost" bindtap="onTapRules"/);
+  assert.match(wxml, /class="room-topbar__shortcut-text">规则<\/text>/);
   assert.match(wxml, /class="room-topbar-menu-popover"/);
   assert.match(wxml, /class="room-topbar-menu-popover__item room-topbar-menu-popover__item--share" open-type="share" bindtap="onTapMenuShare"/);
   assert.match(wxml, /class="room-topbar-menu-popover__text">邀请好友<\/text>/);
+  assert.match(wxml, /class="room-topbar-menu-popover__text">记录<\/text>/);
   assert.match(wxml, /class="room-topbar-menu-popover__text">音效开关<\/text>/);
   assert.doesNotMatch(wxml, /class="room-topbar-menu-popover__text">设置<\/text>/);
+  assert.doesNotMatch(wxml, /class="room-chrome-btn room-chrome-btn--menu" bindtap="onTapMore"/);
   assert.match(wxml, /class="room-topbar__room/);
   assert.match(wxml, /<text class="room-topbar__room-label">房间号:<\/text>/);
   assert.doesNotMatch(wxml, /class="room-topbar__toggle"/);
@@ -60,7 +65,7 @@ test("room shell supports experimental room theme classes without changing the d
   assert.match(script, /roomThemeClass:\s*buildRoomThemeClass\(DEFAULT_ROOM_THEME_ID\)/);
   assert.match(script, /themeId:\s*normalizeRoomThemeId\(this\.data\.createRoomThemeId\)/);
   assert.match(script, /const incomingThemeId = roomConfig && roomConfig\.themeId/);
-  assert.match(script, /normalizeRoomThemeId\(this\.data\.createRoomThemeId \|\| this\.data\.roomThemeId\)/);
+  assert.match(script, /normalizeRoomThemeId\(incomingThemeId \|\| DEFAULT_ROOM_THEME_ID\)/);
   assert.match(wxss, /\.page\.room-theme-imperial-red \.room-stage__table-frame\s*\{/);
   assert.match(wxss, /\.page\.room-theme-imperial-red \.ghost-cup \.figma-cup__body\s*\{/);
   assert.match(wxss, /\.page\.room-theme-ruby-red \.room-stage__table-frame\s*\{/);

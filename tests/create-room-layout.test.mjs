@@ -17,8 +17,11 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(script, /playerCount:\s*8/);
   assert.match(script, /devtoolsMode:\s*false/);
   assert.match(script, /app\.globalData && app\.globalData\.isDevtoolsMode/);
+  assert.match(script, /ROOM_THEME_IDS/);
+  assert.match(script, /roomThemeOptions:\s*buildThemeOptions\(\)/);
   assert.match(script, /themePreviewId:\s*DEFAULT_ROOM_THEME_ID/);
-  assert.match(script, /themePreviewId:\s*pickRandomRoomThemeId\(\)/);
+  assert.match(script, /const themePreviewId = normalizeRoomThemeId\(options && options\.themeId\)/);
+  assert.match(script, /onSelectTheme\(event\)/);
   assert.doesNotMatch(script, /playerCountOptions/);
   assert.doesNotMatch(script, /allowSpectator/);
   assert.doesNotMatch(script, /lockRoom/);
@@ -32,6 +35,11 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxml, /class="room-form-card__badge">固定房间<\/view>/);
   assert.match(wxml, /class="room-form-card__title">固定 8 个座位<\/text>/);
   assert.match(wxml, /房间始终保留 8 个座位，来几个人算几个人，最多 8 人同局。/);
+  assert.match(wxml, /<text class="block-title">房间主题<\/text>/);
+  assert.match(wxml, /class="theme-picker"/);
+  assert.match(wxml, /class="theme-card theme-card--\{\{item\.id\}\} \{\{themePreviewId === item\.id \? 'is-active' : ''\}\}"/);
+  assert.match(wxml, /class="theme-card__preview"/);
+  assert.match(wxml, /class="theme-card__title">\{\{item\.label\}\}<\/text>/);
   assert.match(wxml, /class="toggle-card__signal \{\{wildcardOneEnabled \? 'is-on' : 'is-off'\}\}"/);
   assert.match(wxml, /class="create-note-card"/);
   assert.match(wxml, /class="create-note-card create-note-card--experiment"/);
@@ -52,6 +60,11 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxss, /\.create-page\s*\{[\s\S]*display:\s*flex[\s\S]*align-items:\s*flex-end[\s\S]*justify-content:\s*center/);
   assert.match(wxss, /\.create-sheet__glow--a\s*\{/);
   assert.match(wxss, /\.toggle-card__signal\.is-on\s*\{/);
+  assert.match(wxss, /\.theme-picker\s*\{/);
+  assert.match(wxss, /\.theme-card\s*\{/);
+  assert.match(wxss, /\.theme-card--jade-green \.theme-card__preview\s*\{/);
+  assert.match(wxss, /\.theme-card--ruby-red \.theme-card__preview\s*\{/);
+  assert.match(wxss, /\.theme-card--imperial-red \.theme-card__preview\s*\{/);
   assert.match(wxss, /\.create-note-card\s*\{/);
   assert.match(wxss, /\.create-note-card--experiment\s*\{/);
   assert.match(wxss, /\.create-btn\s*\{/);

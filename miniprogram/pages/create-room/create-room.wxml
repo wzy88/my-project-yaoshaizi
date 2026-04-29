@@ -23,6 +23,38 @@
       </view>
 
       <view class="block">
+        <text class="block-title">房间主题</text>
+        <view class="theme-picker">
+          <block wx:for="{{roomThemeOptions}}" wx:key="id">
+            <view
+              class="theme-card theme-card--{{item.id}} {{themePreviewId === item.id ? 'is-active' : ''}}"
+              data-theme-id="{{item.id}}"
+              bindtap="onSelectTheme"
+            >
+              <view class="theme-card__preview">
+                <view class="theme-card__preview-glow"></view>
+                <view class="theme-card__preview-table"></view>
+                <view class="theme-card__preview-ring"></view>
+                <view class="theme-card__preview-bubble"></view>
+                <view class="theme-card__preview-action theme-card__preview-action--primary"></view>
+                <view class="theme-card__preview-action theme-card__preview-action--secondary"></view>
+                <view class="theme-card__preview-cup theme-card__preview-cup--left"></view>
+                <view class="theme-card__preview-cup theme-card__preview-cup--right"></view>
+              </view>
+              <view class="theme-card__meta">
+                <view class="theme-card__title-row">
+                  <text class="theme-card__title">{{item.label}}</text>
+                  <view wx:if="{{themePreviewId === item.id}}" class="theme-card__badge">当前</view>
+                </view>
+                <text class="theme-card__caption">{{item.caption}}</text>
+                <text class="theme-card__desc">{{item.desc}}</text>
+              </view>
+            </view>
+          </block>
+        </view>
+      </view>
+
+      <view class="block">
         <text class="block-title">局内规则</text>
         <view class="toggle-card" data-field="wildcardOneEnabled" bindtap="onToggleField">
           <view class="toggle-card__signal {{wildcardOneEnabled ? 'is-on' : 'is-off'}}"></view>
