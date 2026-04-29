@@ -1,13 +1,14 @@
 import {
   ErrorCode,
   GameError,
-  countPointWithOptions,
+  getPointCountBreakdown,
   isCallHigher,
   isValidCallInput,
   type DiceCall,
   type OpenResultDTO,
   type RoomConfigDTO,
   type RoomDirection,
+  type RoomThemeId,
   type PlayerState,
   type RoomPhase,
   type RoomStateDTO,
@@ -41,6 +42,10 @@ interface OpenExecution {
   roundSummary: RoundSummaryDTO;
 }
 
+interface RemovePlayerOptions {
+  preserveCurrentTurn?: boolean;
+}
+
 class SeededRng {
   private state: number;
 
@@ -70,6 +75,14 @@ class SeededRng {
     const range = max - min;
     return min + (this.nextUint32() % range);
   }
+}
+
+const DEFAULT_ROOM_THEME_ID: RoomThemeId = "jade-green";
+const ROOM_THEME_IDS = new Set<RoomThemeId>(["jade-green", "ruby-red", "imperial-red"]);
+
+function normalizeRoomThemeId(input: unknown): RoomThemeId {
+  const value = String(input || "").trim() as RoomThemeId;
+  return ROOM_THEME_IDS.has(value) ? value : DEFAULT_ROOM_THEME_ID;
 }
 
 export class RoomEngine {
@@ -266,7 +279,7 @@ export class RoomEngine {
     this.bumpVersion();
   }
 
-  removePlayer(playerId: string): void {
+  removePlayer(playerId: string, options: RemovePlayerOptions = {}): void {
     if (this.waitingPlayers.delete(playerId)) {
       this.bumpVersion();
       return;
@@ -279,10 +292,23 @@ export class RoomEngine {
 
     const isRoundActive = this.phase === "rolling" || this.phase === "calling" || this.phase === "opening";
     if (isRoundActive) {
+      const removedWasOwner = removed.isOwner;
       removed.onlineStatus = "offline";
       removed.turnStatus = "idle";
       removed.pendingRemoval = true;
-      if (this.currentPlayerId === playerId) {
+
+      if (removedWasOwner) {
+        removed.isOwner = false;
+        this.ensureRoomHasOwner();
+      }
+
+      if (this.getOnlinePlayers().length < MIN_PLAYERS_TO_START) {
+        this.abortActiveRoundToReady();
+        this.bumpVersion();
+        return;
+      }
+
+      if (this.currentPlayerId === playerId && !options.preserveCurrentTurn) {
         this.currentPlayerId = undefined;
       }
       this.repairTurnAfterPlayerChange();
@@ -302,10 +328,7 @@ export class RoomEngine {
     }
 
     if (removedWasOwner) {
-      const nextOwner = this.getOrderedPlayers()[0];
-      if (nextOwner) {
-        nextOwner.isOwner = true;
-      }
+      this.ensureRoomHasOwner();
     }
 
     if (this.currentPlayerId === playerId) {
@@ -348,12 +371,9 @@ export class RoomEngine {
   setSeat(actorId: string, playerId: string, seatIndex: number): void {
     this.ensureOwner(actorId);
 
-    if (this.phase !== "ready") {
-      throw new GameError(ErrorCode.INVALID_PHASE, "仅准备阶段可排位");
-    }
-
-    if (this.configLocked && this.round > 0) {
-      throw new GameError(ErrorCode.LOCKED, "已开局，座位已锁定");
+    const phaseAllowsSeat = this.phase === "ready" || this.phase === "ended";
+    if (!phaseAllowsSeat) {
+      throw new GameError(ErrorCode.INVALID_PHASE, "仅准备/结算阶段可排位");
     }
 
     const target = this.players.get(playerId);
@@ -376,12 +396,9 @@ export class RoomEngine {
   swapSeats(actorId: string, playerIdA: string, playerIdB: string): void {
     this.ensureOwner(actorId);
 
-    if (this.phase !== "ready") {
-      throw new GameError(ErrorCode.INVALID_PHASE, "仅准备阶段可排位");
-    }
-
-    if (this.configLocked && this.round > 0) {
-      throw new GameError(ErrorCode.LOCKED, "已开局，座位已锁定");
+    const phaseAllowsSeat = this.phase === "ready" || this.phase === "ended";
+    if (!phaseAllowsSeat) {
+      throw new GameError(ErrorCode.INVALID_PHASE, "仅准备/结算阶段可排位");
     }
 
     const a = this.players.get(playerIdA);
@@ -503,9 +520,9 @@ export class RoomEngine {
     if (actorId !== this.nextRoundStarterId) {
       const starter = this.players.get(this.nextRoundStarterId);
       const actor = this.players.get(actorId);
-      const starterOffline = starter?.onlineStatus === "offline";
+      const starterUnavailable = !starter || starter.onlineStatus === "offline" || starter.pendingRemoval;
       const actorIsOwner = Boolean(actor?.isOwner);
-      if (!(starterOffline && actorIsOwner)) {
+      if (!(starterUnavailable && actorIsOwner)) {
         throw new GameError(ErrorCode.FORBIDDEN, "仅上一局失败方可开始下一局");
       }
     }
@@ -658,17 +675,13 @@ export class RoomEngine {
       throw new GameError(ErrorCode.PLAYER_NOT_IN_ROOM, "玩家不在房间中");
     }
 
-    if (this.currentPlayerId !== actorId) {
-      throw new GameError(ErrorCode.NOT_YOUR_TURN, "未轮到当前玩家开牌");
-    }
-
     if (!this.lastCall) {
       throw new GameError(ErrorCode.INVALID_CALL, "当前没有可开牌的上一手声明");
     }
 
     const targetId = this.lastCall.by;
     if (targetId === actorId) {
-      throw new GameError(ErrorCode.INVALID_OPEN_TARGET, "不能开自己");
+      throw new GameError(ErrorCode.INVALID_OPEN_TARGET, "上一手叫牌玩家不能自己开牌");
     }
 
     for (const player of this.players.values()) {
@@ -677,14 +690,17 @@ export class RoomEngine {
         player.hasRolled = true;
       }
     }
-    const allDice = this.getOrderedPlayers().map((player) => player.privateDice);
+    const orderedPlayers = this.getOrderedPlayers();
+    const allDice = orderedPlayers.map((player) => player.privateDice);
+    const playerIds = orderedPlayers.map((player) => player.id);
 
     const target = this.players.get(targetId);
     if (!target || !target.currentCall) {
       throw new GameError(ErrorCode.INVALID_OPEN_TARGET, "上一手叫牌玩家不存在或无有效声明");
     }
 
-    const actual = countPointWithOptions(allDice, target.currentCall.point, options);
+    const countBreakdown = getPointCountBreakdown(allDice, target.currentCall.point, options, playerIds);
+    const actual = countBreakdown.total;
     const winnerId = actual >= target.currentCall.count ? target.id : actorId;
 
     const targets = [
@@ -695,7 +711,8 @@ export class RoomEngine {
           point: target.currentCall.point
         },
         actual,
-        winnerId
+        winnerId,
+        countDetails: countBreakdown.players
       }
     ];
 
@@ -791,8 +808,6 @@ export class RoomEngine {
 
   private beginRound(): void {
     this.configLocked = true;
-    this.phase = "rolling";
-    this.round += 1;
     this.lastCall = undefined;
     this.wildcardOneLockedOff = false;
 
@@ -809,6 +824,18 @@ export class RoomEngine {
       this.bumpVersion();
       return;
     }
+    this.ensureRoomHasOwner();
+
+    if (this.getOnlinePlayers().length < MIN_PLAYERS_TO_START) {
+      this.phase = "ready";
+      this.nextRoundStarterId = undefined;
+      this.resetRoundState();
+      this.bumpVersion();
+      return;
+    }
+
+    this.phase = "rolling";
+    this.round += 1;
 
     for (const player of this.players.values()) {
       player.privateDice = [];
@@ -880,6 +907,19 @@ export class RoomEngine {
     }
   }
 
+  private abortActiveRoundToReady(): void {
+    for (const player of [...this.players.values()]) {
+      if (player.pendingRemoval) {
+        this.players.delete(player.id);
+      }
+    }
+
+    this.ensureRoomHasOwner();
+    this.phase = "ready";
+    this.nextRoundStarterId = undefined;
+    this.resetRoundState();
+  }
+
   private repairTurnAfterPlayerChange(): void {
     if (!this.currentPlayerId) {
       if (this.phase === "calling") {
@@ -920,6 +960,18 @@ export class RoomEngine {
     const actor = this.getPlayerOrThrow(actorId);
     if (!actor.isOwner) {
       throw new GameError(ErrorCode.FORBIDDEN, "仅房主可操作");
+    }
+  }
+
+  private ensureRoomHasOwner(): void {
+    if ([...this.players.values()].some((player) => player.isOwner && !player.pendingRemoval)) {
+      return;
+    }
+
+    const nextOwner = this.getOrderedPlayers().find((player) => !player.pendingRemoval)
+      || this.getOrderedPlayers()[0];
+    if (nextOwner) {
+      nextOwner.isOwner = true;
     }
   }
 
@@ -1060,7 +1112,8 @@ export class RoomEngine {
       openMode: input.openMode === "multi" ? "multi" : "single",
       dicePerPlayer,
       minOpeningCount,
-      testMode: Boolean(input.testMode)
+      testMode: Boolean(input.testMode),
+      themeId: normalizeRoomThemeId(input.themeId)
     };
   }
 

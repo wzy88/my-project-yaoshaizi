@@ -170,7 +170,9 @@
   margin-top: 34rpx;
   padding: 24rpx 24rpx 28rpx;
   border-radius: 34rpx;
-  background: rgba(14, 18, 27, 0.46);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(244, 203, 95, 0.08) 0%, rgba(244, 203, 95, 0) 34%),
+    rgba(14, 18, 27, 0.46);
   border: 1rpx solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 18rpx 36rpx rgba(0, 0, 0, 0.28);
 }
@@ -250,4 +252,26 @@
 
 .link {
   color: #f0c840;
+}
+
+.entry-page.is-perf-lite .entry-page__aurora,
+.entry-page.is-perf-lite .entry-page__stars {
+  display: none;
+}
+
+.entry-page.is-perf-lite .hero-card,
+.entry-page.is-perf-lite .action-panel,
+.entry-page.is-perf-lite .dice {
+  animation: none !important;
+  transition: none !important;
+}
+
+.entry-page.is-perf-lite .hero-card,
+.entry-page.is-perf-lite .action-panel {
+  backdrop-filter: none;
+  box-shadow: 0 12rpx 24rpx rgba(0, 0, 0, 0.2);
+}
+
+.entry-page.is-perf-lite .dice {
+  filter: none;
 }

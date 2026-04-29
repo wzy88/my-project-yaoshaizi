@@ -1,9 +1,11 @@
+const app = getApp();
 const {
   SESSION_KEY,
   NICKNAME_KEY,
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
   WECHAT_LOGIN_TS_KEY,
   SFX_ENABLED_KEY,
+  TURN_ALERT_SFX_ENABLED_KEY,
   HAPTIC_ENABLED_KEY,
   CONTACT_EMAIL
 } = require("../../utils/constants");
@@ -16,8 +18,10 @@ const { validateNickname } = require("../../utils/nickname-validator");
 const {
   getStoredWechatProfile,
   persistWechatProfile,
+  persistLegalConsent,
   clearWechatProfile
 } = require("../../utils/wechat-auth");
+const { performWechatOneTapLogin, refreshWechatSessionSilently } = require("../../utils/wechat-login-flow");
 
 function buildTimeText() {
   const date = new Date();
@@ -42,6 +46,16 @@ function formatShortDateTime(ts) {
   const hh = String(date.getHours()).padStart(2, "0");
   const mm = String(date.getMinutes()).padStart(2, "0");
   return `${month}-${day} ${hh}:${mm}`;
+}
+
+function readStoredBoolean(key, fallback = true) {
+  const stored = wx.getStorageSync(key);
+  return stored === "" || stored == null ? fallback : Boolean(stored);
+}
+
+function isAccountSessionExpiredMessage(message) {
+  const normalized = String(message || "").trim().toLowerCase();
+  return normalized.includes("账号登录已失效") || normalized.includes("unauthorized");
 }
 
 function buildAccountData(session) {
@@ -75,10 +89,12 @@ function buildAccountData(session) {
 Page({
   data: {
     timeText: "10:21",
+    devtoolsMode: false,
     nickname: "",
     avatarUrl: "",
     initial: "玩",
     sfxEnabled: true,
+    turnAlertSfxEnabled: true,
     hapticEnabled: true,
     accountDisplayId: "",
     accountReady: false,
@@ -94,22 +110,25 @@ Page({
     lastRoundText: "暂无",
     hasSession: false,
     sessionRoomId: "",
-    contactEmail: CONTACT_EMAIL
+    contactEmail: CONTACT_EMAIL,
+    nicknameSaving: false,
+    showLoginGate: false,
+    loginBusy: false,
+    loginAgreementChecked: false,
+    pendingSaveNickname: ""
   },
 
   onLoad() {
     const profile = getStoredWechatProfile();
-    const storedSfx = wx.getStorageSync(SFX_ENABLED_KEY);
-    const storedHaptic = wx.getStorageSync(HAPTIC_ENABLED_KEY);
-    const sfxEnabled = storedSfx === "" || storedSfx == null ? true : Boolean(storedSfx);
-    const hapticEnabled = storedHaptic === "" || storedHaptic == null ? true : Boolean(storedHaptic);
     this.setData({
+      devtoolsMode: Boolean(app && app.globalData && app.globalData.isDevtoolsMode),
       timeText: buildTimeText(),
       nickname: profile.nickname,
       avatarUrl: profile.avatarUrl,
       initial: String(profile.nickname || "玩家").slice(0, 1),
-      sfxEnabled,
-      hapticEnabled,
+      sfxEnabled: readStoredBoolean(SFX_ENABLED_KEY, true),
+      turnAlertSfxEnabled: readStoredBoolean(TURN_ALERT_SFX_ENABLED_KEY, true),
+      hapticEnabled: readStoredBoolean(HAPTIC_ENABLED_KEY, true),
       ...buildAccountData(getStoredAccountSession())
     });
 
@@ -124,7 +143,12 @@ Page({
   },
 
   onShow() {
-    this.setData({ timeText: buildTimeText() });
+    this.setData({
+      timeText: buildTimeText(),
+      sfxEnabled: readStoredBoolean(SFX_ENABLED_KEY, true),
+      turnAlertSfxEnabled: readStoredBoolean(TURN_ALERT_SFX_ENABLED_KEY, true),
+      hapticEnabled: readStoredBoolean(HAPTIC_ENABLED_KEY, true)
+    });
 
     const profile = getStoredWechatProfile();
     if (profile.nickname !== this.data.nickname || profile.avatarUrl !== this.data.avatarUrl) {
@@ -161,7 +185,7 @@ Page({
     });
   },
 
-  async onNicknameCommit(event) {
+  onNicknameBlur(event) {
     const inputValue = String(event && event.detail && event.detail.value || this.data.nickname || "");
     const validation = validateNickname(inputValue);
     if (!validation.ok) {
@@ -177,13 +201,44 @@ Page({
       nickname: validation.value,
       initial: String(validation.value || "玩家").slice(0, 1)
     });
-    wx.setStorageSync(NICKNAME_KEY, validation.value);
-    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, true);
+  },
+
+  async onNicknameSave(event) {
+    if (this.data.nicknameSaving) {
+      return;
+    }
+
+    const inputValue = String(event && event.detail && event.detail.value || this.data.nickname || "");
+    const validation = validateNickname(inputValue);
+    if (!validation.ok) {
+      this.setData({
+        nickname: inputValue,
+        initial: String(inputValue || "玩家").slice(0, 1)
+      });
+      wx.showToast({ title: validation.message, icon: "none" });
+      return;
+    }
 
     const session = getStoredAccountSession();
     if (!session.loggedIn) {
+      this.setData({
+        nickname: validation.value,
+        initial: String(validation.value || "玩家").slice(0, 1),
+        showLoginGate: true,
+        loginBusy: false,
+        loginAgreementChecked: false,
+        pendingSaveNickname: validation.value
+      });
       return;
     }
+
+    this.setData({
+      nickname: validation.value,
+      initial: String(validation.value || "玩家").slice(0, 1),
+      nicknameSaving: true
+    });
+    wx.setStorageSync(NICKNAME_KEY, validation.value);
+    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, true);
 
     try {
       const latest = await syncMyAccountProfile({
@@ -201,6 +256,83 @@ Page({
     } catch (error) {
       const message = error && error.message ? String(error.message) : "昵称同步失败";
       wx.showToast({ title: message, icon: "none" });
+    } finally {
+      this.setData({ nicknameSaving: false });
+    }
+  },
+
+  closeLoginGate() {
+    if (this.data.loginBusy) {
+      return;
+    }
+
+    this.setData({
+      showLoginGate: false,
+      loginBusy: false,
+      loginAgreementChecked: false,
+      pendingSaveNickname: ""
+    });
+  },
+
+  toggleLoginAgreement() {
+    this.setData({
+      loginAgreementChecked: !this.data.loginAgreementChecked
+    });
+  },
+
+  noop() {},
+
+  async onLoginAndSaveNickname() {
+    if (this.data.loginBusy) {
+      return;
+    }
+
+    if (!this.data.loginAgreementChecked) {
+      wx.showToast({ title: "请先勾选协议", icon: "none" });
+      return;
+    }
+
+    const pendingNickname = String(this.data.pendingSaveNickname || this.data.nickname || "").trim();
+    const validation = validateNickname(pendingNickname);
+    if (!validation.ok) {
+      wx.showToast({ title: validation.message, icon: "none" });
+      return;
+    }
+
+    this.setData({
+      nickname: validation.value,
+      initial: String(validation.value || "玩家").slice(0, 1),
+      loginBusy: true
+    });
+    wx.setStorageSync(NICKNAME_KEY, validation.value);
+    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, true);
+
+    try {
+      persistWechatProfile({
+        nickname: validation.value,
+        avatarUrl: this.data.avatarUrl,
+        nicknameCustomized: true
+      });
+      persistLegalConsent();
+      const loginResult = await performWechatOneTapLogin();
+      const loggedProfile = loginResult && loginResult.profile ? loginResult.profile : getStoredWechatProfile();
+      const loggedSession = loginResult && loginResult.accountSession ? loginResult.accountSession : getStoredAccountSession();
+      this.setData({
+        nickname: loggedProfile.nickname || validation.value,
+        avatarUrl: loggedProfile.avatarUrl || this.data.avatarUrl,
+        initial: String((loggedProfile.nickname || validation.value || "玩家")).slice(0, 1),
+        showLoginGate: false,
+        loginBusy: false,
+        loginAgreementChecked: false,
+        pendingSaveNickname: "",
+        ...buildAccountData(loggedSession)
+      });
+      wx.showToast({ title: "登录成功，昵称已保存", icon: "none" });
+      void this.refreshAccountProfile();
+    } catch (error) {
+      const message = error && error.message ? String(error.message) : "登录失败，请稍后再试";
+      this.setData({ loginBusy: false });
+      wx.showToast({ title: message, icon: "none" });
     }
   },
 
@@ -208,6 +340,12 @@ Page({
     const next = !this.data.sfxEnabled;
     this.setData({ sfxEnabled: next });
     wx.setStorageSync(SFX_ENABLED_KEY, next);
+  },
+
+  onToggleTurnAlertSfx() {
+    const next = !this.data.turnAlertSfxEnabled;
+    this.setData({ turnAlertSfxEnabled: next });
+    wx.setStorageSync(TURN_ALERT_SFX_ENABLED_KEY, next);
   },
 
   onToggleHaptic() {
@@ -243,8 +381,25 @@ Page({
         accountLoading: false
       });
     } catch (error) {
-      this.setData({ accountLoading: false });
       const message = error && error.message ? String(error.message) : "账号信息同步失败";
+      if (isAccountSessionExpiredMessage(message)) {
+        try {
+          await refreshWechatSessionSilently();
+          return await this.refreshAccountProfile();
+        } catch (refreshError) {
+          const localProfile = getStoredWechatProfile();
+          this.setData({
+            nickname: localProfile.nickname,
+            avatarUrl: localProfile.avatarUrl,
+            initial: String(localProfile.nickname || "玩家").slice(0, 1),
+            ...buildAccountData(getStoredAccountSession()),
+            accountLoading: false
+          });
+        }
+        return;
+      }
+
+      this.setData({ accountLoading: false });
       wx.showToast({ title: message, icon: "none" });
     }
   },

@@ -27,7 +27,7 @@ export function createServer() {
     : 0;
 
   const httpServer = createHttpServer((req, res) => {
-    void handleHttpRequest(req, res, accountStore);
+    void handleHttpRequest(req, res, accountStore, roomService);
   });
 
   const wss = new WebSocketServer({
@@ -118,7 +118,8 @@ export function createServer() {
 async function handleHttpRequest(
   req: IncomingMessage,
   res: ServerResponse,
-  accountStore: AccountStore
+  accountStore: AccountStore,
+  roomService: RoomService
 ): Promise<void> {
   try {
     const { method = "GET" } = req;
@@ -135,6 +136,30 @@ async function handleHttpRequest(
         ok: true,
         service: "dice-server",
         ts: Date.now()
+      });
+      return;
+    }
+
+    if (method === "POST" && pathname === "/api/room-exists") {
+      const body = await readJsonBody(req);
+      const roomId = String(body.roomId || "").trim();
+      if (!/^\d{6}$/.test(roomId)) {
+        sendJson(res, 200, {
+          ok: true,
+          data: {
+            roomId,
+            exists: false
+          }
+        });
+        return;
+      }
+
+      sendJson(res, 200, {
+        ok: true,
+        data: {
+          roomId,
+          exists: roomService.hasRoom(roomId)
+        }
       });
       return;
     }

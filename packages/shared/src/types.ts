@@ -6,6 +6,7 @@ export type NetworkHealth = "good" | "lag" | "disconnected";
 export type RoomDirection = "cw" | "ccw";
 export type OpenMode = "single" | "multi";
 export type AccountProvider = "wechat";
+export type RoomThemeId = "jade-green" | "ruby-red" | "imperial-red";
 
 export interface RoomConfigDTO {
   direction: RoomDirection;
@@ -14,6 +15,7 @@ export interface RoomConfigDTO {
   dicePerPlayer: number;
   minOpeningCount: number;
   testMode: boolean;
+  themeId?: RoomThemeId;
 }
 
 export interface DiceCall {
@@ -57,6 +59,7 @@ export interface RoomStateDTO {
   players: PlayerState[];
   waitingPlayers: WaitingPlayerState[];
   lastCall?: DiceCall;
+  turnDeadlineTs?: number;
   networkHealth: NetworkHealth;
   version: number;
   serverTs: number;
@@ -70,6 +73,22 @@ export interface OpenResultTarget {
   };
   actual: number;
   winnerId: string;
+  countDetails?: OpenResultCountPlayer[];
+}
+
+export interface OpenResultCountDie {
+  index: number;
+  value: number;
+  counted: boolean;
+  wildcard: boolean;
+}
+
+export interface OpenResultCountPlayer {
+  playerId: string;
+  dice: OpenResultCountDie[];
+  contribution: number;
+  straight: boolean;
+  leopardBonus: boolean;
 }
 
 export interface OpenResultDTO {

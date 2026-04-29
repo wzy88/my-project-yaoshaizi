@@ -7,12 +7,13 @@ const indexModulePath = require.resolve("../miniprogram/pages/index/index.js");
 const backendRequestModulePath = require.resolve("../miniprogram/utils/backend-request.js");
 const { DEFAULT_PROFILE_AVATAR_ASSETS } = require("../miniprogram/utils/profile-defaults.js");
 const {
-  LEGAL_ACCEPT_KEY,
   NICKNAME_KEY,
   AVATAR_URL_KEY,
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
   WECHAT_LOGIN_TS_KEY,
-  ACCOUNT_SESSION_KEY
+  ACCOUNT_SESSION_KEY,
+  LEGAL_ACCEPT_KEY,
+  LEGAL_VERSION
 } = require("../miniprogram/utils/constants.js");
 
 function instantiateIndexPage({
@@ -213,14 +214,32 @@ test("index page: wechat login stores a default avatar nickname and resumes the 
     assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(storageState[AVATAR_URL_KEY]), true);
     assert.equal(Number(storageState[WECHAT_LOGIN_TS_KEY]) > 0, true);
     assert.equal(storageState[ACCOUNT_SESSION_KEY].accountId, "acct_mock_1");
-    assert.equal(storageState[LEGAL_ACCEPT_KEY].accepted, true);
     assert.deepEqual(redirects, ["/pages/room/room?mode=join&forceNew=1&roomId=123456"]);
     assert.deepEqual(tabSwitches, []);
     assert.equal(requests[0].url, "http://127.0.0.1:3000/api/auth/wechat-login");
     assert.equal(requests[0].method, "POST");
     assert.match(String(requests[0].data.nickname || ""), /^玩家\d{3}$/);
     assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(String(requests[0].data.avatarUrl || "")), true);
+    assert.deepEqual(storageState[LEGAL_ACCEPT_KEY], {
+      accepted: true,
+      version: LEGAL_VERSION,
+      acceptedAt: storageState[LEGAL_ACCEPT_KEY].acceptedAt
+    });
+    assert.equal(Number(storageState[LEGAL_ACCEPT_KEY].acceptedAt) > 0, true);
     assert.equal(toasts.includes("登录成功"), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("index page: browse button sends the user to the lobby without triggering login", () => {
+  const { page, tabSwitches, cleanup } = instantiateIndexPage();
+
+  try {
+    page.onLoad({});
+    page.goLobby();
+
+    assert.deepEqual(tabSwitches, ["/pages/lobby/lobby"]);
   } finally {
     cleanup();
   }

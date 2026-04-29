@@ -2,8 +2,7 @@ const { loginWechatAccount } = require("./account-api");
 const {
   requestWechatLogin,
   requestWechatUserProfile,
-  persistWechatProfile,
-  persistLegalConsent
+  persistWechatProfile
 } = require("./wechat-auth");
 
 async function performWechatOneTapLogin() {
@@ -16,7 +15,6 @@ async function performWechatOneTapLogin() {
     nicknameCustomized: Boolean(userProfile.nicknameCustomized)
   });
   const nextProfile = accountSession && accountSession.profile ? accountSession.profile : {};
-  persistLegalConsent();
   const storedProfile = persistWechatProfile({
     nickname: String(nextProfile.nickname || userProfile.nickname || "").trim(),
     avatarUrl: String(nextProfile.avatarUrl || userProfile.avatarUrl || "").trim(),
@@ -34,6 +32,11 @@ async function performWechatOneTapLogin() {
   };
 }
 
+async function refreshWechatSessionSilently() {
+  return performWechatOneTapLogin();
+}
+
 module.exports = {
-  performWechatOneTapLogin
+  performWechatOneTapLogin,
+  refreshWechatSessionSilently
 };

@@ -24,14 +24,22 @@ test("room page disables page-level scrolling while leaving internal panels to m
   assert.match(wxss, /\.page\.room-screen\s+\.room-shell\s*\{[\s\S]*overflow:\s*hidden/);
 });
 
-test("room shell keeps the room id centered while moving share into the left-top menu", () => {
+test("room shell keeps the room id centered while moving invite outside and rules onto the table", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
   assert.doesNotMatch(wxml, /class="room-safe-panel"/);
-  assert.match(wxml, /class="room-chrome-btn room-chrome-btn--menu" bindtap="onTapMore"/);
+  assert.match(wxml, /class="room-topbar__shortcut" bindtap="onTapMore"/);
+  assert.match(wxml, /class="room-topbar__shortcut-text">设置<\/text>/);
+  assert.match(wxml, /class="room-topbar__shortcut room-topbar__shortcut--ghost room-topbar__shortcut--share" open-type="share" bindtap="onTapShareRoom"/);
+  assert.match(wxml, /class="room-topbar__shortcut-text">邀请好友<\/text>/);
   assert.match(wxml, /class="room-topbar-menu-popover"/);
-  assert.match(wxml, /class="room-topbar-menu-popover__item room-topbar-menu-popover__item--share" open-type="share" bindtap="onTapMenuShare"/);
-  assert.match(wxml, /class="room-topbar-menu-popover__text">邀请好友<\/text>/);
+  assert.match(wxml, /class="room-topbar-menu-popover__text">记录<\/text>/);
+  assert.match(wxml, /class="room-topbar-menu-popover__text">音效开关<\/text>/);
+  assert.match(wxml, /class="room-stage__rule-entry" bindtap="onTapRules"/);
+  assert.match(wxml, /class="room-stage__rule-entry-text">规则<\/text>/);
+  assert.doesNotMatch(wxml, /class="room-topbar-menu-popover__text">设置<\/text>/);
+  assert.doesNotMatch(wxml, /class="room-topbar-menu-popover__text">邀请好友<\/text>/);
+  assert.doesNotMatch(wxml, /class="room-chrome-btn room-chrome-btn--menu" bindtap="onTapMore"/);
   assert.match(wxml, /class="room-topbar__room/);
   assert.match(wxml, /<text class="room-topbar__room-label">房间号:<\/text>/);
   assert.doesNotMatch(wxml, /class="room-topbar__toggle"/);
@@ -43,22 +51,66 @@ test("room shell keeps the room id centered while moving share into the left-top
   assert.match(wxss, /\.room-topbar__center\s*\{[\s\S]*justify-content:\s*center/);
   assert.match(wxss, /\.room-topbar__toggle\s*\{[\s\S]*display:\s*none/);
   assert.match(wxss, /\.room-topbar-menu-popover\s*\{/);
-  assert.match(wxss, /\.room-topbar-menu-popover__item--share\s*\{/);
+  assert.match(wxss, /\.room-topbar__shortcut--share\s*\{/);
+  assert.match(wxss, /\.room-stage__rule-entry\s*\{/);
   assert.match(wxss, /\.room-topbar-menu-popover__text\s*\{/);
+});
+
+test("room shell supports experimental room theme classes without changing the default skin", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  const scriptPath = path.join(process.cwd(), "miniprogram/pages/room/room.js");
+  const script = fs.readFileSync(scriptPath, "utf8");
+
+  assert.match(wxml, /room-phase-\{\{phase\}\} \{\{roomThemeClass\}\}/);
+  assert.match(script, /roomThemeId:\s*DEFAULT_ROOM_THEME_ID/);
+  assert.match(script, /roomThemeClass:\s*buildRoomThemeClass\(DEFAULT_ROOM_THEME_ID\)/);
+  assert.match(script, /themeId:\s*normalizeRoomThemeId\(this\.data\.createRoomThemeId\)/);
+  assert.match(script, /const incomingThemeId = roomConfig && roomConfig\.themeId/);
+  assert.match(script, /resolveRoomThemeId\(roomId,\s*incomingThemeId,\s*this\.data\.createRoomThemeId\)/);
+  assert.match(script, /ROOM_THEME_CACHE_KEY/);
+  assert.match(script, /buildRoomShareEntryUrl\(roomId,\s*themeId\)/);
+  assert.match(wxss, /\.page\.room-theme-imperial-red \.room-stage__table-frame\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-imperial-red \.ghost-cup \.figma-cup__body\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-ruby-red \.room-stage__table-frame\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-ruby-red \.seat__bubble\s*\{/);
+  assert.doesNotMatch(wxss, /\.page\.room-theme-sapphire-blue /);
+  assert.doesNotMatch(wxss, /\.page\.room-theme-mist-ivory /);
+  assert.match(script, /getSelfDieAsset/);
+  assert.match(script, /buildDiceFaceItems\(this\.data\.privateDice,\s*roomThemeId\)/);
+});
+
+test("room shell renders an in-room custom settings sheet instead of a native-looking menu", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+
+  assert.match(wxml, /wx:if="\{\{toolsBasicVisible\}\}" class="room-mask room-mask--settings"/);
+  assert.match(wxml, /class="room-sheet room-sheet--settings"/);
+  assert.match(wxml, /class="settings-row" bindtap="onToggleRoomTurnAlertSfx"/);
+  assert.match(wxml, /class="settings-row__label">叫牌提醒<\/text>/);
+  assert.match(wxss, /\.room-sheet--settings\s*\{/);
+  assert.match(wxss, /\.settings-panel\s*\{/);
+  assert.match(wxss, /\.settings-row__badge\.is-on\s*\{/);
 });
 
 test("room shell gives the left menu button a dedicated hero style", () => {
   const source = fs.readFileSync(roomWxssPath, "utf8");
   assert.match(source, /\.room-chrome-btn--menu\s*\{/);
   assert.match(source, /\.room-chrome-btn--menu::after\s*\{/);
-  assert.match(source, /\.room-chrome-btn--menu::after\s*\{[\s\S]*linear-gradient/);
+  assert.match(source, /\.room-chrome-btn--menu::after\s*\{[\s\S]*display:\s*none/);
+  assert.doesNotMatch(source, /\.room-chrome-btn--menu\s*\{[\s\S]*0 0 0 2rpx rgba\(255, 226, 116/);
 });
 
-test("room shell rebalances the playfield to leave a slim bottom gap and a taller header zone", () => {
+test("room shell lifts the playfield and removes the heavy bottom mask", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const source = fs.readFileSync(roomWxssPath, "utf8");
-  assert.match(source, /\.room-playfield\s*\{[\s\S]*translateY\(18rpx\)/);
+  assert.match(wxml, /class="room-playfield" style="\{\{roomPlayfieldStyle\}\}"/);
+  assert.match(source, /\.room-playfield\s*\{[\s\S]*translateY\(-48rpx\)/);
+  assert.match(source, /\.room-playfield\s*\{[\s\S]*transform-origin:\s*top center/);
   assert.match(source, /\.room-stage__table\s*\{[\s\S]*top:\s*152rpx/);
   assert.match(source, /\.room-stage__table\s*\{[\s\S]*height:\s*1448rpx/);
+  assert.match(source, /\.room-shell__bottom-fade\s*\{[\s\S]*background:\s*none/);
+  assert.match(source, /\.room-shell__bottom-fade\s*\{[\s\S]*pointer-events:\s*none/);
 });
 
 test("room shell keeps the room id on the same top line while nudging it slightly upward", () => {
@@ -79,7 +131,7 @@ test("room shell wires dynamic safe-area styles for top and bottom chrome", () =
   assert.match(source, /const topbarButtonSize = 68;/);
   assert.match(source, /const roomLabelHeight = 24;/);
   assert.match(source, /const roomLabelTopOffset = Math\.round\(\(topbarButtonSize - roomLabelHeight\) \/ 6\);/);
-  assert.match(source, /bottomInset \+ 72/);
+  assert.match(source, /bottomInset \+ 46/);
   assert.match(wxml, /class="room-shell" style="\{\{roomShellStyle\}\}"/);
   assert.match(wxml, /class="room-topbar__corner" style="\{\{roomTopbarCornerStyle\}\}"/);
   assert.match(wxml, /class="room-topbar__center" style="\{\{roomTopbarCenterStyle\}\}"/);
@@ -118,6 +170,42 @@ test("room self area renders a matching call bubble for the local player", () =>
   assert.match(wxss, /\.room-self__bubble\s*\{[\s\S]*bottom:\s*166rpx/);
 });
 
+test("room bubbles now use one shared compact size across every seat direction", () => {
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxss, /\.seat__bubble\s*\{[\s\S]*min-width:\s*100rpx[\s\S]*height:\s*56rpx[\s\S]*padding:\s*0 10rpx[\s\S]*border-radius:\s*19rpx/);
+  assert.match(wxss, /\.room-self__bubble\s*\{[\s\S]*min-width:\s*100rpx[\s\S]*height:\s*56rpx[\s\S]*padding:\s*0 10rpx[\s\S]*border-radius:\s*19rpx/);
+  assert.doesNotMatch(wxss, /\.seat__bubble--slot-upper-left,\s*\.seat__bubble--slot-mid-left,\s*\.seat__bubble--slot-lower-left,\s*\.seat__bubble--slot-upper-right,\s*\.seat__bubble--slot-mid-right,\s*\.seat__bubble--slot-lower-right\s*\{/);
+});
+
+test("room player names stay on one line and the self identity sits below the cup", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxml, /class="seat__name \{\{item\.nicknameLengthClass\}\}">\{\{item\.nicknameShort\}\}<\/text>/);
+  assert.match(wxss, /\.seat__name\s*\{[\s\S]*max-width:\s*176rpx[\s\S]*white-space:\s*nowrap[\s\S]*font-size:\s*22rpx/);
+  assert.match(wxss, /\.seat__name\.is-long\s*\{[\s\S]*font-size:\s*20rpx/);
+  assert.match(wxss, /\.seat__name\.is-extra-long\s*\{[\s\S]*font-size:\s*18rpx/);
+  assert.match(wxss, /\.room-self__identity\s*\{[\s\S]*margin-top:\s*40rpx/);
+  assert.match(wxss, /\.room-self__name\s*\{[\s\S]*white-space:\s*nowrap/);
+});
+
+test("room entry and settlement names enforce the five-character single-line rule", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+
+  assert.match(wxml, /class="join-input"[\s\S]*maxlength="5"/);
+  assert.match(wxml, /class="settlement-name \{\{item\.nameLengthClass\}\}">\{\{item\.name\}\}<\/text>/);
+  assert.match(wxss, /\.settlement-name\s*\{[\s\S]*max-width:\s*132rpx[\s\S]*white-space:\s*nowrap/);
+  assert.match(wxss, /\.settlement-name\.is-long\s*\{[\s\S]*font-size:\s*21rpx/);
+  assert.match(wxss, /\.settlement-name\.is-extra-long\s*\{[\s\S]*font-size:\s*18rpx/);
+});
+
+test("room bubble tails use the softer rounded pointer treatment", () => {
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxss, /\.seat__bubble::after\s*\{[\s\S]*width:\s*16rpx[\s\S]*height:\s*16rpx[\s\S]*border-radius:\s*50%/);
+  assert.match(wxss, /\.seat__bubble--slot-upper-left::after,[\s\S]*left:\s*14rpx[\s\S]*bottom:\s*-8rpx[\s\S]*transform:\s*none/);
+  assert.match(wxss, /\.seat__bubble--slot-upper-right::after,[\s\S]*right:\s*-8rpx[\s\S]*top:\s*50%[\s\S]*transform:\s*translateY\(-50%\)/);
+});
+
 test("room shell removes the floor shadows under outer cups", () => {
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
   assert.match(wxss, /\.ghost-cup\s+\.figma-cup__shadow,\s*\.seat-stage-cup\s+\.figma-cup__shadow\s*\{[\s\S]*display:\s*none/);
@@ -126,13 +214,21 @@ test("room shell removes the floor shadows under outer cups", () => {
 test("room shell uses a more even seven-seat outer ring layout", () => {
   const scriptPath = path.join(process.cwd(), "miniprogram/pages/room/room.js");
   const source = fs.readFileSync(scriptPath, "utf8");
-  assert.match(source, /\{ x: 187\.5, y: 168, bx: 240, by: 180, cupX: 187\.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" \}/);
-  assert.match(source, /\{ x: 42, y: 290, bx: 84, by: 250, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" \}/);
-  assert.match(source, /\{ x: 333, y: 290, bx: 291, by: 250, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" \}/);
-  assert.match(source, /\{ x: 30, y: 420, bx: 78, by: 380, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" \}/);
-  assert.match(source, /\{ x: 345, y: 420, bx: 297, by: 380, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" \}/);
-  assert.match(source, /\{ x: 44, y: 556, bx: 92, by: 516, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" \}/);
-  assert.match(source, /\{ x: 331, y: 556, bx: 283, by: 516, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" \}/);
+  assert.match(source, /\{ x: 187\.5, y: 168, bx: 248, by: 165, cupX: 187\.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" \}/);
+  assert.match(source, /\{ x: 42, y: 290, bx: 144, by: 250, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" \}/);
+  assert.match(source, /\{ x: 333, y: 290, bx: 231, by: 250, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" \}/);
+  assert.match(source, /\{ x: 42, y: 396, bx: 144, by: 356, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" \}/);
+  assert.match(source, /\{ x: 333, y: 396, bx: 231, by: 356, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" \}/);
+  assert.match(source, /\{ x: 42, y: 526, bx: 144, by: 486, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" \}/);
+  assert.match(source, /\{ x: 333, y: 526, bx: 231, by: 486, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" \}/);
+});
+
+test("side seats pull the avatar group inward and scale it below the top and bottom seats", () => {
+  const source = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(source, /\.seat--slot-upper-left,\s*\.seat--slot-mid-left,\s*\.seat--slot-lower-left\s*\{[\s\S]*margin-left:\s*20rpx/);
+  assert.match(source, /\.seat--slot-upper-right,\s*\.seat--slot-mid-right,\s*\.seat--slot-lower-right\s*\{[\s\S]*margin-left:\s*-20rpx/);
+  assert.match(source, /\.seat--slot-upper-left \.seat__avatar-shell,[\s\S]*\.seat--slot-lower-right \.seat__avatar-shell\s*\{[\s\S]*width:\s*70rpx[\s\S]*height:\s*70rpx/);
+  assert.match(source, /\.seat--slot-upper-left \.seat__avatar,[\s\S]*\.seat--slot-lower-right \.seat__avatar\s*\{[\s\S]*width:\s*58rpx[\s\S]*height:\s*58rpx/);
 });
 
 test("room page does not rely on external room-view helper at runtime", () => {
@@ -144,17 +240,40 @@ test("room page does not rely on external room-view helper at runtime", () => {
 test("settlement dialog keeps only the bottom continue action", () => {
   const source = fs.readFileSync(roomWxmlPath, "utf8");
   assert.doesNotMatch(source, /sheet-close"\s+bindtap="onSettlementContinue">继续/);
+  assert.doesNotMatch(source, /继续\(\{\{settlementContinueSec/);
   assert.doesNotMatch(source, />返回</);
   assert.match(source, /wx:if="\{\{settlementCanContinue\}\}" class="sheet-actions"/);
 });
 
+test("settlement dialog uses a bounded sheet with an internal player list scroller", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxml, /<scroll-view class="settlement-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">/);
+  assert.match(wxss, /\.room-sheet--settlement\s*\{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column[\s\S]*max-height:\s*82vh/);
+  assert.match(wxss, /\.sheet-body--settlement\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
+  assert.match(wxss, /\.settlement-scroll\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0/);
+});
+
+test("settlement dialog compresses row density for crowded eight-player results", () => {
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxss, /\.settlement-row\s*\{[\s\S]*gap:\s*10rpx[\s\S]*padding:\s*12rpx 14rpx/);
+  assert.match(wxss, /\.settlement-avatar\s*\{[\s\S]*width:\s*52rpx[\s\S]*height:\s*52rpx/);
+  assert.match(wxss, /\.settlement-die-wrap\s*\{[\s\S]*width:\s*40rpx[\s\S]*height:\s*40rpx/);
+  assert.match(wxss, /\.settlement-matrix__row\s*\{[\s\S]*min-height:\s*82rpx/);
+});
+
 test("seating dialog reuses the settlement sheet skin", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const source = fs.readFileSync(roomWxssPath, "utf8");
-  assert.match(source, /\.room-sheet--seating\s*\{/);
-  assert.match(
-    source,
-    /\.room-sheet--seating\s*\{[\s\S]*background:\s*linear-gradient\(180deg,\s*rgba\(45,\s*39,\s*59,\s*0\.96\)\s*0%,\s*rgba\(29,\s*24,\s*40,\s*0\.96\)\s*100%\)/
-  );
+  assert.match(wxml, /class="room-sheet room-sheet--seating"/);
+  assert.match(wxml, /class="sheet-head sheet-head--settings"/);
+  assert.match(wxml, /class="sheet-close sheet-close--pill" bindtap="closeSeatingPanel">完成<\/view>/);
+  assert.match(wxml, /class="seat-hero"/);
+  assert.match(wxml, /class="seat-direction-panel__label">入座方向<\/text>/);
+  assert.match(wxml, /class="seat-grid-panel"/);
+  assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*max-width:\s*682rpx/);
+  assert.match(source, /\.seat-hero\s*\{/);
+  assert.match(source, /\.seat-direction-panel,\s*\.seat-grid-panel\s*\{/);
 });
 
 test("seating dialog keeps only clockwise and counterclockwise shortcuts", () => {
@@ -250,11 +369,13 @@ test("owner start button copy no longer includes the minimum-player hint", () =>
   assert.doesNotMatch(source, /开始\(需2人\)/);
 });
 
-test("room page keeps only the history drawer and no longer renders chat or voice channels", () => {
+test("room page keeps only the recent-history modal and no longer renders chat or voice channels", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
 
-  assert.match(wxml, /wx:if="\{\{historyVisible\}\}" class="room-drawer-overlay"/);
-  assert.match(wxml, /class="room-social__tab \{\{historyVisible \? 'is-active' : ''\}\}" bindtap="toggleHistory">战绩<\/view>/);
+  assert.match(wxml, /wx:if="\{\{historyVisible\}\}" class="room-mask room-mask--settings" bindtap="toggleHistory"/);
+  assert.match(wxml, /class="room-sheet room-sheet--settings room-sheet--history"/);
+  assert.match(wxml, /class="sheet-title">最近 3 局记录<\/text>/);
+  assert.match(wxml, /class="history-card__round">第\{\{historyItem\.round\}\}局<\/text>/);
   assert.doesNotMatch(wxml, /bindtap="toggleVoiceList"/);
   assert.doesNotMatch(wxml, /bindtap="toggleChatList"/);
   assert.doesNotMatch(wxml, /暂无语音/);

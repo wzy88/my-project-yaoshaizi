@@ -10,7 +10,11 @@ const {
   LEGAL_VERSION,
   SESSION_KEY,
   NICKNAME_KEY,
-  AVATAR_URL_KEY
+  AVATAR_URL_KEY,
+  PROFILE_NICKNAME_CUSTOMIZED_KEY,
+  ACCOUNT_SESSION_KEY,
+  WECHAT_LOGIN_TS_KEY,
+  TURN_ALERT_SFX_ENABLED_KEY
 } = require("../miniprogram/utils/constants.js");
 
 function instantiateRoomPage({
@@ -69,6 +73,8 @@ function instantiateRoomPage({
     getSystemInfoSync() {
       return { platform };
     },
+    getWindowInfo: apiAvailability.getWindowInfo,
+    getMenuButtonBoundingClientRect: apiAvailability.getMenuButtonBoundingClientRect,
     getRecorderManager: apiAvailability.getRecorderManager || (() => ({
       onStart() {},
       onStop() {},
@@ -127,6 +133,28 @@ function instantiateRoomPage({
   }
 
   const cleanup = () => {
+    if (typeof page.clearTurnCountdown === "function") {
+      page.clearTurnCountdown();
+    }
+    if (typeof page.clearSettlementCountdown === "function") {
+      page.clearSettlementCountdown();
+    }
+    if (typeof page.clearPendingLeaveRequest === "function") {
+      page.clearPendingLeaveRequest();
+    }
+    if (typeof page.clearMyDiceTimers === "function") {
+      page.clearMyDiceTimers();
+    }
+    if (typeof page.stopHeartbeat === "function") {
+      page.stopHeartbeat();
+    }
+    if (typeof page.clearSfxStopTimer === "function") {
+      page.clearSfxStopTimer();
+    }
+    if (page.reconnectTimer) {
+      clearTimeout(page.reconnectTimer);
+      page.reconnectTimer = null;
+    }
     if (page.clockTimer) {
       clearInterval(page.clockTimer);
     }
@@ -263,12 +291,53 @@ test("room page: roll uses the bundled audio asset while the other sfx keep the 
     const win = files.get("/tmp/dice-sfx/dice_sfx_win.wav");
 
     assert.equal(page.sfxPaths.roll, "/assets/audio/dice-roll.mp3");
+    assert.equal(page.sfxPaths.loseAlert, "/assets/audio/lose-alert.mp3");
+    assert.equal(page.sfxPaths.turnAlert, "/assets/audio/turn-alert.mp3");
     assert.equal(files.has("/tmp/dice-sfx/dice_sfx_roll.wav"), false);
     assert.equal(Boolean(ok && open && lose && win), true);
     assert.equal(ok.byteLength >= 2400 && ok.byteLength <= 3000, true);
     assert.equal(open.byteLength > ok.byteLength, true);
     assert.equal(open.byteLength < 4800, true);
     assert.equal(lose.byteLength > win.byteLength, true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: turn alert sfx plays fully until another sfx takes over", async () => {
+  const stopCalls = [];
+  const playCalls = [];
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    }
+  });
+
+  try {
+    page.sfxContext = {
+      src: "",
+      stop() {
+        stopCalls.push(this.src);
+      },
+      play() {
+        playCalls.push(this.src);
+      }
+    };
+    page.sfxPaths = {
+      turnAlert: "/assets/audio/turn-alert.mp3",
+      call: "/tmp/dice_sfx_call.wav"
+    };
+    page.playSfx("turnAlert");
+    assert.deepEqual(playCalls, ["/assets/audio/turn-alert.mp3"]);
+
+    await new Promise((resolve) => setTimeout(resolve, 16));
+    assert.deepEqual(stopCalls, [""]);
+
+    page.playSfx("call");
+    await new Promise((resolve) => setTimeout(resolve, 16));
+    assert.deepEqual(playCalls, ["/assets/audio/turn-alert.mp3", "/tmp/dice_sfx_call.wav"]);
+    assert.deepEqual(stopCalls, ["", "/assets/audio/turn-alert.mp3"]);
   } finally {
     cleanup();
   }
@@ -308,7 +377,7 @@ test("room page: initial room sync with an existing call does not replay attenti
   }
 });
 
-test("room page: accepted remote calls trigger attention sfx, gold latest-call border, and turn haptic", () => {
+test("room page: accepted remote calls trigger the turn alert when it becomes my turn", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -338,10 +407,48 @@ test("room page: accepted remote calls trigger attention sfx, gold latest-call b
       })
     }));
 
-    assert.deepEqual(sfx, ["call"]);
-    assert.deepEqual(haptics, ["light"]);
+    assert.deepEqual(sfx, ["turnAlert"]);
+    assert.deepEqual(haptics, ["heavy"]);
     assert.equal(page.data.lastCallKey, "P1_5_3_1710000000456");
     assert.equal(page.data.playersDecorated.find((player) => player.id === "P1").bubbleClass.includes("latest"), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: turn alert sound switch mutes only the turn alert audio", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [TURN_ALERT_SFX_ENABLED_KEY]: false
+    }
+  });
+
+  try {
+    const sfx = [];
+    const haptics = [];
+    page.playSfx = (kind) => sfx.push(kind);
+    page.haptic = (kind) => haptics.push(kind);
+    page.resetTurnCountdown = () => {};
+    page.clearTurnCountdown = () => {};
+    page.setData({ playerId: "P2", turnAlertSfxEnabled: false });
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({ currentPlayerId: "P1" })
+    }));
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P2",
+        lastCall: { count: 5, point: 3, by: "P1", ts: 1710000000460 }
+      })
+    }));
+
+    assert.deepEqual(sfx, []);
+    assert.deepEqual(haptics, ["heavy"]);
   } finally {
     cleanup();
   }
@@ -433,7 +540,7 @@ test("room page: default room id display uses the six hyphen placeholder", () =>
 test("room page: accepting legal on mobile join keeps the pending action until a bundled runtime target is available", () => {
   const { page, toasts, storageState, cleanup } = instantiateRoomPage({
     storage: {
-      [NICKNAME_KEY]: "手机玩家"
+      [NICKNAME_KEY]: "阿伟玩家"
     }
   });
 
@@ -444,6 +551,7 @@ test("room page: accepting legal on mobile join keeps the pending action until a
     };
 
     page.onLoad({ mode: "join", roomId: "654321" });
+    page.setData({ legalAgreementChecked: true });
     page.acceptLegal();
 
     assert.equal(connectAttempts, 0);
@@ -459,6 +567,107 @@ test("room page: accepting legal on mobile join keeps the pending action until a
   }
 });
 
+test("room page: accepting legal blocks an invalid nickname before entering", () => {
+  const { page, toasts, storageState, cleanup } = instantiateRoomPage({
+    storage: {}
+  });
+
+  try {
+    page.onLoad({ mode: "join", roomId: "654321" });
+    page.setData({ nickname: "玩家1234", legalAgreementChecked: true });
+
+    page.acceptLegal();
+
+    assert.equal(page.data.legalAccepted, false);
+    assert.equal(page.data.showLegalModal, true);
+    assert.equal(storageState[LEGAL_ACCEPT_KEY], undefined);
+    assert.equal(toasts.includes("昵称需为1-5个字"), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: agreeing is required before the share-entry drawer can continue", () => {
+  const { page, toasts, storageState, cleanup } = instantiateRoomPage({
+    storage: {}
+  });
+
+  try {
+    page.onLoad({ mode: "join", roomId: "654321" });
+    page.acceptLegal();
+
+    assert.equal(page.data.legalAccepted, false);
+    assert.equal(page.data.showLegalModal, true);
+    assert.equal(storageState[LEGAL_ACCEPT_KEY], undefined);
+    assert.equal(toasts.includes("请先勾选协议"), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: short safe-area devices scale the playfield instead of clipping the table bottom", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    apiAvailability: {
+      getWindowInfo() {
+        return {
+          statusBarHeight: 47,
+          windowWidth: 393,
+          windowHeight: 852,
+          screenHeight: 852,
+          safeArea: {
+            top: 59,
+            bottom: 818
+          }
+        };
+      },
+      getMenuButtonBoundingClientRect() {
+        return {
+          top: 59,
+          height: 32,
+          bottom: 91
+        };
+      }
+    }
+  });
+
+  try {
+    page.onLoad({});
+    assert.match(page.data.roomPlayfieldStyle, /translateY\(-48rpx\) scale\(0\.\d+\)/);
+    assert.doesNotMatch(page.data.roomPlayfieldStyle, /scale\(1\)/);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: entry confirm can refresh to another generated nickname before first join", () => {
+  const { page, storageState, cleanup } = instantiateRoomPage({
+    storage: {}
+  });
+
+  const originalDateNow = Date.now;
+  const originalMathRandom = Math.random;
+
+  try {
+    Date.now = () => 1712345678901;
+    Math.random = () => 0.2468;
+    page.setData({ nickname: "玩家111" });
+
+    page.refreshEntryNickname();
+
+    assert.match(page.data.nickname, /^玩家\d{3}$/);
+    assert.notEqual(page.data.nickname, "玩家111");
+    assert.equal(storageState[NICKNAME_KEY], page.data.nickname);
+    assert.equal(storageState[PROFILE_NICKNAME_CUSTOMIZED_KEY], false);
+  } finally {
+    Date.now = originalDateNow;
+    Math.random = originalMathRandom;
+    cleanup();
+  }
+});
 test("room page: invalid automatic join ids do not queue a pending join", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -797,6 +1006,125 @@ test("room page: plain entry ignores cached session and does not auto-rejoin old
   }
 });
 
+test("room page: join entry for the same room restores the cached session automatically", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [SESSION_KEY]: {
+        roomId: "123456",
+        playerId: "player-a",
+        resumeToken: "resume-token"
+      }
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({ mode: "join", roomId: "123456" });
+
+    assert.equal(page.data.roomId, "123456");
+    assert.equal(page.data.playerId, "player-a");
+    assert.equal(page.data.resumeToken, "resume-token");
+    assert.equal(page.data.displayRoomId, "123456");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: missing server theme never leaks the local provisional theme into a joined room", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({
+      playerId: "P1",
+      createRoomThemeId: "ruby-red",
+      roomThemeId: "ruby-red"
+    });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...buildRoomStatePayload({
+          currentPlayerId: "P1",
+          lastCall: null
+        }),
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        }
+      }
+    }));
+
+    assert.equal(page.data.roomThemeId, "jade-green");
+    assert.equal(page.data.roomThemeClass, "room-theme-jade-green");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: mode create keeps the selected theme through room state sync", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({
+      mode: "create",
+      direction: "cw",
+      wildcardOneEnabled: "1",
+      dicePerPlayer: "5",
+      minOpeningCount: "5",
+      themeId: "imperial-red"
+    });
+
+    assert.equal(page.data.createRoomThemeId, "imperial-red");
+    assert.equal(page.data.roomThemeId, "imperial-red");
+    assert.equal(page.data.roomThemeClass, "room-theme-imperial-red");
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...buildRoomStatePayload({
+          currentPlayerId: "P1",
+          lastCall: null
+        }),
+        phase: "ready",
+        round: 0,
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false,
+          themeId: "imperial-red"
+        }
+      }
+    }));
+
+    assert.equal(page.data.roomThemeId, "imperial-red");
+    assert.equal(page.data.roomThemeClass, "room-theme-imperial-red");
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: mode join enters on the room shell while the pending join action waits", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -845,6 +1173,23 @@ test("room page: mode create enters on the room shell while the pending create a
   }
 });
 
+test("room page: mode create does not show the entry legal drawer", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {},
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({ mode: "create", direction: "cw", wildcardOneEnabled: "1", dicePerPlayer: "5", minOpeningCount: "5" });
+
+    assert.equal(page.data.showLegalModal, false);
+    assert.equal(page.data.legalAccepted, false);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: action ack keeps room identity on the room shell before room state arrives", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -870,6 +1215,67 @@ test("room page: action ack keeps room identity on the room shell before room st
     assert.equal(page.data.playerId, "player-a");
     assert.equal(page.data.resumeToken, "resume-token");
     assert.equal(page.data.joinRoomId, "123456");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: expired account session during join no longer retries as guest", async () => {
+  const sentPackets = [];
+  const { page, storageState, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [ACCOUNT_SESSION_KEY]: {
+        accountId: "acct-1",
+        displayId: "WX-001",
+        sessionToken: "expired-token",
+        loginAt: 123456,
+        authMode: "wechat",
+        profile: {
+          accountId: "acct-1",
+          displayId: "WX-001",
+          nickname: "手机玩家",
+          avatarUrl: ""
+        }
+      },
+      [WECHAT_LOGIN_TS_KEY]: 123456
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.socketTask = {
+      send({ data }) {
+        sentPackets.push(JSON.parse(data));
+      }
+    };
+    page.setData({
+      connected: true,
+      legalAccepted: true,
+      joinRoomId: "123456",
+      nickname: "手机玩家",
+      avatarUrl: ""
+    });
+    page.actionEventMap = {
+      "join-1": "room:join"
+    };
+
+    page.handleServerPacket(JSON.stringify({
+      event: "action:ack",
+      payload: {
+        ok: false,
+        actionId: "join-1",
+        code: "FORBIDDEN",
+        reason: "账号登录已失效，请重新进入"
+      }
+    }));
+
+    assert.equal(storageState[ACCOUNT_SESSION_KEY], undefined);
+    assert.equal(storageState[WECHAT_LOGIN_TS_KEY], undefined);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(toasts.includes("账号登录已失效，请重新进入"), true);
+    assert.equal(sentPackets.length, 0);
   } finally {
     cleanup();
   }
@@ -920,9 +1326,552 @@ test("room page: share payload points directly to the current room entry", () =>
     assert.equal(payload.title, "房主阿伟 邀你加入房间 123456");
     assert.equal(
       payload.path,
-      "/pages/room/room?mode=join&forceNew=1&roomId=123456"
+      "/pages/room/room?mode=join&forceNew=1&roomId=123456&themeId=jade-green"
     );
   } finally {
+    cleanup();
+  }
+});
+
+test("room page: onShow reconnects an existing room session after a temporary disconnect", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    let connectCalls = 0;
+    page.connectSocket = () => {
+      connectCalls += 1;
+    };
+    page.manualClose = false;
+    page.pendingLeaveActionId = "";
+    page.setData({
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: false,
+      phase: "ready",
+      myDiceRolling: false,
+      myDiceRevealing: false
+    });
+
+    page.onShow();
+
+    assert.equal(connectCalls, 1);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: socket open rejoins the cached room when no pending action remains", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  const listeners = {};
+  const socketTask = {
+    onOpen(handler) {
+      listeners.open = handler;
+    },
+    onClose(handler) {
+      listeners.close = handler;
+    },
+    onError(handler) {
+      listeners.error = handler;
+    },
+    onMessage(handler) {
+      listeners.message = handler;
+    },
+    send() {},
+    close() {}
+  };
+
+  try {
+    const sent = [];
+    page.debugClientEvent = () => {};
+    page.refreshWsHint = () => {};
+    page.startHeartbeat = () => {};
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    globalThis.wx.connectSocket = () => socketTask;
+
+    page.setData({
+      wsUrl: "ws://192.168.1.23:3000/ws",
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: false
+    });
+
+    page.connectSocket();
+    assert.equal(typeof listeners.open, "function");
+
+    listeners.open();
+
+    assert.deepEqual(sent, [
+      {
+        event: "room:rejoin",
+        payload: {
+          roomId: "123456",
+          playerId: "player-a",
+          resumeToken: "resume-token"
+        }
+      }
+    ]);
+    assert.equal(page.data.connected, true);
+    assert.equal(page.data.connecting, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: scheduleReconnect waits 2 seconds and does not queue duplicate retries", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    }
+  });
+
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+
+  try {
+    let connectCalls = 0;
+    let scheduledDelay = 0;
+    let timerCount = 0;
+
+    page.connectSocket = () => {
+      connectCalls += 1;
+    };
+    page.debugClientEvent = () => {};
+    page.manualClose = false;
+
+    globalThis.setTimeout = (fn, delay) => {
+      timerCount += 1;
+      scheduledDelay = Number(delay) || 0;
+      fn();
+      return timerCount;
+    };
+    globalThis.clearTimeout = () => {};
+
+    page.scheduleReconnect();
+    page.scheduleReconnect();
+
+    assert.equal(scheduledDelay, 2000);
+    assert.equal(timerCount, 1);
+    assert.equal(connectCalls, 1);
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+    cleanup();
+  }
+});
+
+test("room page: onShow does not duplicate reconnect while a reconnect is already in progress", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    let connectCalls = 0;
+    page.connectSocket = () => {
+      connectCalls += 1;
+    };
+    page.manualClose = false;
+    page.pendingLeaveActionId = "";
+    page.setData({
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: true,
+      myDiceRolling: false,
+      myDiceRevealing: false
+    });
+
+    page.onShow();
+
+    assert.equal(connectCalls, 0);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: socket close followed by socket error still schedules only one reconnect", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  const listeners = {};
+  const socketTask = {
+    onOpen(handler) {
+      listeners.open = handler;
+    },
+    onClose(handler) {
+      listeners.close = handler;
+    },
+    onError(handler) {
+      listeners.error = handler;
+    },
+    onMessage(handler) {
+      listeners.message = handler;
+    },
+    send() {},
+    close() {}
+  };
+
+  try {
+    let reconnectSchedules = 0;
+    page.debugClientEvent = () => {};
+    page.refreshWsHint = () => {};
+    page.stopHeartbeat = () => {};
+    page.scheduleReconnect = () => {
+      reconnectSchedules += 1;
+    };
+    globalThis.wx.connectSocket = () => socketTask;
+
+    page.setData({
+      wsUrl: "ws://192.168.1.23:3000/ws",
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: false
+    });
+
+    page.connectSocket();
+    assert.equal(typeof listeners.close, "function");
+    assert.equal(typeof listeners.error, "function");
+
+    listeners.close({ code: 1006, reason: "network lost" });
+    listeners.error({ errMsg: "network lost" });
+
+    assert.equal(reconnectSchedules, 1);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: cold-start resume reconnects and rejoins the cached room session", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [SESSION_KEY]: {
+        roomId: "123456",
+        playerId: "player-a",
+        resumeToken: "resume-token"
+      }
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  const listeners = {};
+  const sent = [];
+  const socketTask = {
+    onOpen(handler) {
+      listeners.open = handler;
+    },
+    onClose(handler) {
+      listeners.close = handler;
+    },
+    onError(handler) {
+      listeners.error = handler;
+    },
+    onMessage(handler) {
+      listeners.message = handler;
+    },
+    send({ data }) {
+      sent.push(JSON.parse(data));
+    },
+    close() {}
+  };
+
+  try {
+    page.debugClientEvent = () => {};
+    page.refreshWsHint = () => {};
+    page.startHeartbeat = () => {};
+    globalThis.wx.connectSocket = () => socketTask;
+
+    page.onLoad({ resume: "1" });
+
+    assert.equal(page.data.roomId, "123456");
+    assert.equal(page.data.playerId, "player-a");
+    assert.equal(page.data.resumeToken, "resume-token");
+    assert.equal(typeof listeners.open, "function");
+
+    listeners.open();
+
+    assert.equal(page.data.connected, true);
+    assert.equal(page.data.connecting, false);
+    assert.deepEqual(sent, [
+      {
+        event: "room:rejoin",
+        payload: {
+          roomId: "123456",
+          playerId: "player-a",
+          resumeToken: "resume-token"
+        },
+        actionId: sent[0].actionId
+      }
+    ]);
+    assert.equal(page.actionEventMap[sent[0].actionId], "room:rejoin");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: failed rejoin ack clears the cached session and resets the room shell", () => {
+  const { page, storageState, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [SESSION_KEY]: {
+        roomId: "123456",
+        playerId: "player-a",
+        resumeToken: "resume-token"
+      }
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({
+      roomId: "123456",
+      displayRoomId: "123456",
+      joinRoomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      pendingActionText: "恢复中"
+    });
+    page.actionEventMap = {
+      "rejoin-1": "room:rejoin"
+    };
+
+    page.handleServerPacket(JSON.stringify({
+      event: "action:ack",
+      payload: {
+        ok: false,
+        actionId: "rejoin-1",
+        code: "ROOM_NOT_FOUND",
+        reason: "房间不存在"
+      }
+    }));
+
+    assert.equal(storageState[SESSION_KEY], undefined);
+    assert.equal(page.data.roomId, "");
+    assert.equal(page.data.playerId, "");
+    assert.equal(page.data.resumeToken, "");
+    assert.equal(page.data.displayRoomId, "------");
+    assert.equal(page.data.pendingActionText, "");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: socket close during a pending leave finalizes the leave instead of reconnecting", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  const listeners = {};
+  const socketTask = {
+    onOpen(handler) {
+      listeners.open = handler;
+    },
+    onClose(handler) {
+      listeners.close = handler;
+    },
+    onError(handler) {
+      listeners.error = handler;
+    },
+    onMessage(handler) {
+      listeners.message = handler;
+    },
+    send() {},
+    close() {}
+  };
+
+  try {
+    let finalizeCalls = 0;
+    let reconnectSchedules = 0;
+    page.debugClientEvent = () => {};
+    page.refreshWsHint = () => {};
+    page.stopHeartbeat = () => {};
+    page.finalizeLeaveRoom = () => {
+      finalizeCalls += 1;
+    };
+    page.scheduleReconnect = () => {
+      reconnectSchedules += 1;
+    };
+    globalThis.wx.connectSocket = () => socketTask;
+
+    page.pendingLeaveActionId = "leave-1";
+    page.setData({
+      wsUrl: "ws://192.168.1.23:3000/ws",
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: false
+    });
+
+    page.connectSocket();
+    listeners.close({ code: 1006, reason: "network lost" });
+
+    assert.equal(finalizeCalls, 1);
+    assert.equal(reconnectSchedules, 0);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: socket error during a pending leave finalizes the leave instead of reconnecting", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  const listeners = {};
+  const socketTask = {
+    onOpen(handler) {
+      listeners.open = handler;
+    },
+    onClose(handler) {
+      listeners.close = handler;
+    },
+    onError(handler) {
+      listeners.error = handler;
+    },
+    onMessage(handler) {
+      listeners.message = handler;
+    },
+    send() {},
+    close() {}
+  };
+
+  try {
+    let finalizeCalls = 0;
+    let reconnectSchedules = 0;
+    page.debugClientEvent = () => {};
+    page.refreshWsHint = () => {};
+    page.stopHeartbeat = () => {};
+    page.showConnectionFailure = () => {};
+    page.finalizeLeaveRoom = () => {
+      finalizeCalls += 1;
+    };
+    page.scheduleReconnect = () => {
+      reconnectSchedules += 1;
+    };
+    globalThis.wx.connectSocket = () => socketTask;
+
+    page.pendingLeaveActionId = "leave-1";
+    page.setData({
+      wsUrl: "ws://192.168.1.23:3000/ws",
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: false,
+      connecting: false
+    });
+
+    page.connectSocket();
+    listeners.error({ errMsg: "network lost" });
+
+    assert.equal(finalizeCalls, 1);
+    assert.equal(reconnectSchedules, 0);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: finalizing leave clears any queued reconnect retry", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [SESSION_KEY]: {
+        roomId: "123456",
+        playerId: "player-a",
+        resumeToken: "resume-token"
+      }
+    }
+  });
+
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+
+  try {
+    let connectCalls = 0;
+    let closeCalls = 0;
+    let timerIdSeq = 0;
+    const queuedReconnects = new Map();
+
+    globalThis.setTimeout = (fn, delay) => {
+      const timerId = `timer-${++timerIdSeq}`;
+      queuedReconnects.set(timerId, { fn, delay });
+      return timerId;
+    };
+    globalThis.clearTimeout = (timerId) => {
+      queuedReconnects.delete(timerId);
+    };
+
+    page.debugClientEvent = () => {};
+    page.connectSocket = () => {
+      connectCalls += 1;
+    };
+    page.socketTask = {
+      close() {
+        closeCalls += 1;
+      }
+    };
+    page.setData({
+      roomId: "123456",
+      displayRoomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token"
+    });
+
+    page.scheduleReconnect();
+    assert.equal(queuedReconnects.size, 1);
+
+    page.finalizeLeaveRoom();
+
+    assert.equal(queuedReconnects.size, 0);
+    assert.equal(connectCalls, 0);
+    assert.equal(closeCalls, 1);
+    assert.equal(page.data.roomId, "");
+    assert.equal(page.data.playerId, "");
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
     cleanup();
   }
 });
@@ -1124,7 +2073,7 @@ test("room page: leave waits for the server ack before clearing the local room s
   }
 });
 
-test("room page: page unload best-effort notifies room leave and clears the resumable session", () => {
+test("room page: page unload closes the socket but preserves the resumable session", () => {
   const { page, storageState, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -1138,15 +2087,8 @@ test("room page: page unload best-effort notifies room leave and clears the resu
   });
 
   try {
-    let sentPacket = null;
     let closeCalls = 0;
     page.socketTask = {
-      send({ data, success }) {
-        sentPacket = JSON.parse(data);
-        if (typeof success === "function") {
-          success();
-        }
-      },
       close() {
         closeCalls += 1;
       }
@@ -1160,9 +2102,12 @@ test("room page: page unload best-effort notifies room leave and clears the resu
 
     page.onUnload();
 
-    assert.equal(sentPacket && sentPacket.event, "room:leave");
     assert.equal(closeCalls, 1);
-    assert.equal(storageState[SESSION_KEY], undefined);
+    assert.deepEqual(storageState[SESSION_KEY], {
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token"
+    });
   } finally {
     cleanup();
   }
@@ -1651,6 +2596,261 @@ test("room page: seating panel keeps all 8 seats after room state refresh", () =
   }
 });
 
+test("room page: three-player seat swaps change the actual on-table slot instead of keeping a compact layout", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.data.playerId = "owner-a";
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "123456",
+        phase: "ready",
+        round: 0,
+        currentPlayerId: "owner-a",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false
+        },
+        players: [
+          {
+            id: "owner-a",
+            nickname: "房主",
+            avatar: "",
+            isOwner: true,
+            onlineStatus: "online",
+            turnStatus: "active",
+            seatIndex: 1,
+            diceCupStatus: "closed",
+            rollLocked: false
+          },
+          {
+            id: "guest-b",
+            nickname: "二号位玩家",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 2,
+            diceCupStatus: "closed",
+            rollLocked: false
+          },
+          {
+            id: "guest-c",
+            nickname: "五号位玩家",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 5,
+            diceCupStatus: "closed",
+            rollLocked: false
+          }
+        ],
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 1,
+        serverTs: Date.now()
+      }
+    }));
+
+    const before = page.data.playersDecorated.find((item) => item.id === "guest-b");
+    assert.equal(before.visualSlotIndex, 5);
+    assert.equal(before.seatSlotClass, "slot-lower-left");
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "123456",
+        phase: "ready",
+        round: 0,
+        currentPlayerId: "owner-a",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false
+        },
+        players: [
+          {
+            id: "owner-a",
+            nickname: "房主",
+            avatar: "",
+            isOwner: true,
+            onlineStatus: "online",
+            turnStatus: "active",
+            seatIndex: 1,
+            diceCupStatus: "closed",
+            rollLocked: false
+          },
+          {
+            id: "guest-b",
+            nickname: "四号位玩家",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 4,
+            diceCupStatus: "closed",
+            rollLocked: false
+          },
+          {
+            id: "guest-c",
+            nickname: "五号位玩家",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 5,
+            diceCupStatus: "closed",
+            rollLocked: false
+          }
+        ],
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 2,
+        serverTs: Date.now()
+      }
+    }));
+
+    const after = page.data.playersDecorated.find((item) => item.id === "guest-b");
+    assert.equal(after.visualSlotIndex, 1);
+    assert.equal(after.seatSlotClass, "slot-upper-left");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: side seat avatars align in two vertical columns and bubbles sit close to cups", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  const readCoord = (style, key) => {
+    const match = String(style || "").match(new RegExp(`${key}:([\\d.]+)rpx`));
+    return match ? Number(match[1]) / 2 : NaN;
+  };
+
+  try {
+    page.data.playerId = "owner-a";
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "123456",
+        phase: "calling",
+        round: 1,
+        currentPlayerId: "owner-a",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false
+        },
+        players: [
+          { id: "owner-a", nickname: "本人", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "active", seatIndex: 1, diceCupStatus: "closed", rollLocked: true },
+          { id: "p2", nickname: "左下", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "closed", rollLocked: true, currentCall: { count: 8, point: 6, by: "p2", ts: 1710000000100 } },
+          { id: "p3", nickname: "左中", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 3, diceCupStatus: "closed", rollLocked: true, currentCall: { count: 9, point: 5, by: "p3", ts: 1710000000200 } },
+          { id: "p4", nickname: "左上", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 4, diceCupStatus: "closed", rollLocked: true, currentCall: { count: 10, point: 4, by: "p4", ts: 1710000000300 } },
+          { id: "p5", nickname: "顶部", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 5, diceCupStatus: "closed", rollLocked: true, currentCall: { count: 7, point: 2, by: "p5", ts: 1710000000350 } },
+          { id: "p6", nickname: "右上", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 6, diceCupStatus: "closed", rollLocked: true, currentCall: { count: 11, point: 3, by: "p6", ts: 1710000000400 } },
+          { id: "p7", nickname: "右中", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 7, diceCupStatus: "closed", rollLocked: true, currentCall: { count: 12, point: 2, by: "p7", ts: 1710000000500 } },
+          { id: "p8", nickname: "右下", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 8, diceCupStatus: "closed", rollLocked: true, currentCall: { count: 13, point: 1, by: "p8", ts: 1710000000600 } }
+        ],
+        waitingPlayers: [],
+        lastCall: { count: 13, point: 1, by: "p8", ts: 1710000000600 },
+        networkHealth: "good",
+        version: 1,
+        serverTs: Date.now()
+      }
+    }));
+
+    const bySlot = new Map(page.data.playersDecorated.map((item) => [item.seatSlotClass, item]));
+    const topSlot = bySlot.get("slot-top");
+    const leftSlots = ["slot-upper-left", "slot-mid-left", "slot-lower-left"].map((slot) => bySlot.get(slot));
+    const rightSlots = ["slot-upper-right", "slot-mid-right", "slot-lower-right"].map((slot) => bySlot.get(slot));
+
+    assert.equal(readCoord(topSlot.seatStyle, "top"), 168);
+    assert.equal(readCoord(topSlot.bubbleStyle, "left"), 248);
+    assert.equal(readCoord(topSlot.bubbleStyle, "top"), 165);
+    assert.equal(readCoord(topSlot.bubbleStyle, "top") <= readCoord(topSlot.seatStyle, "top"), true);
+    assert.equal(readCoord(topSlot.bubbleStyle, "left") > readCoord(topSlot.seatStyle, "left") + 40, true);
+    assert.deepEqual(leftSlots.map((item) => readCoord(item.seatStyle, "left")), [42, 42, 42]);
+    assert.deepEqual(rightSlots.map((item) => readCoord(item.seatStyle, "left")), [333, 333, 333]);
+    assert.deepEqual(leftSlots.map((item) => readCoord(item.seatStyle, "top")), [290, 396, 526]);
+    assert.deepEqual(rightSlots.map((item) => readCoord(item.seatStyle, "top")), [290, 396, 526]);
+    assert.deepEqual(leftSlots.map((item) => readCoord(item.bubbleStyle, "left")), [144, 144, 144]);
+    assert.deepEqual(rightSlots.map((item) => readCoord(item.bubbleStyle, "left")), [231, 231, 231]);
+    assert.deepEqual(leftSlots.map((item) => readCoord(item.bubbleStyle, "top")), [250, 356, 486]);
+    assert.deepEqual(rightSlots.map((item) => readCoord(item.bubbleStyle, "top")), [250, 356, 486]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: seat nickname display keeps a five-character nickname intact", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.data.playerId = "owner-a";
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "123456",
+        phase: "calling",
+        round: 1,
+        currentPlayerId: "owner-a",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false
+        },
+        players: [
+          { id: "owner-a", nickname: "手机玩家", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "active", seatIndex: 1, diceCupStatus: "closed", rollLocked: true },
+          { id: "p2", nickname: "编号952", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "closed", rollLocked: true }
+        ],
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 1,
+        serverTs: Date.now()
+      }
+    }));
+
+    const player = page.data.playersDecorated.find((item) => item.id === "p2");
+    assert.equal(player.nicknameShort, "编号952");
+    assert.equal(player.nicknameLengthClass, "is-long");
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: seating panel moves the selected player into an empty seat", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -1730,6 +2930,60 @@ test("room page: seating panel moves the selected player into an empty seat", ()
     assert.equal(page.data.seatingSelectedText, "未选择");
     assert.equal(hapticCalls, 1);
     assert.equal(sfxCalls, 0);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: owner can reopen seating after settlement", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.data.playerId = "owner-a";
+    page.setData({
+      phase: "ended",
+      round: 2,
+      selfIsOwner: true,
+      playersRaw: [
+        {
+          id: "owner-a",
+          nickname: "房主",
+          avatar: "",
+          isOwner: true,
+          onlineStatus: "online",
+          turnStatus: "active",
+          seatIndex: 1,
+          diceCupStatus: "open",
+          rollLocked: true
+        },
+        {
+          id: "guest-b",
+          nickname: "二号位玩家",
+          avatar: "",
+          isOwner: false,
+          onlineStatus: "online",
+          turnStatus: "idle",
+          seatIndex: 2,
+          diceCupStatus: "open",
+          rollLocked: true
+        }
+      ]
+    });
+
+    page.openSeatingPanel({
+      id: "guest-b",
+      nickname: "二号位玩家",
+      seatIndex: 2
+    });
+
+    assert.equal(page.data.seatingVisible, true);
+    assert.equal(page.data.seatingSelectedSeatIndex, 2);
   } finally {
     cleanup();
   }
@@ -2034,7 +3288,35 @@ test("room page: non-owner topbar menu routes settings without showing seating",
   }
 });
 
-test("room page: tools menu exposes both sound and vibration toggles", () => {
+test("room page: tools menu opens the custom audio-and-feedback sheet", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.devtoolsMode = true;
+    page.setData({
+      selfIsOwner: true,
+      phase: "ready",
+      round: 0,
+      roomConfig: {
+        testMode: false
+      }
+    });
+
+    page.openToolsMenu();
+
+    assert.equal(page.data.toolsBasicVisible, true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: tools menu exposes owner tools when waiting players need seats", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -2046,14 +3328,16 @@ test("room page: tools menu exposes both sound and vibration toggles", () => {
   try {
     let capturedItems = null;
 
-    page.devtoolsMode = true;
     page.setData({
       selfIsOwner: true,
-      phase: "ready",
-      round: 0,
+      phase: "ended",
+      round: 2,
       roomConfig: {
         testMode: false
-      }
+      },
+      waitingPlayersRaw: [
+        { id: "waiting-a", nickname: "等待者", avatar: "", onlineStatus: "online" }
+      ]
     });
     page.showActionSheetSafe = ({ itemList }) => {
       capturedItems = itemList;
@@ -2061,7 +3345,7 @@ test("room page: tools menu exposes both sound and vibration toggles", () => {
 
     page.openToolsMenu();
 
-    assert.deepEqual(capturedItems, ["关闭音效", "关闭震动"]);
+    assert.deepEqual(capturedItems, ["音效与反馈", "房主工具"]);
   } finally {
     cleanup();
   }
@@ -2213,6 +3497,182 @@ test("room page: private dice results wait for the roll audio window before stag
   }
 });
 
+test("room page: returning from background settles an interrupted self-roll animation", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: true,
+      connecting: false,
+      phase: "rolling",
+      selfIsWaiting: false,
+      myDiceVisible: true,
+      myDiceRolling: true,
+      myDiceRevealing: false,
+      privateDice: [1, 2, 3, 4, 5],
+      roomConfig: {
+        dicePerPlayer: 5
+      }
+    });
+
+    page.roomSelfRollingTimer = setInterval(() => {}, 1000);
+    page.myDiceAutoPeekTimer = setTimeout(() => {}, 1000);
+    page.onHide();
+
+    assert.equal(Boolean(page.selfRollInterruptedOnHide), true);
+    assert.equal(page.roomSelfRollingTimer, null);
+    assert.equal(page.myDiceAutoPeekTimer, null);
+
+    page.onShow();
+
+    assert.equal(page.data.myDiceRolling, false);
+    assert.equal(page.data.myDiceRevealing, false);
+    assert.equal(page.data.myDiceVisible, true);
+    assert.deepEqual(page.data.roomSelfDiceFaces.map((item) => item.value), [1, 2, 3, 4, 5]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: returning from background can rebuild stable dice from pending private results", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.pendingPrivateDice = [6, 5, 4, 3, 2];
+    page.setData({
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token",
+      connected: true,
+      connecting: false,
+      phase: "rolling",
+      selfIsWaiting: false,
+      myDiceVisible: true,
+      myDiceRolling: true,
+      myDiceRevealing: false,
+      privateDice: [],
+      roomConfig: {
+        dicePerPlayer: 5
+      }
+    });
+
+    page.roomSelfRollingTimer = setInterval(() => {}, 1000);
+    page.onHide();
+    page.onShow();
+
+    assert.equal(page.data.myDiceRolling, false);
+    assert.equal(page.data.myDiceRevealing, false);
+    assert.equal(page.data.myDiceVisible, true);
+    assert.deepEqual(page.data.privateDice, [6, 5, 4, 3, 2]);
+    assert.deepEqual(page.data.roomSelfDiceFaces.map((item) => item.value), [6, 5, 4, 3, 2]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: direct private dice restore reveals stable dice immediately when no roll animation is active", async () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.getSelfRollSettleDurationMs = () => 12;
+    page.setData({
+      phase: "rolling",
+      selfIsWaiting: false,
+      myDiceVisible: false,
+      myDiceRolling: false,
+      myDiceRevealing: false,
+      roomConfig: {
+        dicePerPlayer: 5
+      }
+    });
+
+    page.handleServerPacket(JSON.stringify({
+      event: "dice:privateResult",
+      payload: {
+        dice: [2, 4, 6, 1, 3]
+      }
+    }));
+
+    assert.equal(page.data.myDiceRolling, false);
+    assert.equal(page.data.myDiceRevealing, false);
+    assert.equal(page.data.myDiceVisible, true);
+    assert.equal(page.data.myDiceJustRevealed, true);
+    assert.deepEqual(page.data.privateDice, [2, 4, 6, 1, 3]);
+    assert.deepEqual(page.data.roomSelfDiceFaces.map((item) => item.value), [2, 4, 6, 1, 3]);
+    assert.equal(page.data.roomSelfDiceFaces.every((item) => item.revealed), true);
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    assert.equal(page.data.myDiceJustRevealed, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: tapping the self dice cup toggles cover without changing dice values", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const haptics = [];
+    page.haptic = (kind) => haptics.push(kind);
+    page.setData({
+      phase: "calling",
+      selfIsWaiting: false,
+      myDiceVisible: true,
+      myDiceRolling: false,
+      myDiceRevealing: false,
+      privateDice: [2, 4, 6, 1, 3],
+      roomConfig: {
+        dicePerPlayer: 5
+      },
+      roomSelfDiceFaces: [
+        { value: 2 },
+        { value: 4 },
+        { value: 6 },
+        { value: 1 },
+        { value: 3 }
+      ]
+    });
+
+    page.toggleSelfDiceCover();
+    assert.equal(page.data.myDiceCovered, true);
+    assert.deepEqual(page.data.privateDice, [2, 4, 6, 1, 3]);
+
+    page.toggleSelfDiceCover();
+    assert.equal(page.data.myDiceCovered, false);
+    assert.deepEqual(haptics, ["light", "light"]);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: all players see the settlement dialog and only the loser can continue", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -2239,7 +3699,35 @@ test("room page: all players see the settlement dialog and only the loser can co
           targetId: "loser",
           declared: { count: 10, point: 4 },
           actual: 5,
-          winnerId: "winner"
+          winnerId: "winner",
+          countDetails: [
+            {
+              playerId: "winner",
+              contribution: 3,
+              straight: false,
+              leopardBonus: false,
+              dice: [
+                { index: 0, value: 4, counted: true, wildcard: false },
+                { index: 1, value: 1, counted: false, wildcard: false },
+                { index: 2, value: 1, counted: false, wildcard: false },
+                { index: 3, value: 4, counted: true, wildcard: false },
+                { index: 4, value: 4, counted: true, wildcard: false }
+              ]
+            },
+            {
+              playerId: "loser",
+              contribution: 6,
+              straight: false,
+              leopardBonus: true,
+              dice: [
+                { index: 0, value: 4, counted: true, wildcard: false },
+                { index: 1, value: 4, counted: true, wildcard: false },
+                { index: 2, value: 4, counted: true, wildcard: false },
+                { index: 3, value: 1, counted: true, wildcard: true },
+                { index: 4, value: 4, counted: true, wildcard: false }
+              ]
+            }
+          ]
         }
       ],
       serverTs: Date.now()
@@ -2268,12 +3756,144 @@ test("room page: all players see the settlement dialog and only the loser can co
     assert.equal(page.data.settlementVisible, true);
     assert.equal(page.data.settlementCanContinue, true);
     assert.equal(page.data.settlementRows.length, 2);
+    const loserRow = page.data.settlementRows.find((row) => row.playerId === "loser");
+    assert.equal(loserRow.featureTagText, "豹");
+    assert.equal(loserRow.diceItems.filter((item) => item.highlighted).length, 5);
+    assert.equal(loserRow.diceItems.find((item) => item.value === 1).wildcard, true);
+
+    const naturalLeopardOpenResult = {
+      ...openResult,
+      targets: [
+        {
+          ...openResult.targets[0],
+          countDetails: []
+        }
+      ]
+    };
+    const naturalLeopardRoundSummary = {
+      ...roundSummary,
+      players: [
+        { playerId: "winner", dice: [2, 2, 2, 2, 2] },
+        { playerId: "loser", dice: [5, 5, 5, 5, 5] }
+      ]
+    };
+    page.showSettlementPanel(naturalLeopardOpenResult, naturalLeopardRoundSummary);
+    const naturalWinnerRow = page.data.settlementRows.find((row) => row.playerId === "winner");
+    const naturalLoserRow = page.data.settlementRows.find((row) => row.playerId === "loser");
+    assert.equal(naturalWinnerRow.featureTagText, "豹2");
+    assert.equal(naturalLoserRow.featureTagText, "豹5");
   } finally {
     cleanup();
   }
 });
 
-test("room page: settlement audio plays once when the dialog first appears and does not stack with win lose cues", () => {
+test("room page: settlement lets the owner continue when the loser is offline", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.startSettlementCountdown = () => {
+      page.setData({ settlementContinueSec: 2 });
+    };
+    page.data.playerId = "owner";
+    page.data.playersRaw = [
+      { id: "owner", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "idle", seatIndex: 1, diceCupStatus: "open", rollLocked: true },
+      { id: "loser", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "offline", turnStatus: "idle", seatIndex: 2, diceCupStatus: "open", rollLocked: true }
+    ];
+
+    const openResult = {
+      round: 1,
+      openerId: "owner",
+      targets: [
+        {
+          targetId: "loser",
+          declared: { count: 5, point: 4 },
+          actual: 2,
+          winnerId: "owner"
+        }
+      ],
+      serverTs: Date.now()
+    };
+
+    page.showSettlementPanel(openResult, {
+      round: 1,
+      roomId: "123456",
+      players: [
+        { playerId: "owner", dice: [4, 4, 2, 3, 6] },
+        { playerId: "loser", dice: [1, 2, 3, 5, 6] }
+      ],
+      openResult,
+      serverTs: Date.now()
+    });
+
+    assert.equal(page.data.settlementVisible, true);
+    assert.equal(page.data.settlementCanContinue, true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: settlement fallback highlights wildcard ones when they are counted", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.startSettlementCountdown = () => {
+      page.setData({ settlementContinueSec: 2 });
+    };
+    page.data.playersRaw = [
+      { id: "owner", nickname: "编号9527", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "idle", seatIndex: 1, diceCupStatus: "closed", rollLocked: true },
+      { id: "target", nickname: "编号9527", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "closed", rollLocked: true }
+    ];
+
+    const openResult = {
+      round: 1,
+      openerId: "owner",
+      targets: [
+        {
+          targetId: "target",
+          declared: { count: 5, point: 3 },
+          actual: 4,
+          winnerId: "target"
+        }
+      ],
+      serverTs: Date.now()
+    };
+    const roundSummary = {
+      roomId: "778899",
+      round: 1,
+      players: [
+        { playerId: "owner", nickname: "编号9527", avatar: "", dice: [3, 6, 6, 6, 4], call: null },
+        { playerId: "target", nickname: "编号9527", avatar: "", dice: [1, 5, 1, 3, 6], call: { count: 5, point: 3, by: "target", ts: Date.now() } }
+      ],
+      openResult,
+      serverTs: Date.now()
+    };
+
+    page.showSettlementPanel(openResult, roundSummary);
+
+    const ownerRow = page.data.settlementRows.find((row) => row.playerId === "owner");
+    const targetRow = page.data.settlementRows.find((row) => row.playerId === "target");
+    assert.equal(ownerRow.diceItems.filter((item) => item.highlighted).length, 1);
+    assert.equal(targetRow.diceItems.filter((item) => item.highlighted).length, 3);
+    assert.equal(targetRow.diceItems.filter((item) => item.wildcard).length, 2);
+    assert.deepEqual(targetRow.diceItems.map((item) => item.value), [1, 1, 3, 5, 6]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: settlement audio follows winner-loser identity instead of continue permission", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -2333,6 +3953,20 @@ test("room page: settlement audio plays once when the dialog first appears and d
     assert.deepEqual(sfxCalls, ["settlement"]);
     assert.equal(page.data.settlementVisible, true);
     assert.equal(page.data.settlementRows.length, 2);
+
+    page.setData({ settlementVisible: false });
+    page.data.playerId = "loser";
+    page.showSettlementPanel(openResult, roundSummary);
+    assert.deepEqual(sfxCalls, ["settlement", "loseAlert"]);
+
+    page.setData({ settlementVisible: false });
+    page.data.playerId = "winner";
+    page.data.playersRaw = [
+      { id: "winner", nickname: "赢家", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "idle", seatIndex: 1, diceCupStatus: "closed", rollLocked: false },
+      { id: "loser", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "offline", turnStatus: "idle", seatIndex: 2, diceCupStatus: "closed", rollLocked: false }
+    ];
+    page.showSettlementPanel(openResult, roundSummary);
+    assert.deepEqual(sfxCalls, ["settlement", "loseAlert", "settlement"]);
   } finally {
     cleanup();
   }
@@ -2419,6 +4053,248 @@ test("room page: opening the call panel from the hud primary button stays audio 
   }
 });
 
+test("room page: calling-turn room state routes open into the left secondary action when opening is allowed", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({ playerId: "P1" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P1",
+        lastCall: { count: 3, point: 4, by: "P2", ts: 101 }
+      })
+    }));
+    assert.equal(page.data.showQuickOpenAction, false);
+    assert.equal(page.data.secondaryActionKind, "open");
+    assert.equal(page.data.secondaryActionText, "开牌");
+    assert.equal(page.data.primaryActionText, "叫牌");
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P1",
+        lastCall: null
+      })
+    }));
+    assert.equal(page.data.secondaryActionKind, "");
+    assert.equal(page.data.secondaryActionText, "");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: calling-turn room state hides open action for self-call and one-online-player states", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({ playerId: "P1" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P1",
+        lastCall: { count: 3, point: 4, by: "P1", ts: 101 }
+      })
+    }));
+    assert.equal(page.data.canOpenAction, false);
+    assert.equal(page.data.showQuickOpenAction, false);
+
+    const oneOnlinePayload = buildRoomStatePayload({
+      currentPlayerId: "P1",
+      lastCall: { count: 3, point: 4, by: "P2", ts: 102 }
+    });
+    oneOnlinePayload.players = oneOnlinePayload.players.map((player) => (
+      player.id === "P2" ? { ...player, onlineStatus: "offline" } : player
+    ));
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: oneOnlinePayload
+    }));
+    assert.equal(page.data.canOpenAction, false);
+    assert.equal(page.data.showQuickOpenAction, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: non-turn players can jump-open while the latest caller sees no left action", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({ playerId: "P2" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P1",
+        lastCall: { count: 4, point: 5, by: "P2", ts: 201 }
+      })
+    }));
+    assert.equal(page.data.canOpenAction, false);
+    assert.equal(page.data.secondaryActionKind, "");
+    assert.equal(page.data.secondaryActionText, "");
+
+    page.setData({ playerId: "P3" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...buildRoomStatePayload({
+          currentPlayerId: "P2",
+          lastCall: { count: 4, point: 5, by: "P2", ts: 202 }
+        }),
+        players: [
+          {
+            id: "P1",
+            nickname: "甲方",
+            avatar: "",
+            isOwner: true,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 1,
+            diceCupStatus: "closed",
+            rollLocked: true,
+            rollCountThisRound: 1
+          },
+          {
+            id: "P2",
+            nickname: "乙方",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "active",
+            seatIndex: 2,
+            diceCupStatus: "closed",
+            rollLocked: true,
+            rollCountThisRound: 1
+          },
+          {
+            id: "P3",
+            nickname: "丙方",
+            avatar: "",
+            isOwner: false,
+            onlineStatus: "online",
+            turnStatus: "idle",
+            seatIndex: 3,
+            diceCupStatus: "closed",
+            rollLocked: true,
+            rollCountThisRound: 1
+          }
+        ]
+      }
+    }));
+    assert.equal(page.data.canOpenAction, true);
+    assert.equal(page.data.secondaryActionKind, "open");
+    assert.equal(page.data.secondaryActionText, "跳开");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: ended room state lets owner start when the loser starter is offline", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({ playerId: "P1" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "778899",
+        phase: "ended",
+        round: 2,
+        currentPlayerId: "P2",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        },
+        players: [
+          { id: "P1", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "idle", seatIndex: 1, diceCupStatus: "open", rollLocked: true },
+          { id: "P2", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "offline", turnStatus: "idle", seatIndex: 2, diceCupStatus: "open", rollLocked: true }
+        ],
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 3,
+        serverTs: Date.now()
+      }
+    }));
+
+    assert.equal(page.data.primaryActionText, "开始");
+    assert.equal(page.data.canPrimaryAction, true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: quick open action reuses the open flow without reopening the call panel", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sfxCalls = [];
+    const haptics = [];
+    const sent = [];
+    page.playSfx = (kind) => {
+      sfxCalls.push(kind);
+    };
+    page.haptic = (kind) => {
+      haptics.push(kind);
+    };
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.setData({
+      phase: "calling",
+      currentPlayerId: "player-a",
+      playerId: "player-a",
+      selfIsWaiting: false,
+      canOpenAction: true,
+      callPanelVisible: false,
+      callPanelExpanded: false
+    });
+
+    page.openDice();
+
+    assert.deepEqual(haptics, ["light"]);
+    assert.deepEqual(sfxCalls, ["open"]);
+    assert.deepEqual(sent, [{ event: "open:request", payload: {} }]);
+    assert.equal(page.data.callPanelVisible, false);
+    assert.equal(page.data.callPanelExpanded, false);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: submitting a manual call from the panel uses the bundled primary cue", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -2448,6 +4324,8 @@ test("room page: submitting a manual call from the panel uses the bundled primar
       callPanelExpanded: true,
       callCount: "4",
       callPoint: "5",
+      callCountTouched: true,
+      callPointTouched: true,
       primaryActionText: "叫牌"
     });
 

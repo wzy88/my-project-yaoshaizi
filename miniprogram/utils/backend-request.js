@@ -104,6 +104,10 @@ function resolveBackendErrorMessage({ statusCode, data, errMsg, path }) {
     return "当前服务暂不可用，请稍后再试";
   }
 
+  if (normalizedPath === "/api/room-exists") {
+    return "当前服务端版本较旧，请先发布最新服务";
+  }
+
   return defaultMessage;
 }
 
@@ -228,8 +232,27 @@ function requestBackend(options) {
   });
 }
 
+async function checkRoomExists(roomId) {
+  const normalizedRoomId = String(roomId || "").trim();
+  if (!/^\d{6}$/.test(normalizedRoomId)) {
+    return false;
+  }
+
+  const response = await requestBackend({
+    path: "/api/room-exists",
+    method: "POST",
+    data: {
+      roomId: normalizedRoomId
+    }
+  });
+
+  const data = response && response.data ? response.data : response;
+  return Boolean(data && data.exists);
+}
+
 module.exports = {
   requestBackend,
+  checkRoomExists,
   deriveHttpBaseUrl,
   getRuntimeConnection,
   hasBackendConnection,

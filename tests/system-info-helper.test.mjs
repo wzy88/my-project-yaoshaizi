@@ -68,6 +68,7 @@ test("miniprogram platform detection uses non-deprecated system APIs", () => {
       getWindowInfo() {
         return {
           statusBarHeight: 47,
+          windowWidth: 390,
           screenHeight: 844,
           windowHeight: 763,
           safeArea: {
@@ -89,7 +90,10 @@ test("miniprogram platform detection uses non-deprecated system APIs", () => {
       bottomInset: 34,
       menuTop: 59,
       menuHeight: 32,
-      menuBottom: 91
+      menuBottom: 91,
+      windowWidth: 390,
+      windowHeight: 763,
+      screenHeight: 844
     });
   } finally {
     if (typeof originalWx === "undefined") {

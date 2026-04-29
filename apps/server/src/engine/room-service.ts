@@ -59,6 +59,7 @@ export class RoomService {
   private reconnectTimers = new Map<string, NodeJS.Timeout>();
   private turnTimers = new Map<string, NodeJS.Timeout>();
   private turnTimerKeys = new Map<string, string>();
+  private turnDeadlineTsByRoom = new Map<string, number>();
   private readonly accountStore: AccountStore;
   private historyStore = new HistoryStore();
   private voiceStore = new VoiceStore();
@@ -66,6 +67,10 @@ export class RoomService {
 
   constructor(accountStore = new AccountStore()) {
     this.accountStore = accountStore;
+  }
+
+  hasRoom(roomId: string): boolean {
+    return this.rooms.has(String(roomId || "").trim());
   }
 
   private logDiagnostic(level: "log" | "warn", event: string, details: Record<string, unknown>): void {
@@ -344,6 +349,8 @@ export class RoomService {
       ownerPlayerId: playerId,
       accountId: boundAccount?.accountId || "",
       nickname,
+      requestedThemeId: String(payload.config?.themeId || ""),
+      storedThemeId: String(room.getState().config.themeId || ""),
       ...this.getRoomDiagnostics(roomId),
       ...this.getSocketMeta(ws)
     });
@@ -390,6 +397,61 @@ export class RoomService {
     const nickname = nicknameResult.ok ? nicknameResult.value : "玩家";
     const avatar = String(payload.avatar || "");
     const boundAccount = await this.resolveBoundAccount(payload);
+
+    const restoredParticipant = boundAccount
+      ? this.findRoomParticipantByAccountId(room, boundAccount.accountId)
+      : null;
+    if (restoredParticipant) {
+      const restoredPlayerId = restoredParticipant.id;
+      this.clearReconnectTimer(payload.roomId, restoredPlayerId);
+      room.updatePlayerProfile(restoredPlayerId, {
+        nickname,
+        avatar
+      });
+      room.setPlayerOnlineStatus(restoredPlayerId, "online");
+      this.bindSession(ws, payload.roomId, restoredPlayerId);
+
+      const restoredResumeToken = this.createOrRefreshResumeToken(payload.roomId, restoredPlayerId);
+      if (boundAccount) {
+        await this.accountStore.touchRoom(boundAccount.accountId, payload.roomId, "guest");
+      }
+
+      this.logDiagnostic("log", "room:join:restored", {
+        actionId: actionId || "",
+        requestedRoomId: payload.roomId,
+        restoredPlayerId,
+        accountId: boundAccount?.accountId || "",
+        nickname,
+        ...this.getRoomDiagnostics(payload.roomId),
+        ...this.getSocketMeta(ws)
+      });
+
+      this.sendAck(ws, {
+        actionId,
+        ok: true,
+        roomId: payload.roomId,
+        playerId: restoredPlayerId,
+        resumeToken: restoredResumeToken
+      });
+
+      const roomState = room.getState();
+      this.broadcastRoomState(payload.roomId);
+
+      if (roomState.players.some((player) => player.id === restoredPlayerId)) {
+        const dice = room.getPlayerPrivateDice(restoredPlayerId);
+        if (dice.length > 0) {
+          this.sendToPlayer(payload.roomId, restoredPlayerId, "dice:privateResult", {
+            round: roomState.round,
+            playerId: restoredPlayerId,
+            dice,
+            serverTs: Date.now()
+          });
+        }
+      }
+
+      void this.sendLatestSummaryIfEnded(payload.roomId, restoredPlayerId);
+      return;
+    }
 
     const playerId = createPlayerId();
     const phase = room.getState().phase;
@@ -590,6 +652,17 @@ export class RoomService {
     const { room, session } = this.getRoomAndSession(ws);
     this.ensureActivePlayer(room, session.playerId);
     room.startGame(session.playerId);
+    const state = room.getState();
+
+    this.logDiagnostic("log", "game:start", {
+      actionId: actionId || "",
+      actorPlayerId: session.playerId,
+      roomId: session.roomId,
+      phase: state.phase,
+      round: state.round,
+      themeId: String(state.config?.themeId || ""),
+      playerCount: state.players.length
+    });
 
     this.sendAck(ws, {
       actionId,
@@ -712,7 +785,7 @@ export class RoomService {
     this.ensureActivePlayer(room, session.playerId);
     const { items, nextBeforeRound } = await this.historyStore.listHistory({
       roomId: session.roomId,
-      limit: payload.limit ?? 10,
+      limit: payload.limit ?? 3,
       beforeRound: payload.beforeRound
     });
 
@@ -935,6 +1008,32 @@ export class RoomService {
     }
 
     return state.waitingPlayers.find((player) => player.id === playerId)?.accountId;
+  }
+
+  private findRoomParticipantByAccountId(room: RoomEngine, accountId: string): { id: string; kind: "player" | "waiting" } | null {
+    const normalizedAccountId = String(accountId || "").trim();
+    if (!normalizedAccountId) {
+      return null;
+    }
+
+    const state = room.getState();
+    const active = state.players.find((player) => player.accountId === normalizedAccountId);
+    if (active) {
+      return {
+        id: active.id,
+        kind: "player"
+      };
+    }
+
+    const waiting = state.waitingPlayers.find((player) => player.accountId === normalizedAccountId);
+    if (waiting) {
+      return {
+        id: waiting.id,
+        kind: "waiting"
+      };
+    }
+
+    return null;
   }
 
   private getRoomAndSession(ws: WebSocket): { room: RoomEngine; session: Session } {
@@ -1167,7 +1266,16 @@ export class RoomService {
     this.clearReconnectTimer(roomId, playerId);
     this.playerResumeTokens.delete(this.playerKey(roomId, playerId));
 
-    room.removePlayer(playerId);
+    const stateBeforeRemoval = room.getState();
+    const shouldAutoAdvanceLeavingTurn = Boolean(
+      reason === "explicit_leave"
+      && stateBeforeRemoval.phase === "calling"
+      && stateBeforeRemoval.currentPlayerId === playerId
+    );
+
+    room.removePlayer(playerId, {
+      preserveCurrentTurn: shouldAutoAdvanceLeavingTurn
+    });
 
     this.logDiagnostic("log", "room:player_removed", {
       playerId,
@@ -1186,7 +1294,13 @@ export class RoomService {
       return;
     }
 
-    this.broadcastRoomState(roomId);
+    if (shouldAutoAdvanceLeavingTurn) {
+      void this.autoAdvanceCurrentCallTurn(roomId, playerId).catch(() => {
+        this.broadcastRoomState(roomId);
+      });
+    } else {
+      this.broadcastRoomState(roomId);
+    }
   }
 
   private cleanupRoomResources(roomId: string): void {
@@ -1212,6 +1326,7 @@ export class RoomService {
       this.turnTimers.delete(roomId);
     }
     this.turnTimerKeys.delete(roomId);
+    this.turnDeadlineTsByRoom.delete(roomId);
     this.chatStore.clearRoom(roomId);
   }
 
@@ -1232,7 +1347,11 @@ export class RoomService {
       return;
     }
 
-    this.broadcastRoom(roomId, "room:state", room.getState());
+    const state = room.getState();
+    this.broadcastRoom(roomId, "room:state", {
+      ...state,
+      turnDeadlineTs: this.turnDeadlineTsByRoom.get(roomId)
+    });
     this.rescheduleTurnTimer(roomId);
   }
 
@@ -1245,6 +1364,7 @@ export class RoomService {
         this.turnTimers.delete(roomId);
       }
       this.turnTimerKeys.delete(roomId);
+      this.turnDeadlineTsByRoom.delete(roomId);
       return;
     }
 
@@ -1264,15 +1384,21 @@ export class RoomService {
     }
 
     if (!state.currentPlayerId) {
+      this.turnDeadlineTsByRoom.delete(roomId);
       return;
     }
 
     if (state.phase === "calling") {
+      const deadlineTs = Date.now() + CALL_TIMEOUT_MS;
+      this.turnDeadlineTsByRoom.set(roomId, deadlineTs);
       const timer = setTimeout(() => {
         void this.handleCallTimeout(roomId, turnKey, state.currentPlayerId!);
       }, CALL_TIMEOUT_MS);
       this.turnTimers.set(roomId, timer);
+      return;
     }
+
+    this.turnDeadlineTsByRoom.delete(roomId);
   }
 
   private handleRollTimeout(roomId: string, version: number, playerId: string): void {
@@ -1318,22 +1444,37 @@ export class RoomService {
     }
 
     try {
-      const suggestion = room.getAutoCallSuggestion();
-      if (suggestion) {
-        room.makeCall(playerId, suggestion.count, suggestion.point);
-        this.broadcastRoomState(roomId);
-        return;
-      }
-
-      const { openResult, roundSummary } = room.openDice(playerId, room.getRuleOptionsForCurrentRound());
-      await this.historyStore.saveRoundSummary(roundSummary);
-      await this.accountStore.recordRoundSummary(roundSummary);
-      this.broadcastRoom(roomId, "open:result", openResult);
-      this.broadcastRoom(roomId, "round:summary", roundSummary);
-      this.broadcastRoomState(roomId);
+      await this.autoAdvanceCurrentCallTurn(roomId, playerId);
     } catch {
       // ignore timeout failure
     }
+  }
+
+  private async autoAdvanceCurrentCallTurn(roomId: string, playerId: string): Promise<void> {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      return;
+    }
+
+    const state = room.getState();
+    if (state.phase !== "calling" || state.currentPlayerId !== playerId) {
+      this.broadcastRoomState(roomId);
+      return;
+    }
+
+    const suggestion = room.getAutoCallSuggestion();
+    if (suggestion) {
+      room.makeCall(playerId, suggestion.count, suggestion.point);
+      this.broadcastRoomState(roomId);
+      return;
+    }
+
+    const { openResult, roundSummary } = room.openDice(playerId, room.getRuleOptionsForCurrentRound());
+    await this.historyStore.saveRoundSummary(roundSummary);
+    await this.accountStore.recordRoundSummary(roundSummary);
+    this.broadcastRoom(roomId, "open:result", openResult);
+    this.broadcastRoom(roomId, "round:summary", roundSummary);
+    this.broadcastRoomState(roomId);
   }
 
   private sendToPlayer<E extends keyof ServerEventMap>(

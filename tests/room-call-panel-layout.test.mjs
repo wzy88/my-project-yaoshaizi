@@ -27,7 +27,7 @@ test("room call panel switches between count and point selectors", () => {
   assert.match(roomJs, /callSelectorMode: isMyCallingTurn \? \(this\.data\.callSelectorMode \|\| "count"\) : ""/);
   assert.match(
     roomJs,
-    /function buildCallPointOptionItems\(options\)\s*\{\s*return \(Array\.isArray\(options\) \? options : \[\]\)\.map\(\(value\) => \(\{\s*value:\s*String\(value\),[\s\S]*asset:\s*getDieAsset\(value\)/
+    /function buildCallPointOptionItems\(themeId,\s*options\)\s*\{\s*return \(Array\.isArray\(options\) \? options : \[\]\)\.map\(\(value\) => \(\{\s*value:\s*String\(value\),[\s\S]*asset:\s*getRoomDieAsset\(value,\s*themeId\)/
   );
   assert.match(
     roomJs,
@@ -45,11 +45,17 @@ test("room call panel opens manually during calling and supports overlay close",
   assert.match(roomJs, /const callPanelVisible = isMyCallingTurn \? Boolean\(this\.data\.callPanelVisible\) : false;/);
   assert.doesNotMatch(roomJs, /const callPanelVisible = isMyCallingTurn;/);
   assert.match(roomJs, /primaryActionText = callForcedOpen \? "开牌" : "叫牌";/);
+  assert.match(roomJs, /const showQuickOpenAction = false;/);
   assert.match(roomJs, /if \(!forcedOpen\) \{\s*this\.haptic\("light"\);\s*this\.openCallPanel\(\);\s*return;\s*\}/);
+  assert.doesNotMatch(roomWxml, /wx:if="\{\{showQuickOpenAction\}\}"[\s\S]*bindtap="openDice"/);
   assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*top:\s*0/);
   assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*display:\s*flex/);
   assert.match(roomWxss, /\.call-phase-overlay\s*\{[\s\S]*align-items:\s*flex-end/);
-  assert.match(roomWxml, /class="room-fab \{\{canPrimaryAction \? '' : 'is-disabled'\}\}"[\s\S]*hover-class="\{\{canPrimaryAction \? 'room-fab--pressing' : 'none'\}\}"/);
+  assert.match(roomWxml, /class="room-fab \{\{phase === 'rolling' && secondaryActionKind === 'reroll' \? 'room-fab--left' : ''\}\} \{\{canPrimaryAction \? '' : 'is-disabled'\}\} \{\{primaryActionText === '叫牌' \? roomThemeAssets\.primaryButtonClass : ''\}\}"[\s\S]*hover-class="\{\{canPrimaryAction \? 'room-fab--pressing' : 'none'\}\}"/);
+  assert.match(roomWxss, /\.room-fab\s*\{[\s\S]*right:\s*18rpx[\s\S]*top:\s*36rpx[\s\S]*width:\s*194rpx[\s\S]*height:\s*84rpx[\s\S]*border-radius:\s*999rpx[\s\S]*flex-direction:\s*row/);
+  assert.match(roomWxss, /\.room-fab-secondary\s*\{/);
+  assert.match(roomWxss, /\.room-fab-secondary\s*\{[\s\S]*right:\s*74rpx[\s\S]*top:\s*-96rpx[\s\S]*width:\s*82rpx[\s\S]*height:\s*82rpx[\s\S]*border-radius:\s*50%/);
+  assert.match(roomWxss, /\.room-fab-secondary--pressing\s*\{/);
   assert.match(roomWxss, /\.room-fab--pressing\s*\{/);
   assert.match(roomWxss, /\.call-phase-panel__btn--pressing\s*\{/);
 });

@@ -5,7 +5,8 @@ const backendRequest = require("../../utils/backend-request");
 const { performWechatOneTapLogin } = require("../../utils/wechat-login-flow");
 const {
   getStoredWechatProfile,
-  navigateAfterWechatLogin
+  navigateAfterWechatLogin,
+  persistLegalConsent
 } = require("../../utils/wechat-auth");
 
 function buildTimeText() {
@@ -95,8 +96,9 @@ Page({
   data: {
     timeText: "09:41",
     heroDiceAssets: HOME_HERO_DICE_ASSETS,
+    devtoolsMode: false,
     loginBusy: false,
-    loginHintText: "点一下就能用微信登录并进入大厅",
+    loginHintText: "不强制登录，进入大厅后需要创建或加入房间时再授权即可",
     backendReady: false,
     connectionHintText: "",
     profileTitle: "",
@@ -108,10 +110,11 @@ Page({
     this.didAutoRoute = false;
 
     this.setData({
+      devtoolsMode: Boolean(app && app.globalData && app.globalData.isDevtoolsMode),
       timeText: buildTimeText(),
       profileTitle: profile.loggedIn ? `欢迎回来，${profile.nickname}` : "准备开局",
       pendingRedirectUrl: decodeRedirect(options.redirect),
-      loginHintText: profile.loggedIn ? "登录状态有效，正在进入..." : "点一下就能用微信登录并进入大厅",
+      loginHintText: profile.loggedIn ? "登录状态有效，正在进入..." : "不强制登录，进入大厅后需要创建或加入房间时再授权即可",
       ...buildConnectionState()
     });
   },
@@ -132,6 +135,12 @@ Page({
 
   onUnload() {
     this.didAutoRoute = false;
+  },
+
+  goLobby() {
+    wx.switchTab({
+      url: "/pages/lobby/lobby"
+    });
   },
 
   async onWechatLogin() {
@@ -157,6 +166,7 @@ Page({
     try {
       const result = await performWechatOneTapLogin();
       const profile = result && result.profile ? result.profile : getStoredWechatProfile();
+      persistLegalConsent();
       this.didAutoRoute = true;
       this.setData({
         profileTitle: profile.loggedIn ? `欢迎回来，${profile.nickname}` : "准备开局",

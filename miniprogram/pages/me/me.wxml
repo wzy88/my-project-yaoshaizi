@@ -1,4 +1,4 @@
-<view class="page me-page">
+<view class="page me-page {{devtoolsMode ? 'is-perf-lite' : ''}}">
   <view class="bg-layer bg-main"></view>
   <view class="bg-layer bg-pattern"></view>
   <view class="bg-glow bg-glow--top"></view>
@@ -11,11 +11,11 @@
           <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
           <text wx:else class="avatar-text">{{initial}}</text>
         </view>
-        <view class="avatar-badge">✓</view>
+        <view class="avatar-badge {{accountReady ? 'is-on' : 'is-off'}}">{{accountReady ? '✓' : '游'}}</view>
       </view>
       <view class="profile-main">
         <text class="profile-title">{{nickname || '玩家'}}</text>
-        <text class="profile-sub">你的对局战绩和最近房间会跟着当前微信登录一起保留</text>
+        <text class="profile-sub">{{accountReady ? '你的对局战绩和最近房间会跟着当前微信登录一起保留' : '当前为浏览状态，未登录时不会保留个人战绩数据'}}</text>
       </view>
     </view>
 
@@ -28,13 +28,14 @@
             <input
               class="nickname-input"
               value="{{nickname}}"
+              maxlength="5"
               bindinput="onNicknameChange"
-              bindblur="onNicknameCommit"
-              bindconfirm="onNicknameCommit"
+              bindblur="onNicknameBlur"
+              bindconfirm="onNicknameSave"
               placeholder="例如 阿伟"
               placeholder-class="row-placeholder"
             />
-            <text class="row-action">保存</text>
+            <text class="row-action {{nicknameSaving ? 'is-disabled' : ''}}" bindtap="onNicknameSave">{{nicknameSaving ? '保存中' : '保存'}}</text>
           </view>
         </view>
         <text class="section-hint">首次登录会先给你一套默认头像和昵称；这里改昵称后，会同步到你的对局资料。</text>
@@ -87,6 +88,13 @@
                   <text class="row-arrow">›</text>
                 </view>
               </view>
+              <view class="row" bindtap="onToggleTurnAlertSfx">
+                <text class="row-label">叫牌提醒</text>
+                <view class="row-right">
+                  <text class="row-value">{{turnAlertSfxEnabled ? '开启' : '关闭'}}</text>
+                  <text class="row-arrow">›</text>
+                </view>
+              </view>
               <view class="row" bindtap="onToggleHaptic">
                 <text class="row-label">震动反馈</text>
                 <view class="row-right">
@@ -136,11 +144,42 @@
             </view>
           </view>
 
-          <view class="logout-wrap">
+          <view wx:if="{{accountReady}}" class="logout-wrap">
             <button class="logout-btn" bindtap="logoutProfile">退出登录</button>
           </view>
         </view>
       </view>
     </scroll-view>
+  </view>
+
+  <view class="login-gate" wx:if="{{showLoginGate}}">
+    <view class="login-gate__mask" bindtap="closeLoginGate"></view>
+    <view class="login-gate__sheet" catchtap="noop">
+      <view class="login-gate__handle"></view>
+      <view class="login-gate__header">
+        <text class="login-gate__title">登录后保存昵称</text>
+      </view>
+      <view class="login-gate__button-stack">
+        <button class="login-gate__btn {{loginAgreementChecked ? '' : 'is-disabled'}}" loading="{{loginBusy}}" disabled="{{loginBusy || !loginAgreementChecked}}" bindtap="onLoginAndSaveNickname">
+          <text class="login-gate__btn-text">{{loginBusy ? '登录中...' : '微信登录并保存'}}</text>
+        </button>
+        <button class="login-gate__btn login-gate__btn--secondary" disabled="{{loginBusy}}" bindtap="closeLoginGate">
+          <text class="login-gate__btn-text login-gate__btn-text--secondary">暂不登录</text>
+        </button>
+      </view>
+      <view class="login-gate__agreement-row">
+        <view class="login-gate__agreement-inline" bindtap="toggleLoginAgreement">
+          <view class="login-gate__checkbox {{loginAgreementChecked ? 'is-checked' : ''}}">
+            <text class="login-gate__checkbox-mark">✓</text>
+          </view>
+          <view class="login-gate__agreement-copy">
+            <text class="login-gate__agreement-copy-text">我已阅读并同意</text>
+            <text class="login-gate__link" catchtap="openTermsPage">《用户协议》</text>
+            <text class="login-gate__agreement-copy-text">和</text>
+            <text class="login-gate__link" catchtap="openPrivacyPage">《隐私政策》</text>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </view>

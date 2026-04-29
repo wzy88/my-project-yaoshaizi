@@ -38,6 +38,44 @@ test("room engine: startGame requires >=2 players and enters rolling", () => {
   assert.equal(engine.getState().phase, "rolling");
 });
 
+test("room engine: theme config is normalized with a safe default", () => {
+  const defaultThemeEngine = createEngine();
+  assert.equal(defaultThemeEngine.getState().config.themeId, "jade-green");
+
+  const greenThemeEngine = new RoomEngine("T20001A", { id: "P1", nickname: "p1", avatar: "" }, {
+    direction: "cw",
+    wildcardOneEnabled: true,
+    openMode: "single",
+    dicePerPlayer: 5,
+    minOpeningCount: 2,
+    testMode: true,
+    themeId: "jade-green"
+  });
+  assert.equal(greenThemeEngine.getState().config.themeId, "jade-green");
+
+  const themedEngine = new RoomEngine("T20002", { id: "P1", nickname: "p1", avatar: "" }, {
+    direction: "cw",
+    wildcardOneEnabled: true,
+    openMode: "single",
+    dicePerPlayer: 5,
+    minOpeningCount: 2,
+    testMode: true,
+    themeId: "imperial-red"
+  });
+  assert.equal(themedEngine.getState().config.themeId, "imperial-red");
+
+  const fallbackThemeEngine = new RoomEngine("T20003", { id: "P1", nickname: "p1", avatar: "" }, {
+    direction: "cw",
+    wildcardOneEnabled: true,
+    openMode: "single",
+    dicePerPlayer: 5,
+    minOpeningCount: 2,
+    testMode: true,
+    themeId: "unsupported-theme"
+  });
+  assert.equal(fallbackThemeEngine.getState().config.themeId, "jade-green");
+});
+
 test("room engine: roll capped at 5; lock prevents further roll", () => {
   const engine = createEngine();
   engine.startGame("P_OWNER");
@@ -129,6 +167,11 @@ test("room engine: openDice settles and loser starts next round", () => {
 
   const { openResult } = engine.openDice(opener, engine.getRuleOptionsForCurrentRound());
   assert.equal(openResult.targets.length, 1);
+  assert.equal(openResult.targets[0].countDetails.length, 2);
+  assert.equal(openResult.targets[0].countDetails[0].playerId, "P_OWNER");
+  assert.equal(openResult.targets[0].countDetails[0].contribution, 2);
+  assert.equal(openResult.targets[0].countDetails[1].playerId, "P_B");
+  assert.equal(openResult.targets[0].countDetails[1].contribution, 1);
 
   const settled = engine.getState();
   assert.equal(settled.phase, "ended");
@@ -159,4 +202,62 @@ test("room engine: settlement treats 5-5-5-5-1 as a 5 leopard while wildcard one
   const { openResult } = engine.openDice(opener, engine.getRuleOptionsForCurrentRound());
   assert.equal(openResult.targets[0].actual, 6);
   assert.equal(openResult.targets[0].winnerId, "P_OWNER");
+  assert.equal(openResult.targets[0].countDetails[0].leopardBonus, true);
+  assert.equal(openResult.targets[0].countDetails[0].dice.find((die) => die.index === 4).wildcard, true);
+});
+
+test("room engine: active round returns to ready when an explicit leave leaves only one player", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.startGame("P_OWNER");
+  engine.finishRolling("P_OWNER");
+
+  engine.removePlayer("P_B");
+
+  const state = engine.getState();
+  assert.equal(state.phase, "ready");
+  assert.equal(state.players.length, 1);
+  assert.equal(state.players[0].id, "P_OWNER");
+  assert.equal(state.currentPlayerId, "P_OWNER");
+  assert.equal(state.lastCall, undefined);
+});
+
+test("room engine: owner can restart when the losing starter has left after settlement", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.addPlayer({ id: "P_C", nickname: "c", avatar: "" });
+  engine.startGame("P_OWNER");
+
+  engine.setNextDice("P_OWNER", [2, 2, 3, 3, 3], "P_OWNER");
+  engine.setNextDice("P_OWNER", [1, 4, 5, 6, 6], "P_B");
+  engine.setNextDice("P_OWNER", [3, 4, 5, 6, 6], "P_C");
+  engine.finishRolling("P_OWNER");
+  engine.makeCall("P_OWNER", 2, 2);
+  engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
+  assert.equal(engine.getState().phase, "ended");
+
+  engine.removePlayer("P_B");
+  engine.restartRound("P_OWNER");
+
+  const state = engine.getState();
+  assert.equal(state.phase, "rolling");
+  assert.equal(state.players.length, 2);
+  assert.equal(state.players.some((player) => player.id === "P_B"), false);
+});
+
+test("room engine: owner can adjust seats after settlement before the next round", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.addPlayer({ id: "P_C", nickname: "c", avatar: "" });
+  engine.startGame("P_OWNER");
+
+  engine.finishRolling("P_OWNER");
+  engine.makeCall("P_OWNER", 2, 2);
+  engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
+  assert.equal(engine.getState().phase, "ended");
+
+  engine.setSeat("P_OWNER", "P_C", 8);
+  assert.equal(engine.getState().players.find((player) => player.id === "P_C").seatIndex, 8);
+
+  engine.swapSeats("P_OWNER", "P_OWNER", "P_C");
+  const state = engine.getState();
+  assert.equal(state.players.find((player) => player.id === "P_OWNER").seatIndex, 8);
+  assert.equal(state.players.find((player) => player.id === "P_C").seatIndex, 1);
 });

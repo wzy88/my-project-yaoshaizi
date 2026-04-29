@@ -11,10 +11,13 @@ const backendRequestModulePath = require.resolve("../miniprogram/utils/backend-r
 const { DEFAULT_PROFILE_AVATAR_ASSETS } = require("../miniprogram/utils/profile-defaults.js");
 const appJsonPath = path.join(process.cwd(), "miniprogram/app.json");
 const {
+  LEGAL_ACCEPT_KEY,
+  LEGAL_VERSION,
   NICKNAME_KEY,
   AVATAR_URL_KEY,
   WECHAT_LOGIN_TS_KEY,
-  ACCOUNT_SESSION_KEY
+  ACCOUNT_SESSION_KEY,
+  LOGIN_GATE_REDIRECT_KEY
 } = require("../miniprogram/utils/constants.js");
 
 function instantiateLobbyPage({
@@ -182,18 +185,18 @@ test("app config starts from the lobby page instead of the standalone login page
   assert.equal(appJson.pages[0], "pages/lobby/lobby");
 });
 
-test("lobby page keeps the user on the lobby and opens the inline login gate when not logged in", () => {
+test("lobby page lets the user browse first without forcing the login gate", () => {
   const { page, reLaunches, tabBarState, cleanup } = instantiateLobbyPage();
 
   try {
     page.onLoad({});
     page.onShow();
-    assert.equal(page.data.showLoginGate, true);
+    assert.equal(page.data.showLoginGate, false);
     assert.equal(page.data.loggedIn, false);
     assert.match(page.data.nickname, /^玩家\d{3}$/);
     assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(page.data.avatarUrl), true);
     assert.equal(tabBarState.selected, 0);
-    assert.equal(tabBarState.hidden, true);
+    assert.equal(tabBarState.hidden, false);
     assert.deepEqual(reLaunches, []);
   } finally {
     cleanup();
@@ -234,13 +237,21 @@ test("lobby page queues the intended destination before login and continues afte
     page.onLoad({});
     page.goCreateRoom();
     assert.equal(page.data.showLoginGate, true);
+    assert.equal(page.data.loginAgreementChecked, false);
     assert.match(page.data.pendingRedirectUrl, /\/pages\/create-room\/create-room/);
 
+    page.toggleLoginAgreement();
     await page.onWechatLogin();
 
     assert.equal(page.data.loggedIn, true);
     assert.equal(page.data.showLoginGate, false);
     assert.equal(tabBarState.hidden, false);
+    assert.deepEqual(storageState[LEGAL_ACCEPT_KEY], {
+      accepted: true,
+      version: LEGAL_VERSION,
+      acceptedAt: storageState[LEGAL_ACCEPT_KEY].acceptedAt
+    });
+    assert.equal(Number(storageState[LEGAL_ACCEPT_KEY].acceptedAt) > 0, true);
     assert.deepEqual(redirects, ["/pages/create-room/create-room"]);
   } finally {
     cleanup();
@@ -276,6 +287,58 @@ test("lobby page auto-enters the shared room when already logged in and opened w
     page.onShow();
 
     assert.deepEqual(redirects, ["/pages/room/room?mode=join&forceNew=1&roomId=123456"]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("lobby page consumes a pending center-tab create action and opens the login gate", () => {
+  const { page, storageState, cleanup } = instantiateLobbyPage({
+    storage: {
+      [LOGIN_GATE_REDIRECT_KEY]: "/pages/create-room/create-room"
+    }
+  });
+
+  try {
+    page.onLoad({});
+    page.onShow();
+
+    assert.equal(page.data.showLoginGate, true);
+    assert.equal(page.data.pendingRedirectUrl, "/pages/create-room/create-room");
+    assert.equal(storageState[LOGIN_GATE_REDIRECT_KEY], undefined);
+  } finally {
+    cleanup();
+  }
+});
+
+test("lobby page checks room existence before asking an unauthenticated user to log in for join", async () => {
+  const { page, toasts, cleanup } = instantiateLobbyPage({
+    backendRequestExportsOverride: {
+      getRuntimeConnection() {
+        return {
+          wsUrl: "ws://127.0.0.1:3000/ws",
+          containerConfig: { envId: "", service: "", wsPath: "/ws" }
+        };
+      },
+      hasBackendConnection() {
+        return true;
+      },
+      deriveHttpBaseUrl() {
+        return "http://127.0.0.1:3000";
+      },
+      async checkRoomExists() {
+        return false;
+      }
+    }
+  });
+
+  try {
+    page.onLoad({});
+    page.setData({ joinRoomId: "123456" });
+    await page.goJoinRoom();
+
+    assert.equal(page.data.showLoginGate, false);
+    assert.ok(toasts.includes("房间不存在或房间号有误"));
   } finally {
     cleanup();
   }

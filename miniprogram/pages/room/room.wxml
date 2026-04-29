@@ -1,4 +1,5 @@
-<view class="page room-screen room-phase-{{phase}}">
+<view class="page room-screen room-phase-{{phase}} {{roomThemeClass}} {{devtoolsMode ? 'is-perf-lite' : ''}}">
+  <image wx:if="{{roomThemeAssets.pageBackgroundSrc}}" class="room-screen__theme-bg" src="{{roomThemeAssets.pageBackgroundSrc}}" mode="aspectFill"></image>
   <view class="room-screen__aurora"></view>
   <image class="room-screen__grain" src="/assets/figma-room-v2/4aa13b7c-1fb7-4d86-b2ae-da70ffc61b8f.svg" mode="aspectFill"></image>
   <view class="room-screen__stars">
@@ -15,18 +16,23 @@
   <view class="room-shell" style="{{roomShellStyle}}">
     <view class="room-topbar">
       <view class="room-topbar__corner" style="{{roomTopbarCornerStyle}}">
-        <view class="room-chrome-btn room-chrome-btn--menu" bindtap="onTapMore">
-          <image class="room-chrome-btn__icon" src="/assets/figma-room-v2/topbar-menu-icon.svg" mode="aspectFit"></image>
+        <view class="room-topbar__shortcut-group">
+          <view class="room-topbar__shortcut" bindtap="onTapMore">
+            <text class="room-topbar__shortcut-text">设置</text>
+          </view>
+          <button wx:if="{{roomId}}" class="room-topbar__shortcut room-topbar__shortcut--ghost room-topbar__shortcut--share" open-type="share" bindtap="onTapShareRoom">
+            <text class="room-topbar__shortcut-text">邀请好友</text>
+          </button>
         </view>
         <view wx:if="{{topbarMenuVisible}}" class="room-topbar-menu-popover" catchtap="noop">
           <view wx:if="{{selfIsOwner && phase === 'ready' && round === 0}}" class="room-topbar-menu-popover__item" bindtap="onTapMenuSeating">
             <text class="room-topbar-menu-popover__text">排位设置</text>
           </view>
-          <button wx:if="{{roomId}}" class="room-topbar-menu-popover__item room-topbar-menu-popover__item--share" open-type="share" bindtap="onTapMenuShare">
-            <text class="room-topbar-menu-popover__text">邀请好友</text>
-          </button>
+          <view class="room-topbar-menu-popover__item" bindtap="onTapMenuHistory">
+            <text class="room-topbar-menu-popover__text">记录</text>
+          </view>
           <view class="room-topbar-menu-popover__item" bindtap="onTapMenuSettings">
-            <text class="room-topbar-menu-popover__text">设置</text>
+            <text class="room-topbar-menu-popover__text">音效开关</text>
           </view>
           <view class="room-topbar-menu-popover__item room-topbar-menu-popover__item--danger" bindtap="onTapMenuLeave">
             <text class="room-topbar-menu-popover__text">离开房间</text>
@@ -44,19 +50,28 @@
 
     <view wx:if="{{topbarMenuVisible}}" class="room-topbar-menu-mask" bindtap="closeTopbarMenu"></view>
 
-    <view class="room-playfield">
+    <view class="room-playfield" style="{{roomPlayfieldStyle}}">
       <view class="room-stage">
         <view class="room-stage__arena">
           <view class="room-stage__table">
             <view class="room-stage__halo"></view>
             <view class="room-stage__table-frame"></view>
-            <view class="room-stage__table-felt"></view>
+            <view class="room-stage__table-felt">
+              <image wx:if="{{roomThemeAssets.tableclothSrc}}" class="room-stage__table-theme-image" src="{{roomThemeAssets.tableclothSrc}}" mode="scaleToFill"></image>
+            </view>
             <view class="room-stage__table-line"></view>
 
             <view class="room-stage__watermark">
               <text class="room-stage__watermark-cn">吹牛</text>
               <text class="room-stage__watermark-en">LIAR'S DICE</text>
             </view>
+          </view>
+          <view class="room-stage__rule-entry" bindtap="onTapRules">
+            <text class="room-stage__rule-entry-text">规则</text>
+          </view>
+
+          <view wx:if="{{phase === 'calling' && turnCountdownSec > 0}}" class="room-turn-countdown">
+            <text class="room-turn-countdown__text">{{turnCountdownSec}}秒</text>
           </view>
 
           <block wx:for="{{ghostSeats}}" wx:key="visualSlotIndex">
@@ -66,6 +81,7 @@
             </view>
             <view class="ghost-cup ghost-cup--{{item.slotClass || 'slot'}}" style="{{item.cupStyle}}">
               <view class="figma-cup">
+                <image wx:if="{{roomThemeAssets.cupSkinSrc}}" class="figma-cup__skin" src="{{roomThemeAssets.cupSkinSrc}}" mode="aspectFit"></image>
                 <view class="figma-cup__shadow"></view>
                 <view class="figma-cup__rim"></view>
                 <view class="figma-cup__body"></view>
@@ -94,7 +110,7 @@
                 <view wx:else class="seat__avatar seat__avatar--text">{{item.avatarText}}</view>
               </view>
               <view class="seat__name-row">
-                <text class="seat__name">{{item.nicknameShort}}</text>
+                <text class="seat__name {{item.nicknameLengthClass}}">{{item.nicknameShort}}</text>
               </view>
             </view>
           </block>
@@ -102,6 +118,7 @@
           <block wx:for="{{playersDecorated}}" wx:key="id">
             <view wx:if="{{!item.isSelf && item.showCup}}" class="seat-stage-cup seat-stage-cup--{{item.seatSlotClass}} {{item.cupToneClass}}" style="{{item.cupStageStyle}}">
               <view class="figma-cup">
+                <image wx:if="{{roomThemeAssets.cupSkinSrc}}" class="figma-cup__skin" src="{{roomThemeAssets.cupSkinSrc}}" mode="aspectFit"></image>
                 <view class="figma-cup__shadow"></view>
                 <view class="figma-cup__rim"></view>
                 <view class="figma-cup__body"></view>
@@ -112,6 +129,7 @@
 
           <block wx:for="{{playersDecorated}}" wx:key="id">
             <view wx:if="{{item.callText && !item.isSelf}}" class="seat__bubble seat__bubble--{{item.bubbleSlotClass}} {{item.bubbleClass}}" style="{{item.bubbleStyle}}">
+              <image wx:if="{{roomThemeAssets.bubbleSkinSrc}}" class="seat__bubble-skin" src="{{roomThemeAssets.bubbleSkinSrc}}" mode="scaleToFill"></image>
               <text class="seat__bubble-count">{{item.callCount}}</text>
               <text class="seat__bubble-unit">个</text>
               <image wx:if="{{item.callPointAsset}}" class="seat__bubble-die" src="{{item.callPointAsset}}" mode="aspectFit"></image>
@@ -121,15 +139,28 @@
 
         <view wx:if="{{!callPanelVisible}}" class="room-shell__bottom-fade" style="{{roomBottomFadeStyle}}">
           <view
-            class="room-fab {{canPrimaryAction ? '' : 'is-disabled'}}"
+            wx:if="{{secondaryActionText}}"
+            class="room-fab-secondary {{secondaryActionKind === 'reroll' ? 'room-fab-secondary--right' : 'room-fab-secondary--left'}} {{secondaryActionEnabled ? '' : 'is-disabled'}} {{secondaryActionKind === 'open' && secondaryActionText === '开牌' ? roomThemeAssets.secondaryButtonClass : ''}}"
+            bindtap="onSecondaryAction"
+            hover-class="{{secondaryActionEnabled ? 'room-fab-secondary--pressing' : 'none'}}"
+            hover-start-time="0"
+            hover-stay-time="70"
+          >
+            <image wx:if="{{secondaryActionKind === 'open' && secondaryActionText === '开牌' && roomThemeAssets.openButtonSrc}}" class="room-fab-secondary__skin" src="{{roomThemeAssets.openButtonSrc}}" mode="scaleToFill"></image>
+            <image wx:if="{{secondaryActionKind === 'open' && secondaryActionText === '开牌' && roomThemeAssets.secondaryIconSrc}}" class="room-fab-secondary__icon-image" src="{{roomThemeAssets.secondaryIconSrc}}" mode="aspectFit"></image>
+            <text class="room-fab-secondary__text">{{secondaryActionText}}</text>
+          </view>
+          <view
+            class="room-fab {{phase === 'rolling' && secondaryActionKind === 'reroll' ? 'room-fab--left' : ''}} {{canPrimaryAction ? '' : 'is-disabled'}} {{primaryActionText === '叫牌' ? roomThemeAssets.primaryButtonClass : ''}}"
             bindtap="onHudPrimaryAction"
             hover-class="{{canPrimaryAction ? 'room-fab--pressing' : 'none'}}"
             hover-start-time="0"
             hover-stay-time="70"
           >
-            <image class="room-fab__icon-image" src="/assets/figma-room-v2/die-cube-gold.svg" mode="aspectFit"></image>
+            <image wx:if="{{primaryActionText === '叫牌' && roomThemeAssets.primaryButtonSrc}}" class="room-fab__skin" src="{{roomThemeAssets.primaryButtonSrc}}" mode="scaleToFill"></image>
+            <image class="room-fab__icon-image" src="{{roomThemeAssets.primaryIconSrc}}" mode="aspectFit"></image>
             <text wx:if="{{phase === 'rolling' && canPrimaryAction && !selfHasDice}}" class="room-fab__label">摇一摇</text>
-            <text wx:else class="room-fab__label">{{primaryActionText}}</text>
+            <text wx:else class="room-fab__label {{primaryActionText && primaryActionText.length > 3 ? 'is-compact' : ''}}">{{primaryActionText}}</text>
           </view>
         </view>
 
@@ -137,12 +168,16 @@
           <text wx:if="{{currentPlayerId === playerId}}" class="room-self__turn">轮到你</text>
           <block wx:for="{{playersDecorated}}" wx:key="id">
             <view wx:if="{{item.isSelf && item.callText}}" class="room-self__bubble seat__bubble {{item.bubbleClass}}">
+              <image wx:if="{{roomThemeAssets.bubbleSkinSrc}}" class="seat__bubble-skin" src="{{roomThemeAssets.bubbleSkinSrc}}" mode="scaleToFill"></image>
               <text class="room-self__bubble-count seat__bubble-count">{{item.callCount}}</text>
               <text class="seat__bubble-unit">个</text>
               <image wx:if="{{item.callPointAsset}}" class="room-self__bubble-die seat__bubble-die" src="{{item.callPointAsset}}" mode="aspectFit"></image>
             </view>
           </block>
-          <view class="room-self__dice-cup {{selfHasDice || myDiceRolling || myDiceRevealing ? 'has-dice' : ''}} {{myDiceRolling ? 'is-rolling' : ''}} {{myDiceRevealing ? 'is-revealing' : ''}} {{myDiceJustRevealed ? 'is-revealed' : ''}}">
+          <view
+            class="room-self__dice-cup {{selfHasDice || myDiceRolling || myDiceRevealing ? 'has-dice' : ''}} {{myDiceRolling ? 'is-rolling' : ''}} {{myDiceRevealing ? 'is-revealing' : ''}} {{myDiceJustRevealed ? 'is-revealed' : ''}} {{myDiceCovered ? 'is-covered' : ''}}"
+            bindtap="toggleSelfDiceCover"
+          >
             <view class="room-self__dice-pile">
               <view class="room-self__dice-stack {{myDiceRolling ? 'is-rolling' : ''}} {{myDiceRevealing ? 'is-revealing' : ''}}">
                 <block wx:for="{{roomSelfDiceFaces}}" wx:key="index">
@@ -153,6 +188,7 @@
               </view>
             </view>
             <view class="room-self__dice-glass">
+              <image wx:if="{{roomThemeAssets.selfCupTextureSrc}}" class="room-self__dice-texture" src="{{roomThemeAssets.selfCupTextureSrc}}" mode="aspectFill"></image>
               <view class="room-self__dice-rim"></view>
               <view class="room-self__dice-gloss"></view>
             </view>
@@ -214,108 +250,172 @@
         </view>
 
         <view class="call-phase-panel__actions">
-          <view
-            class="call-phase-panel__value-box"
-            data-mode="count"
-            bindtap="toggleCallSelectorMode"
-            hover-class="call-phase-panel__box--pressing"
-            hover-start-time="0"
-            hover-stay-time="60"
-          >
-            <text class="call-phase-panel__value-text">{{callCount}}</text>
+          <view class="call-phase-panel__summary">
+            <text class="call-phase-panel__summary-text">{{callSelectionSummaryText}}</text>
           </view>
-          <text class="call-phase-panel__unit">个</text>
-          <view
-            class="call-phase-panel__point-box {{callForcedOpen ? 'is-disabled' : ''}}"
-            data-mode="point"
-            bindtap="toggleCallSelectorMode"
-            hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__box--pressing'}}"
-            hover-start-time="0"
-            hover-stay-time="60"
-          >
-            <block wx:for="{{callPointOptionItems}}" wx:key="value">
-              <image wx:if="{{item.value === callPoint}}" class="call-phase-panel__point-die" src="{{item.asset}}" mode="aspectFit"></image>
-            </block>
-          </view>
-          <view
-            class="call-phase-panel__btn call-phase-panel__btn--ghost {{canOpenAction ? '' : 'is-disabled'}}"
-            bindtap="openDice"
-            hover-class="{{canOpenAction ? 'call-phase-panel__btn--pressing' : 'none'}}"
-            hover-start-time="0"
-            hover-stay-time="60"
-          >
-            <text class="call-phase-panel__btn-text call-phase-panel__btn-text--ghost">开牌</text>
-          </view>
-          <view
-            class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen ? 'is-disabled' : ''}}"
-            bindtap="makeCallWithInput"
-            hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__btn--pressing'}}"
-            hover-start-time="0"
-            hover-stay-time="60"
-          >
-            <text class="call-phase-panel__btn-text">叫点</text>
+          <view class="call-phase-panel__actions-row">
+            <view
+              class="call-phase-panel__value-box"
+              data-mode="count"
+              bindtap="toggleCallSelectorMode"
+              hover-class="call-phase-panel__box--pressing"
+              hover-start-time="0"
+              hover-stay-time="60"
+            >
+              <text class="call-phase-panel__value-text">{{callCount}}</text>
+            </view>
+            <text class="call-phase-panel__unit">个</text>
+            <view
+              class="call-phase-panel__point-box {{callForcedOpen ? 'is-disabled' : ''}}"
+              data-mode="point"
+              bindtap="toggleCallSelectorMode"
+              hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__box--pressing'}}"
+              hover-start-time="0"
+              hover-stay-time="60"
+            >
+              <block wx:for="{{callPointOptionItems}}" wx:key="value">
+                <image wx:if="{{item.value === callPoint}}" class="call-phase-panel__point-die" src="{{item.asset}}" mode="aspectFit"></image>
+              </block>
+            </view>
+            <view
+              class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen || !callCountTouched || !callPointTouched ? 'is-disabled' : ''}}"
+              bindtap="makeCallWithInput"
+              hover-class="{{callForcedOpen || !callCountTouched || !callPointTouched ? 'none' : 'call-phase-panel__btn--pressing'}}"
+              hover-start-time="0"
+              hover-stay-time="60"
+            >
+              <text class="call-phase-panel__btn-text">{{callForcedOpen ? '请开牌' : (callCountTouched && callPointTouched ? ('叫 ' + callCount + ' 个 ' + callPoint) : '继续选择')}}</text>
+            </view>
           </view>
         </view>
       </view>
     </view>
 
-      <view wx:if="{{historyVisible}}" class="room-drawer-overlay">
-        <view class="room-social__tabs">
-          <view class="room-social__tab {{historyVisible ? 'is-active' : ''}}" bindtap="toggleHistory">战绩</view>
+  <view wx:if="{{historyVisible}}" class="room-mask room-mask--settings" bindtap="toggleHistory">
+    <view class="room-sheet room-sheet--settings room-sheet--history" catchtap="noop">
+      <view class="room-sheet__glow room-sheet__glow--settings-a"></view>
+      <view class="room-sheet__glow room-sheet__glow--settings-b"></view>
+      <view class="sheet-head sheet-head--settings">
+        <view class="sheet-heading">
+          <text class="sheet-eyebrow">RECENT ROUNDS</text>
+          <text class="sheet-title">最近 3 局记录</text>
         </view>
-
-        <scroll-view class="room-social__scroll" scroll-y="true">
-          <block wx:if="{{historyItems.length}}">
-            <block wx:for="{{historyItems}}" wx:key="round">
-              <view class="drawer-card">
-                <text class="drawer-card__title">第{{item.round}}局</text>
-                <text class="drawer-card__body">{{item.resultText}}</text>
-              </view>
-            </block>
-            <view wx:if="{{historyNextBeforeRound}}" class="drawer-more" bindtap="loadMoreHistory">加载更多</view>
-          </block>
-          <view wx:else class="drawer-empty">暂无战绩</view>
-        </scroll-view>
+        <view class="sheet-close sheet-close--pill" bindtap="toggleHistory">关闭</view>
       </view>
+      <scroll-view class="sheet-body sheet-body--settings sheet-body--history" scroll-y="true" enhanced="true" show-scrollbar="false">
+        <block wx:if="{{historyItems.length}}">
+          <block wx:for="{{historyItems}}" wx:key="round" wx:for-item="historyItem">
+            <view class="history-card">
+              <view class="history-card__head">
+                <text class="history-card__round">第{{historyItem.round}}局</text>
+                <text class="history-card__summary">{{historyItem.summaryText}}</text>
+              </view>
+              <view class="history-card__matrix">
+                <view class="history-card__matrix-row">
+                  <text class="history-card__matrix-label">叫骰</text>
+                  <view class="history-card__matrix-value">
+                    <text>{{historyItem.declaredText}}</text>
+                    <image wx:if="{{historyItem.pointAsset}}" class="history-card__matrix-die" src="{{historyItem.pointAsset}}" mode="aspectFit"></image>
+                  </view>
+                </view>
+                <view class="history-card__matrix-row">
+                  <text class="history-card__matrix-label">场上</text>
+                  <view class="history-card__matrix-value">
+                    <text>{{historyItem.actualText}}</text>
+                    <image wx:if="{{historyItem.pointAsset}}" class="history-card__matrix-die" src="{{historyItem.pointAsset}}" mode="aspectFit"></image>
+                  </view>
+                </view>
+              </view>
+              <view class="history-card__rows">
+                <block wx:for="{{historyItem.rows}}" wx:key="playerId" wx:for-item="row">
+                  <view class="settlement-row settlement-row--history settlement-row--{{row.kind}}">
+                    <view class="settlement-row__tag settlement-row__tag--{{row.kind}}">
+                      <text>{{row.tagText || ' '}}</text>
+                    </view>
+                    <view class="settlement-row__left">
+                      <view class="settlement-avatar">
+                        <image wx:if="{{row.avatarUrl}}" class="settlement-avatar__img" src="{{row.avatarUrl}}" mode="aspectFill"></image>
+                        <view wx:else class="settlement-avatar__text">{{row.avatarText}}</view>
+                      </view>
+                      <view class="settlement-text">
+                        <text class="settlement-name {{row.nameLengthClass}}">{{row.name}}</text>
+                      </view>
+                    </view>
+                    <view class="settlement-dice-list settlement-dice-list--history">
+                      <block wx:for="{{row.diceItems}}" wx:key="index" wx:for-item="dieItem">
+                        <view class="settlement-die-wrap {{dieItem.highlighted ? 'is-counted' : ''}} {{dieItem.wildcard ? 'is-wildcard' : ''}}">
+                          <image class="settlement-die" src="{{dieItem.asset}}" mode="aspectFit"></image>
+                        </view>
+                      </block>
+                    </view>
+                    <view class="settlement-row__meta" wx:if="{{row.featureTagText || row.countSummaryText}}">
+                      <text wx:if="{{row.featureTagText}}" class="settlement-feature-tag">{{row.featureTagText}}</text>
+                      <text wx:if="{{row.countSummaryText}}" class="settlement-count-note">{{row.countSummaryText}}</text>
+                    </view>
+                  </view>
+                </block>
+              </view>
+            </view>
+          </block>
+        </block>
+        <view wx:else class="sheet-body--empty">暂无记录</view>
+      </scroll-view>
+    </view>
+  </view>
   </view>
 
   <view wx:if="{{settlementVisible}}" class="room-mask">
     <view class="room-sheet room-sheet--settlement">
-      <view class="sheet-head">
-        <text class="sheet-title">本局结算</text>
+      <view class="room-sheet__glow room-sheet__glow--settlement-a"></view>
+      <view class="room-sheet__glow room-sheet__glow--settlement-b"></view>
+      <view class="sheet-head sheet-head--settlement">
+        <view class="sheet-heading">
+          <text class="sheet-eyebrow">ROUND RESULT</text>
+          <text class="sheet-title">本局结算</text>
+        </view>
         <view class="sheet-close sheet-close--placeholder"></view>
       </view>
-      <view class="sheet-body">
-        <view class="settlement-summary">
-          <text>{{settlementSummaryText}}</text>
+      <view class="sheet-body sheet-body--settlement">
+        <view class="settlement-summary-card">
+          <text class="settlement-summary-card__eyebrow">开牌结果</text>
+          <view class="settlement-summary">
+            <text>{{settlementSummaryText}}</text>
+          </view>
         </view>
-        <view class="settlement-list">
-          <block wx:for="{{settlementRows}}" wx:key="playerId">
-            <view class="settlement-row settlement-row--{{item.kind}}">
-              <view class="settlement-row__tag settlement-row__tag--{{item.kind}}">
-                <text>{{item.tagText || ' '}}</text>
-              </view>
-              <view class="settlement-row__left">
-                <view class="settlement-avatar">
-                  <image wx:if="{{item.avatarUrl}}" class="settlement-avatar__img" src="{{item.avatarUrl}}" mode="aspectFill"></image>
-                  <view wx:else class="settlement-avatar__text">{{item.avatarText}}</view>
+        <scroll-view class="settlement-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+          <view class="settlement-list">
+            <block wx:for="{{settlementRows}}" wx:key="playerId">
+              <view class="settlement-row settlement-row--{{item.kind}}">
+                <view class="settlement-row__tag settlement-row__tag--{{item.kind}}">
+                  <text>{{item.tagText || ' '}}</text>
                 </view>
-                <view class="settlement-text">
-                  <text class="settlement-name">{{item.name}}</text>
-                  <text class="settlement-score settlement-score--{{item.scoreClass}}">✶ {{item.deltaText}}</text>
+                <view class="settlement-row__left">
+                  <view class="settlement-avatar">
+                    <image wx:if="{{item.avatarUrl}}" class="settlement-avatar__img" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+                    <view wx:else class="settlement-avatar__text">{{item.avatarText}}</view>
+                  </view>
+                  <view class="settlement-text">
+                    <text class="settlement-name {{item.nameLengthClass}}">{{item.name}}</text>
+                  </view>
                 </view>
-              </view>
-              <view class="settlement-dice-list">
-                <block wx:if="{{item.diceItems && item.diceItems.length}}">
-                  <block wx:for="{{item.diceItems}}" wx:key="index">
-                    <image class="settlement-die" src="{{item.asset}}" mode="aspectFit"></image>
+                <view class="settlement-dice-list">
+                  <block wx:if="{{item.diceItems && item.diceItems.length}}">
+                    <block wx:for="{{item.diceItems}}" wx:key="index">
+                      <view class="settlement-die-wrap {{item.highlighted ? 'is-counted' : ''}} {{item.wildcard ? 'is-wildcard' : ''}}">
+                        <image class="settlement-die" src="{{item.asset}}" mode="aspectFit"></image>
+                      </view>
+                    </block>
                   </block>
-                </block>
-                <text wx:else class="settlement-dice settlement-dice--empty">—</text>
+                  <text wx:else class="settlement-dice settlement-dice--empty">—</text>
+                </view>
+                <view class="settlement-row__meta" wx:if="{{item.featureTagText || item.countSummaryText}}">
+                  <text wx:if="{{item.featureTagText}}" class="settlement-feature-tag">{{item.featureTagText}}</text>
+                  <text wx:if="{{item.countSummaryText}}" class="settlement-count-note">{{item.countSummaryText}}</text>
+                </view>
               </view>
-            </view>
-          </block>
-        </view>
+            </block>
+          </view>
+        </scroll-view>
         <view class="settlement-matrix">
           <view class="settlement-matrix__row">
             <text class="settlement-matrix__label">叫骰</text>
@@ -334,61 +434,189 @@
         </view>
         <view wx:if="{{settlementCanContinue}}" class="sheet-actions">
           <view class="dock-btn dock-btn--settlement" bindtap="onSettlementContinue" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
-            <text class="dock-btn__label">继续({{settlementContinueSec || 0}}s)</text>
+            <text class="dock-btn__label">继续</text>
           </view>
         </view>
       </view>
+    </view>
+  </view>
+
+  <view wx:if="{{toolsBasicVisible}}" class="room-mask room-mask--settings" bindtap="closeToolsBasicMenu">
+    <view class="room-sheet room-sheet--settings" catchtap="noop">
+      <view class="room-sheet__glow room-sheet__glow--settings-a"></view>
+      <view class="room-sheet__glow room-sheet__glow--settings-b"></view>
+      <view class="sheet-head sheet-head--settings">
+        <view class="sheet-heading">
+          <text class="sheet-eyebrow">AUDIO & FEEDBACK</text>
+          <text class="sheet-title">音效与偏好</text>
+        </view>
+        <view class="sheet-close sheet-close--pill" bindtap="closeToolsBasicMenu">完成</view>
+      </view>
+      <view class="sheet-body sheet-body--settings">
+        <view class="settings-hero">
+          <text class="settings-hero__title">让提醒更顺耳，也更贴合房间氛围</text>
+          <text class="settings-hero__desc">这里只调整表现方式，不影响房间数据、开局流程和牌桌逻辑。</text>
+        </view>
+        <view class="settings-panel">
+          <view class="settings-row" bindtap="onToggleRoomSfx">
+            <view class="settings-row__signal {{sfxEnabled ? 'is-on' : 'is-off'}}"></view>
+            <view class="settings-row__main">
+              <text class="settings-row__label">游戏音效</text>
+              <text class="settings-row__hint">按钮反馈、结算结果和局内关键提示</text>
+            </view>
+            <view class="settings-row__badge {{sfxEnabled ? 'is-on' : 'is-off'}}">
+              <text>{{sfxEnabled ? '开启' : '关闭'}}</text>
+            </view>
+          </view>
+          <view class="settings-row" bindtap="onToggleRoomTurnAlertSfx">
+            <view class="settings-row__signal {{turnAlertSfxEnabled ? 'is-on' : 'is-off'}}"></view>
+            <view class="settings-row__main">
+              <text class="settings-row__label">叫牌提醒</text>
+              <text class="settings-row__hint">轮到你叫牌时播放单独提醒音</text>
+            </view>
+            <view class="settings-row__badge {{turnAlertSfxEnabled ? 'is-on' : 'is-off'}}">
+              <text>{{turnAlertSfxEnabled ? '开启' : '关闭'}}</text>
+            </view>
+          </view>
+          <view class="settings-row" bindtap="onToggleRoomHaptic">
+            <view class="settings-row__signal {{hapticEnabled ? 'is-on' : 'is-off'}}"></view>
+            <view class="settings-row__main">
+              <text class="settings-row__label">震动反馈</text>
+              <text class="settings-row__hint">轮到你或关键操作时给出震动提醒</text>
+            </view>
+            <view class="settings-row__badge {{hapticEnabled ? 'is-on' : 'is-off'}}">
+              <text>{{hapticEnabled ? '开启' : '关闭'}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{rulesVisible}}" class="room-mask room-mask--settings" bindtap="closeRulesPanel">
+    <view class="room-sheet room-sheet--settings room-sheet--rules" catchtap="noop">
+      <view class="room-sheet__glow room-sheet__glow--settings-a"></view>
+      <view class="room-sheet__glow room-sheet__glow--settings-b"></view>
+      <view class="sheet-head sheet-head--settings">
+        <view class="sheet-heading">
+          <text class="sheet-eyebrow">GAME RULES</text>
+          <text class="sheet-title">玩法说明</text>
+        </view>
+        <view class="sheet-close sheet-close--pill" bindtap="closeRulesPanel">完成</view>
+      </view>
+      <scroll-view class="sheet-body sheet-body--settings sheet-body--rules" scroll-y="true" enhanced="true" show-scrollbar="false">
+        <block wx:for="{{rulesSections}}" wx:key="title">
+          <view class="rules-card">
+            <text class="rules-card__title">{{item.title}}</text>
+            <block wx:for="{{item.items}}" wx:key="index">
+              <text class="rules-card__item">{{index + 1}}. {{item}}</text>
+            </block>
+          </view>
+        </block>
+      </scroll-view>
     </view>
   </view>
 
   <view wx:if="{{seatingVisible}}" class="room-mask">
     <view class="room-sheet room-sheet--seating">
-      <view class="sheet-head">
-        <text class="sheet-title">房主排位</text>
-        <text class="sheet-close" bindtap="closeSeatingPanel">关闭</text>
+      <view class="room-sheet__glow room-sheet__glow--settings-a"></view>
+      <view class="room-sheet__glow room-sheet__glow--settings-b"></view>
+      <view class="sheet-head sheet-head--settings">
+        <view class="sheet-heading">
+          <text class="sheet-eyebrow">SEAT CONTROL</text>
+          <text class="sheet-title">调整座位</text>
+        </view>
+        <view class="sheet-close sheet-close--pill" bindtap="closeSeatingPanel">完成</view>
       </view>
-      <view class="sheet-body">
-        <view class="seat-info">
-          <text>{{seatingSelectedText}}</text>
-          <text class="seat-info__hint">先选中一名玩家，再点目标座位完成移动或交换</text>
+      <view class="sheet-body sheet-body--settings sheet-body--seating">
+        <view class="seat-hero">
+          <text class="seat-hero__title">{{seatingSelectedText}}</text>
+          <text class="seat-hero__desc">先点玩家，再点目标座位；空位是移动，已占用则交换。</text>
         </view>
 
-        <view class="seat-direction">
-          <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'cw' ? 'is-active' : ''}}" data-dir="cw" bindtap="onSeatingSelectDirection">顺时针</view>
-          <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'ccw' ? 'is-active' : ''}}" data-dir="ccw" bindtap="onSeatingSelectDirection">逆时针</view>
+        <view class="seat-direction-panel">
+          <text class="seat-direction-panel__label">入座方向</text>
+          <view class="seat-direction">
+            <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'cw' ? 'is-active' : ''}}" data-dir="cw" bindtap="onSeatingSelectDirection">顺时针</view>
+            <view class="seat-direction__item {{roomConfig && roomConfig.direction === 'ccw' ? 'is-active' : ''}}" data-dir="ccw" bindtap="onSeatingSelectDirection">逆时针</view>
+          </view>
         </view>
 
-        <view class="seat-grid">
-          <block wx:for="{{seatRows}}" wx:key="seatIndex">
-            <view class="seat-grid__item {{item.selected ? 'is-selected' : ''}} {{item.occupied ? 'is-occupied' : ''}} {{item.hintClass}}" data-seat="{{item.seatIndex}}" bindtap="onTapSeatRow">
-              <view class="seat-grid__head">
-                <text class="seat-grid__num">{{item.seatIndex}}号</text>
-                <text wx:if="{{item.actionText}}" class="seat-grid__action">{{item.actionText}}</text>
+        <view class="seat-grid-panel">
+          <view class="seat-grid">
+            <block wx:for="{{seatRows}}" wx:key="seatIndex">
+              <view class="seat-grid__item {{item.selected ? 'is-selected' : ''}} {{item.occupied ? 'is-occupied' : ''}} {{item.hintClass}}" data-seat="{{item.seatIndex}}" bindtap="onTapSeatRow">
+                <view class="seat-grid__head">
+                  <text class="seat-grid__num">{{item.seatIndex}}号</text>
+                  <text wx:if="{{item.actionText}}" class="seat-grid__action">{{item.actionText}}</text>
+                </view>
+                <text class="seat-grid__label">{{item.label}}</text>
               </view>
-              <text class="seat-grid__label">{{item.label}}</text>
-            </view>
-          </block>
+            </block>
+          </view>
         </view>
       </view>
     </view>
   </view>
 
-  <view wx:if="{{showLegalModal}}" class="room-mask">
-    <view class="room-sheet room-sheet--legal">
-      <view class="sheet-head">
-        <text class="sheet-title">隐私与协议</text>
-      </view>
-      <view class="sheet-body">
-        <view class="legal-copy">
-          <text>• 我们仅使用昵称、头像和房间对局数据提供游戏服务。</text>
-          <text>• 房间信息只用于对局同步。</text>
-          <text>• 点击同意后继续进入游戏。</text>
+  <view wx:if="{{showLegalModal}}" class="room-mask room-mask--drawer">
+    <view class="room-sheet room-sheet--legal" catchtap="noop">
+      <view class="room-sheet__glow room-sheet__glow--legal-a"></view>
+      <view class="room-sheet__glow room-sheet__glow--legal-b"></view>
+      <view class="legal-drawer__handle"></view>
+      <view class="sheet-head sheet-head--legal">
+        <view class="entry-sheet__headline">
+          <text class="entry-sheet__eyebrow">进入房间前</text>
+          <text class="sheet-title">确认昵称与协议</text>
+          <text class="entry-sheet__desc">从分享进入也可以先改昵称，确认后再进入房间；进房后还能在“我的”里修改。</text>
         </view>
-        <view class="sheet-actions">
-          <view class="dock-btn dock-btn--gold" bindtap="acceptLegal" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
-            <text class="dock-btn__label">同意并继续</text>
+      </view>
+      <view class="sheet-body sheet-body--entry sheet-body--legal">
+        <view wx:if="{{joinRoomId || roomId}}" class="entry-room-card">
+          <text class="entry-room-card__eyebrow">即将进入房间</text>
+          <text class="entry-room-card__value">{{joinRoomId || roomId || displayRoomId || '------'}}</text>
+          <text class="entry-room-card__hint">固定 8 个座位，空位显示空杯，有人进来才会显示头像。</text>
+        </view>
+        <view class="join-field">
+          <view class="entry-field__head">
+            <text class="join-field__label">你的昵称</text>
+            <text class="entry-field__action" bindtap="refreshEntryNickname">换一个</text>
+          </view>
+          <input
+            class="join-input"
+            value="{{nickname}}"
+            maxlength="5"
+            placeholder="例如 阿伟"
+            bindinput="onNicknameChange"
+            bindblur="onNicknameCommit"
+            bindconfirm="onNicknameCommit"
+            confirm-type="done"
+          />
+          <text class="entry-field__hint">默认昵称也能直接玩，不喜欢的话现在改一下就行。</text>
+        </view>
+        <view class="entry-consent">
+          <view class="entry-consent__checkbox {{legalAgreementChecked ? 'is-checked' : ''}}" bindtap="toggleLegalAgreement">
+            <text class="entry-consent__checkbox-mark">✓</text>
+          </view>
+          <view class="entry-consent__copy">
+            <text class="entry-consent__copy-text">我已阅读并同意</text>
+            <view class="entry-consent__links">
+              <text class="entry-agreement__link" bindtap="openTermsPage">《用户协议》</text>
+              <text class="entry-consent__copy-text">与</text>
+              <text class="entry-agreement__link" bindtap="openPrivacyPage">《隐私政策》</text>
+            </view>
           </view>
         </view>
+        <text class="entry-field__hint">同意后才会正式进入房间；如果现在不想进，也可以先回大厅。</text>
+        <view class="sheet-actions sheet-actions--legal">
+          <view class="dock-btn dock-btn--ghost" bindtap="returnToLobby" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
+            <text class="dock-btn__label">返回大厅</text>
+          </view>
+          <view class="dock-btn dock-btn--gold {{legalAgreementChecked ? '' : 'dock-btn--disabled'}}" bindtap="acceptLegal" hover-class="{{legalAgreementChecked ? 'dock-btn--pressing' : 'none'}}" hover-start-time="0" hover-stay-time="70">
+            <text class="dock-btn__label">同意并进入</text>
+          </view>
+        </view>
+        <text class="legal-drawer__tertiary" bindtap="declineLegal">暂不进入</text>
       </view>
     </view>
   </view>

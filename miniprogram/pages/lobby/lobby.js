@@ -1,12 +1,16 @@
 const app = getApp();
-const { SESSION_KEY } = require("../../utils/constants");
+const {
+  SESSION_KEY,
+  LOGIN_GATE_REDIRECT_KEY
+} = require("../../utils/constants");
 const { LOBBY_FLOAT_DICE_ASSETS, LOBBY_CREATE_DIE_ASSET } = require("../../utils/dice-assets");
 const { resolveContainerConfig, hasContainerService } = require("../../utils/cloud-container");
 const backendRequest = require("../../utils/backend-request");
 const { performWechatOneTapLogin } = require("../../utils/wechat-login-flow");
 const {
   getStoredWechatProfile,
-  navigateAfterWechatLogin
+  navigateAfterWechatLogin,
+  persistLegalConsent
 } = require("../../utils/wechat-auth");
 
 function buildTimeText() {
@@ -92,6 +96,42 @@ function buildConnectionState() {
   };
 }
 
+async function checkRoomAvailability(roomId) {
+  if (backendRequest && typeof backendRequest.checkRoomExists === "function") {
+    return backendRequest.checkRoomExists(roomId);
+  }
+  return true;
+}
+
+function buildLoginGateCopy(redirectUrl = "/pages/lobby/lobby") {
+  const target = String(redirectUrl || "").trim();
+  if (target.includes("/pages/create-room/create-room")) {
+    return {
+      title: "创建房间需要登录",
+      desc: ""
+    };
+  }
+
+  if (target.includes("/pages/room/room?resume=1")) {
+    return {
+      title: "继续房间需要登录",
+      desc: ""
+    };
+  }
+
+  if (target.includes("/pages/room/room")) {
+    return {
+      title: "加入房间需要登录",
+      desc: ""
+    };
+  }
+
+  return {
+    title: "继续操作需要登录",
+    desc: ""
+  };
+}
+
 function syncLobbyTabBar(page) {
   const tabBar = page.getTabBar && page.getTabBar();
   if (!tabBar || !tabBar.setData) {
@@ -109,13 +149,17 @@ Page({
     timeText: "10:21",
     floatDiceAssets: LOBBY_FLOAT_DICE_ASSETS,
     createButtonDieAsset: LOBBY_CREATE_DIE_ASSET,
+    devtoolsMode: false,
     nickname: "",
     avatarUrl: "",
     joinRoomId: "",
     loggedIn: false,
     showLoginGate: false,
     loginBusy: false,
-    loginHintText: "登录后就能直接组局",
+    loginHintText: "勾选协议后即可继续当前操作",
+    loginAgreementChecked: false,
+    loginGateTitle: "继续操作需要登录",
+    loginGateDesc: "",
     backendReady: false,
     connectionHintText: "",
     pendingRedirectUrl: "/pages/lobby/lobby",
@@ -126,6 +170,7 @@ Page({
   onLoad(options = {}) {
     this.didAutoRoute = false;
     this.setData({
+      devtoolsMode: Boolean(app && app.globalData && app.globalData.isDevtoolsMode),
       pendingRedirectUrl: decodeRedirect(options.redirect)
     });
     this.refreshLobbyState();
@@ -134,6 +179,18 @@ Page({
   onShow() {
     const profile = this.refreshLobbyState();
     syncLobbyTabBar(this);
+
+    const pendingGateRedirect = decodeRedirect(wx.getStorageSync(LOGIN_GATE_REDIRECT_KEY));
+    if (pendingGateRedirect && pendingGateRedirect !== "/pages/lobby/lobby") {
+      wx.removeStorageSync(LOGIN_GATE_REDIRECT_KEY);
+      if (!profile.loggedIn) {
+        this.requireLogin(pendingGateRedirect);
+        return;
+      }
+      this.didAutoRoute = true;
+      navigateAfterWechatLogin(pendingGateRedirect);
+      return;
+    }
 
     if (
       profile.loggedIn &&
@@ -156,8 +213,9 @@ Page({
       nickname: profile.nickname || "玩家001",
       avatarUrl: String(profile.avatarUrl || "").trim(),
       loggedIn: profile.loggedIn,
-      showLoginGate: !profile.loggedIn,
-      loginHintText: profile.loggedIn ? "已登录，现在可以直接组局" : "登录后就能直接组局",
+      showLoginGate: typeof extra.showLoginGate === "boolean" ? extra.showLoginGate : false,
+      loginAgreementChecked: typeof extra.loginAgreementChecked === "boolean" ? extra.loginAgreementChecked : false,
+      loginHintText: profile.loggedIn ? "已登录，现在可以直接组局" : "勾选协议后即可继续当前操作",
       hasSession,
       sessionRoomId: hasSession ? session.roomId : "",
       ...buildConnectionState(),
@@ -171,14 +229,43 @@ Page({
 
   requireLogin(redirectUrl = "/pages/lobby/lobby") {
     this.didAutoRoute = false;
+    const gateCopy = buildLoginGateCopy(redirectUrl);
     this.setData({
       showLoginGate: true,
+      loginAgreementChecked: false,
       pendingRedirectUrl: decodeRedirect(redirectUrl),
-      loginHintText: "登录后就能继续当前操作",
+      loginHintText: "勾选协议后再登录，即可继续当前操作",
+      loginGateTitle: gateCopy.title,
+      loginGateDesc: gateCopy.desc,
       ...buildConnectionState()
     });
+    syncLobbyTabBar(this);
     return false;
   },
+
+  closeLoginGate() {
+    if (this.data.loginBusy) {
+      return;
+    }
+
+    this.setData({
+      showLoginGate: false,
+      loginAgreementChecked: false,
+      pendingRedirectUrl: "/pages/lobby/lobby",
+      loginHintText: "勾选协议后即可继续当前操作",
+      loginGateTitle: "继续操作需要登录",
+      loginGateDesc: ""
+    });
+    syncLobbyTabBar(this);
+  },
+
+  toggleLoginAgreement() {
+    this.setData({
+      loginAgreementChecked: !this.data.loginAgreementChecked
+    });
+  },
+
+  noop() {},
 
   onJoinRoomIdChange(event) {
     this.setData({ joinRoomId: String(event.detail.value || "").trim() });
@@ -204,6 +291,20 @@ Page({
 
     const roomId = String(this.data.joinRoomId || "").trim();
     if (!/^\d{6}$/.test(roomId)) {
+      wx.showToast({ title: "房间不存在或房间号有误", icon: "none", duration: 5000 });
+      return;
+    }
+
+    let roomExists = true;
+    try {
+      roomExists = await checkRoomAvailability(roomId);
+    } catch (error) {
+      const message = error && error.message ? String(error.message) : "当前服务暂不可用，请稍后再试";
+      wx.showToast({ title: message, icon: "none" });
+      return;
+    }
+
+    if (!roomExists) {
       wx.showToast({ title: "房间不存在或房间号有误", icon: "none", duration: 5000 });
       return;
     }
@@ -249,6 +350,11 @@ Page({
       return;
     }
 
+    if (!this.data.loginAgreementChecked) {
+      wx.showToast({ title: "请先勾选协议", icon: "none" });
+      return;
+    }
+
     const connectionState = buildConnectionState();
     this.setData(connectionState);
     if (!connectionState.backendReady) {
@@ -269,12 +375,14 @@ Page({
       const profile = result && result.profile ? result.profile : getStoredWechatProfile();
       const nextRedirectUrl = decodeRedirect(this.data.pendingRedirectUrl);
       const shouldStayOnLobby = !nextRedirectUrl || nextRedirectUrl === "/pages/lobby/lobby";
+      persistLegalConsent();
 
       this.setData({
         nickname: profile.nickname || this.data.nickname,
         avatarUrl: profile.avatarUrl || this.data.avatarUrl,
         loggedIn: true,
         showLoginGate: false,
+        loginAgreementChecked: false,
         loginHintText: shouldStayOnLobby ? "登录成功，现在可以直接组局" : "登录成功，正在进入...",
         pendingRedirectUrl: shouldStayOnLobby ? "/pages/lobby/lobby" : nextRedirectUrl,
         ...buildConnectionState()

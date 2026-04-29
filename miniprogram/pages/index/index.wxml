@@ -1,4 +1,4 @@
-<view class="entry-page">
+<view class="entry-page {{devtoolsMode ? 'is-perf-lite' : ''}}">
   <view class="entry-page__aurora entry-page__aurora--top"></view>
   <view class="entry-page__aurora entry-page__aurora--bottom"></view>
   <view class="entry-page__stars">
@@ -22,32 +22,32 @@
     <text class="title">摇骰子</text>
     <text class="sub">在线组局 · 直接开玩</text>
     <text class="hero-tag">{{profileTitle || '准备开局'}}</text>
-    <text class="desc">微信登录后就能直接创建房间、邀请好友进群玩，先用默认头像昵称进入，之后可在“我的”里改昵称。</text>
+    <text class="desc">先看看大厅、最近对局和开局入口，确认想玩之后再登录创建房间或加入房间。</text>
 
     <view class="benefit-list">
       <view class="benefit-item">
         <text class="benefit-dot"></text>
-        <text class="benefit-text">点一次微信登录，直接进入大厅</text>
+        <text class="benefit-text">先浏览大厅和玩法入口，不强制一进来就登录</text>
       </view>
       <view class="benefit-item">
         <text class="benefit-dot"></text>
-        <text class="benefit-text">房间可一键分享给好友或群</text>
+        <text class="benefit-text">需要创建房间或加入房间时，再自主选择微信登录</text>
       </view>
       <view class="benefit-item">
         <text class="benefit-dot"></text>
-        <text class="benefit-text">同一微信账号长期保留战绩</text>
+        <text class="benefit-text">房间支持一键分享给好友或群，方便线下一起玩</text>
       </view>
     </view>
   </view>
 
   <view class="action-panel">
-    <button class="wx-btn" loading="{{loginBusy}}" disabled="{{loginBusy}}" bindtap="onWechatLogin">
-      <text class="wx-btn__label">{{loginBusy ? '登录中...' : '微信登录并进入'}}</text>
+    <button class="wx-btn" bindtap="goLobby">
+      <text class="wx-btn__label">先进入大厅</text>
     </button>
     <text class="login-hint">{{loginHintText}}</text>
     <view wx:if="{{connectionHintText}}" class="connection-panel">
       <text class="connection-panel__text">{{connectionHintText}}</text>
     </view>
-    <text class="agreement">点击登录即表示同意 <text class="link" bindtap="openTermsPage">用户协议</text> 与 <text class="link" bindtap="openPrivacyPage">隐私政策</text></text>
+    <text class="agreement">进入前可先查看 <text class="link" bindtap="openTermsPage">用户协议</text> 与 <text class="link" bindtap="openPrivacyPage">隐私政策</text></text>
   </view>
 </view>

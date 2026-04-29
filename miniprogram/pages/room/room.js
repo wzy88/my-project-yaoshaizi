@@ -7,16 +7,32 @@ const {
   CLOUD_SERVICE_KEY,
   CLOUD_WS_PATH_KEY,
   SESSION_KEY,
+  ROOM_THEME_CACHE_KEY,
   NICKNAME_KEY,
   AVATAR_URL_KEY,
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
+  WECHAT_LOGIN_TS_KEY,
   SFX_ENABLED_KEY,
+  TURN_ALERT_SFX_ENABLED_KEY,
   HAPTIC_ENABLED_KEY
 } = require("../../utils/constants");
-const { DEFAULT_3D_DIE_ASSET, SELF_DICE_PLACEHOLDER, getDieAsset } = require("../../utils/dice-assets");
-const { getStoredAccountSession } = require("../../utils/account-api");
+const { SELF_DICE_PLACEHOLDER, getDieAsset, getSelfDieAsset, getRoomDieAsset } = require("../../utils/dice-assets");
+const {
+  DEFAULT_ROOM_THEME_ID,
+  normalizeRoomThemeId,
+  buildRoomThemeClass
+} = require("../../utils/room-themes");
+const { getRoomThemeAssets } = require("../../utils/room-theme-assets");
+const { getStoredAccountSession, clearAccountSession } = require("../../utils/account-api");
 const { getStoredWechatProfile } = require("../../utils/wechat-auth");
-const { DEFAULT_PROFILE_AVATAR_ASSETS, normalizeBundledAvatarAsset } = require("../../utils/profile-defaults");
+const { refreshWechatSessionSilently } = require("../../utils/wechat-login-flow");
+const {
+  DEFAULT_PROFILE_AVATAR_ASSETS,
+  buildDefaultNickname,
+  looksLikeGeneratedNickname,
+  normalizeBundledAvatarAsset
+} = require("../../utils/profile-defaults");
+const { validateNickname } = require("../../utils/nickname-validator");
 const {
   DEFAULT_CONTAINER_WS_PATH,
   normalizeContainerConfig,
@@ -31,8 +47,55 @@ const ROOM_AUDIO_ASSETS = {
   roll: "/assets/audio/dice-roll.mp3",
   settlement: "/assets/audio/settlement.mp3",
   primary: "/assets/audio/primary-action.mp3",
-  roundStart: "/assets/audio/round-start.mp3"
+  roundStart: "/assets/audio/round-start.mp3",
+  loseAlert: "/assets/audio/lose-alert.mp3",
+  turnAlert: "/assets/audio/turn-alert.mp3"
 };
+const ROOM_AUDIO_DURATIONS_MS = {
+  turnAlert: 1540
+};
+const ROOM_AUDIO_STOP_RATIOS = {};
+const ROOM_PLAYFIELD_LIFT_RPX = 48;
+const ROOM_STAGE_HEIGHT_RPX = 1608;
+const ROOM_STAGE_MIN_SCALE = 0.9;
+const ROOM_RULE_SECTIONS = [
+  {
+    title: "基础玩法",
+    items: [
+      "每局每人先摇出自己的骰子，别人只能看到你的杯子，看不到你的点数。",
+      "进入叫牌阶段后，大家按顺序报出“几个几”，后一手必须严格大于前一手。",
+      "1 可按房间规则作为万能点，但一旦有人叫 1，本局 1 不再充当万能点。"
+    ]
+  },
+  {
+    title: "开牌与跳开",
+    items: [
+      "轮到你时，如果你认为上一手在吹牛，可以直接点“开牌”。",
+      "除上一手叫牌的人外，其他在座玩家都可以直接点“跳开”；谁先点到，系统就按开牌结算。",
+      "叫牌达到上限后，下家不能再继续叫，只能开牌。"
+    ]
+  },
+  {
+    title: "特殊判定",
+    items: [
+      "顺子不计入目标点数，结算时会标记“顺”。",
+      "豹子会额外有加成，结算时会标记“豹”。",
+      "结算面板和房间记录里都能回看最近结果，不怕别人秒点继续。"
+    ]
+  }
+];
+
+function buildRoomThemePresentation(themeId) {
+  const normalizedThemeId = normalizeRoomThemeId(themeId);
+  return {
+    roomThemeId: normalizedThemeId,
+    roomThemeClass: buildRoomThemeClass(normalizedThemeId),
+    roomThemeAssets: getRoomThemeAssets(normalizedThemeId)
+  };
+}
+
+const ROOM_THEME_CACHE_LIMIT = 18;
+
 function buildAccountAuthPayload() {
   const session = getStoredAccountSession();
   if (!session.loggedIn) {
@@ -45,31 +108,35 @@ function buildAccountAuthPayload() {
   };
 }
 
+function isExpiredAccountSessionMessage(message) {
+  const normalized = String(message || "").trim().toLowerCase();
+  return normalized.includes("账号登录已失效") || normalized.includes("unauthorized");
+}
+
 function buildSelfDiceFallback(count = SELF_DICE_PLACEHOLDER.length) {
   const size = Number(count);
   const expected = Number.isInteger(size) && size > 0 ? size : SELF_DICE_PLACEHOLDER.length;
   return Array.from({ length: expected }, (_, index) => SELF_DICE_PLACEHOLDER[index % SELF_DICE_PLACEHOLDER.length]);
 }
 
-function buildSelfCupDieItem(value, index, revealed = true) {
+function buildSelfCupDieItem(value, index, revealed = true, themeId = DEFAULT_ROOM_THEME_ID) {
   return {
     value: Number(value) || 0,
-    asset: getDieAsset(value),
+    asset: getSelfDieAsset(value, themeId),
     stackClass: `stack-${index % 5}`,
     motionClass: `motion-${index % 5}`,
     revealed: Boolean(revealed)
   };
 }
 
-function buildSelfDiceDisplayItems() {
+function buildSelfDiceDisplayItems(themeId = DEFAULT_ROOM_THEME_ID) {
   return Array.from({ length: 5 }, (_, index) => ({
-    ...buildSelfCupDieItem(0, index, false),
-    asset: DEFAULT_3D_DIE_ASSET
+    ...buildSelfCupDieItem(SELF_DICE_PLACEHOLDER[index % SELF_DICE_PLACEHOLDER.length], index, false, themeId)
   }));
 }
 
-function buildDiceFaceItems(values) {
-  return (Array.isArray(values) ? values : []).map((value, index) => buildSelfCupDieItem(value, index, true));
+function buildDiceFaceItems(values, themeId = DEFAULT_ROOM_THEME_ID) {
+  return (Array.isArray(values) ? values : []).map((value, index) => buildSelfCupDieItem(value, index, true, themeId));
 }
 
 function isSelfRollSlotRevealed(slotIndex, revealCount) {
@@ -77,26 +144,110 @@ function isSelfRollSlotRevealed(slotIndex, revealCount) {
   return ROOM_SELF_REVEAL_ORDER.slice(0, count).includes(slotIndex);
 }
 
-function buildSelfRollDisplayItems({ count = 5, finalDice = [], revealCount = 0 }) {
+function buildSelfRollDisplayItems({ count = 5, finalDice = [], revealCount = 0 }, themeId = DEFAULT_ROOM_THEME_ID) {
   const size = Math.max(1, Number(count) || 5);
   const rollingValues = buildRandomDiceValues(size);
 
   return Array.from({ length: size }, (_, index) => {
     const finalValue = Number(finalDice[index]) || 0;
     const revealed = finalValue >= 1 && finalValue <= 6 && isSelfRollSlotRevealed(index, revealCount);
-    return buildSelfCupDieItem(revealed ? finalValue : rollingValues[index], index, revealed);
+    return buildSelfCupDieItem(revealed ? finalValue : rollingValues[index], index, revealed, themeId);
   });
 }
 
-function buildSettlementDiceItems(values, highlightValue = 0) {
+function isSettlementStraight(diceList) {
+  const normalized = (Array.isArray(diceList) ? diceList : [])
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 6);
+  if (normalized.length <= 1) {
+    return false;
+  }
+
+  const sorted = [...normalized].sort((a, b) => a - b);
+  for (let index = 1; index < sorted.length; index += 1) {
+    if (sorted[index] !== sorted[index - 1] + 1) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function getSettlementLeopardFace(diceList) {
+  const normalized = (Array.isArray(diceList) ? diceList : [])
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value >= 1 && value <= 6);
+  if (normalized.length <= 0) {
+    return 0;
+  }
+  const face = normalized[0];
+  return normalized.every((value) => value === face) ? face : 0;
+}
+
+function estimateSettlementPointTotal(allDice, point, oneAsWildcard) {
+  const targetPoint = Number(point) || 0;
+  let total = 0;
+  for (const diceList of Array.isArray(allDice) ? allDice : []) {
+    const normalized = (Array.isArray(diceList) ? diceList : [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 1 && value <= 6);
+    const diceCount = normalized.length;
+    if (diceCount <= 0 || isSettlementStraight(normalized)) {
+      continue;
+    }
+
+    const pointCount = normalized.filter((value) => value === targetPoint).length;
+    const oneCount = normalized.filter((value) => value === 1).length;
+    const leopardFace = normalized[0];
+    const isLeopard = normalized.every((value) => value === leopardFace);
+
+    if (targetPoint === 1) {
+      total += pointCount + (isLeopard && leopardFace === 1 ? 1 : 0);
+    } else if (oneAsWildcard) {
+      const effectiveCount = pointCount + oneCount;
+      total += effectiveCount === diceCount ? diceCount + 1 : effectiveCount;
+    } else {
+      total += pointCount + (isLeopard && leopardFace === targetPoint ? 1 : 0);
+    }
+  }
+  return total;
+}
+
+function shouldFallbackHighlightWildcardOnes(summaryPlayers, declaredPoint, actualCount, hasCountDetails) {
+  const point = Number(declaredPoint) || 0;
+  if (hasCountDetails || point <= 1) {
+    return false;
+  }
+
+  const allDice = (Array.isArray(summaryPlayers) ? summaryPlayers : [])
+    .map((player) => Array.isArray(player && player.dice) ? player.dice : []);
+  const plainTotal = estimateSettlementPointTotal(allDice, point, false);
+  const wildcardTotal = estimateSettlementPointTotal(allDice, point, true);
+  return wildcardTotal !== plainTotal && wildcardTotal === Number(actualCount || 0);
+}
+
+function buildSettlementDiceItems(values, themeId = DEFAULT_ROOM_THEME_ID, countDetail = null, fallbackHighlightValue = 0, fallbackWildcardOnes = false) {
+  const detailDice = countDetail && Array.isArray(countDetail.dice) ? countDetail.dice : [];
+  const detailByIndex = new Map(detailDice.map((item) => [Number(item.index), item]));
   return (Array.isArray(values) ? values : []).map((value, index) => {
     const num = Number(value) || 0;
+    const detail = detailByIndex.get(index);
+    const hasDetail = detail && typeof detail === "object";
+    const fallbackWildcard = Boolean(fallbackWildcardOnes && num === 1);
     return {
       value: num,
-      asset: getDieAsset(num),
-      highlighted: num === Number(highlightValue || 0),
+      asset: getRoomDieAsset(num, themeId),
+      highlighted: hasDetail ? Boolean(detail.counted) : (num === Number(fallbackHighlightValue || 0) || fallbackWildcard),
+      wildcard: hasDetail ? Boolean(detail.wildcard) : fallbackWildcard,
       index
     };
+  }).sort((a, b) => {
+    if (a.value !== b.value) {
+      return a.value - b.value;
+    }
+    if (a.highlighted !== b.highlighted) {
+      return a.highlighted ? -1 : 1;
+    }
+    return a.index - b.index;
   });
 }
 
@@ -166,27 +317,20 @@ function buildCallEventKey(call, fallbackBy = "") {
   return `${by}_${count}_${point}_${ts}`;
 }
 
-function normalizeHistoryItems(items) {
-  return (items || []).map((item) => {
-    const openResult = item && item.openResult ? item.openResult : {};
-    const openerShortId = String(openResult.openerId || "").slice(0, 8);
-    const resultText = (Array.isArray(openResult.targets) ? openResult.targets : [])
-      .map((target) => {
-        const targetShortId = String(target.targetId || "").slice(0, 8);
-        const winnerShortId = String(target.winnerId || "").slice(0, 8);
-        return `${targetShortId}:${target.declared.count}个${target.declared.point}/实${target.actual}/胜${winnerShortId}`;
-      })
-      .join(" | ");
-
-    return {
-      ...item,
-      openerShortId,
-      resultText: resultText || "-"
-    };
-  });
+function buildCallSelectionSummary(countTouched, pointTouched, count, point) {
+  if (!countTouched && !pointTouched) {
+    return "可直接确认，也可改数量和点数";
+  }
+  if (!countTouched) {
+    return "先选数量";
+  }
+  if (!pointTouched) {
+    return `数量已定为 ${count}，再选点数`;
+  }
+  return `准备叫 ${count} 个 ${point}`;
 }
 
-function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPlayerId }) {
+function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPlayerId, roomThemeId = DEFAULT_ROOM_THEME_ID }) {
   const result = openResult && typeof openResult === "object" ? openResult : null;
   const first = result && Array.isArray(result.targets) ? result.targets[0] : null;
   if (!result || !first || !first.declared) {
@@ -196,8 +340,14 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
   const players = Array.isArray(playersRaw) ? playersRaw : [];
   const playerMap = new Map(players.map((p) => [String(p.id || ""), p]));
   const summaryPlayers = roundSummary && Array.isArray(roundSummary.players) ? roundSummary.players : [];
+  const summaryPlayerMap = new Map(summaryPlayers.map((p) => [String(p.playerId || ""), p]));
   const summaryDiceMap = new Map(
     summaryPlayers.map((p) => [String(p.playerId || ""), Array.isArray(p.dice) ? p.dice : []])
+  );
+  const countDetails = Array.isArray(first.countDetails) ? first.countDetails : [];
+  const hasCountDetails = countDetails.length > 0;
+  const countDetailMap = new Map(
+    countDetails.map((detail) => [String(detail.playerId || ""), detail])
   );
 
   const getPlayerName = (playerId) => {
@@ -205,6 +355,11 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     const player = playerMap.get(id);
     if (player) {
       const nickname = safeDecodeComponent(player.nickname).trim();
+      if (nickname) return nickname;
+    }
+    const summaryPlayer = summaryPlayerMap.get(id);
+    if (summaryPlayer) {
+      const nickname = safeDecodeComponent(summaryPlayer.nickname).trim();
       if (nickname) return nickname;
     }
     return id.slice(0, 6) || "玩家";
@@ -228,6 +383,12 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
   const declaredPoint = Number(first.declared.point) || 1;
   const declaredFace = DICE_FACE_SYMBOLS[declaredPoint] || String(declaredPoint || "");
   const actualCount = Number(first.actual) || 0;
+  const fallbackWildcardOnes = shouldFallbackHighlightWildcardOnes(
+    summaryPlayers,
+    declaredPoint,
+    actualCount,
+    hasCountDetails
+  );
 
   const summaryIds = summaryPlayers
     .map((p) => String(p.playerId || ""))
@@ -247,34 +408,44 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     const dice = (summaryDiceMap.get(id) || [])
       .map((num) => Number(num))
       .filter((num) => Number.isInteger(num) && num >= 1 && num <= 6);
+    const countDetail = countDetailMap.get(id) || null;
+    const isStraight = isSettlementStraight(dice);
+    const leopardFace = getSettlementLeopardFace(dice);
     let kind = "neutral";
     let tagText = "";
-    let deltaText = "+0";
-    let deltaClass = "neutral";
+    let featureTagText = "";
+    let countSummaryText = "";
 
     if (id === winnerId) {
       kind = "winner";
       tagText = "胜";
-      deltaText = "🏆 +1";
-      deltaClass = "winner";
     } else if (id === loserId) {
       kind = "loser";
       tagText = "负";
-      deltaText = "💀 -1";
-      deltaClass = "loser";
+    }
+    if (isStraight) {
+      featureTagText = "顺";
+    }
+    if (leopardFace > 0) {
+      featureTagText = featureTagText ? `${featureTagText} / 豹${leopardFace}` : `豹${leopardFace}`;
+    } else if (countDetail && countDetail.leopardBonus) {
+      featureTagText = featureTagText ? `${featureTagText} / 豹` : "豹";
+    }
+    if (countDetail && !isStraight && Number(countDetail.contribution) > 0) {
+      countSummaryText = `计数 ${Number(countDetail.contribution)}`;
     }
 
     return {
       playerId: id,
       name: displayName,
+      nameLengthClass: Array.from(displayName).length > 5 ? "is-extra-long" : Array.from(displayName).length > 4 ? "is-long" : "",
       avatarUrl: getSeatAvatarPresentation(player ? player.avatar : "", Math.max(0, getSeatIndex(id) - 1)).src,
       avatarText: String(name || "玩").slice(0, 1),
-      diceItems: buildSettlementDiceItems(dice, declaredPoint),
+      diceItems: buildSettlementDiceItems(dice, roomThemeId, countDetail, declaredPoint, fallbackWildcardOnes),
+      featureTagText,
+      countSummaryText,
       kind,
       tagText,
-      deltaText,
-      deltaClass,
-      scoreClass: deltaClass,
       seatSort: getSeatIndex(id)
     };
   }).sort((a, b) => {
@@ -290,7 +461,7 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     summaryText: `【${getPlayerName(openerId)}】 开 【${getPlayerName(targetId)}】`,
     declaredText: `${declaredCount}个`,
     actualText: `${actualCount}个`,
-    pointAsset: getDieAsset(declaredPoint),
+    pointAsset: getRoomDieAsset(declaredPoint, roomThemeId),
     rows,
     loserId
   };
@@ -347,98 +518,53 @@ function getSeatGeometry(seatIndex, seatCount = 8) {
   return { x: seatX, y: seatY, bx: bubbleX, by: bubbleY };
 }
 
-function getStitchSeatLayout(playerCount) {
+function getStitchSeatLayout() {
   const figmaShellSlots = [
-    { x: 187.5, y: 168, bx: 240, by: 180, cupX: 187.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" },
-    { x: 42, y: 290, bx: 84, by: 250, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" },
-    { x: 333, y: 290, bx: 291, by: 250, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" },
-    { x: 30, y: 420, bx: 78, by: 380, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" },
-    { x: 345, y: 420, bx: 297, by: 380, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" },
-    { x: 44, y: 556, bx: 92, by: 516, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" },
-    { x: 331, y: 556, bx: 283, by: 516, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" },
+    { x: 187.5, y: 168, bx: 248, by: 165, cupX: 187.5, cupY: 220, cupAlign: "bottom", slotClass: "slot-top" },
+    { x: 42, y: 290, bx: 144, by: 250, cupX: 102, cupY: 290, cupAlign: "right", slotClass: "slot-upper-left" },
+    { x: 333, y: 290, bx: 231, by: 250, cupX: 273, cupY: 290, cupAlign: "left", slotClass: "slot-upper-right" },
+    { x: 42, y: 396, bx: 144, by: 356, cupX: 102, cupY: 396, cupAlign: "right", slotClass: "slot-mid-left" },
+    { x: 333, y: 396, bx: 231, by: 356, cupX: 273, cupY: 396, cupAlign: "left", slotClass: "slot-mid-right" },
+    { x: 42, y: 526, bx: 144, by: 486, cupX: 102, cupY: 526, cupAlign: "right", slotClass: "slot-lower-left" },
+    { x: 333, y: 526, bx: 231, by: 486, cupX: 273, cupY: 526, cupAlign: "left", slotClass: "slot-lower-right" },
     { x: 187.5, y: 804, bx: 187.5, by: 736, cupX: 187.5, cupY: 734, cupAlign: "top", slotClass: "slot-bottom" }
   ];
 
-  const layouts = {
-    1: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        1: [7]
-      },
-      slots: figmaShellSlots
-    },
-    2: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        2: [0, 7]
-      },
-      slots: figmaShellSlots
-    },
-    3: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        3: [0, 1, 7]
-      },
-      slots: figmaShellSlots
-    },
-    4: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        4: [0, 1, 2, 7]
-      },
-      slots: figmaShellSlots
-    },
-    5: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        5: [0, 1, 2, 3, 7]
-      },
-      slots: figmaShellSlots
-    },
-    6: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        6: [0, 1, 2, 3, 4, 7]
-      },
-      slots: figmaShellSlots
-    },
-    7: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        7: [0, 1, 2, 3, 4, 5, 7]
-      },
-      slots: figmaShellSlots
-    },
-    8: {
-      selfSlotIndex: 7,
-      occupiedSlotIndicesMap: {
-        8: [0, 1, 2, 3, 4, 5, 6, 7]
-      },
-      slots: figmaShellSlots
-    }
+  return {
+    selfSlotIndex: 7,
+    // Clockwise ring order matching the fixed 8-seat shell:
+    // top -> upper-right -> mid-right -> lower-right -> bottom -> lower-left -> mid-left -> upper-left
+    ringSlotIndices: [0, 2, 4, 6, 7, 5, 3, 1],
+    slots: figmaShellSlots
   };
-
-  return layouts[Math.max(1, Math.min(8, Number(playerCount) || 1))] || layouts[8];
 }
 
-function rotatePlayersForDisplay(sortedPlayers, selfPlayerId, targetIndex) {
-  const list = Array.isArray(sortedPlayers) ? sortedPlayers : [];
-  const desiredIndex = Number(targetIndex);
-  if (!list.length || !Number.isInteger(desiredIndex) || desiredIndex < 0 || desiredIndex >= list.length) {
-    return list;
-  }
+function buildSeatSlotIndexMap(selfSeatIndex = 1, direction = "cw") {
+  const layout = getStitchSeatLayout();
+  const normalizedSelfSeat = Math.max(1, Math.min(8, Number(selfSeatIndex) || 1));
+  const seatRing = String(direction || "").toLowerCase() === "ccw"
+    ? [1, 8, 7, 6, 5, 4, 3, 2]
+    : [1, 2, 3, 4, 5, 6, 7, 8];
+  const selfRingIndex = seatRing.indexOf(normalizedSelfSeat);
+  const selfSlotRingIndex = layout.ringSlotIndices.indexOf(layout.selfSlotIndex);
+  const startIndex = selfRingIndex >= 0 && selfSlotRingIndex >= 0
+    ? (selfRingIndex - selfSlotRingIndex + seatRing.length) % seatRing.length
+    : 0;
+  const seatToSlotIndex = new Map();
 
-  const selfIndex = list.findIndex((player) => String(player.id || "") === String(selfPlayerId || ""));
-  if (selfIndex < 0) {
-    return list;
-  }
+  layout.ringSlotIndices.forEach((slotIndex, ringIndex) => {
+    const seatIndex = seatRing[(startIndex + ringIndex) % seatRing.length];
+    seatToSlotIndex.set(seatIndex, slotIndex);
+  });
 
-  const startIndex = (selfIndex - desiredIndex + list.length) % list.length;
-  return Array.from({ length: list.length }, (_, idx) => list[(startIndex + idx) % list.length]);
+  return {
+    layout,
+    seatToSlotIndex
+  };
 }
 
-function buildGhostSeats(playersDecorated, playerCount) {
-  const layout = getStitchSeatLayout(playerCount);
+function buildGhostSeats(playersDecorated) {
+  const layout = getStitchSeatLayout();
   if (!layout || !Array.isArray(layout.slots)) {
     return [];
   }
@@ -456,10 +582,10 @@ function buildGhostSeats(playersDecorated, playerCount) {
     }));
 }
 
-function buildCallPointOptionItems(options) {
+function buildCallPointOptionItems(themeId, options) {
   return (Array.isArray(options) ? options : []).map((value) => ({
     value: String(value),
-    asset: getDieAsset(value)
+    asset: getRoomDieAsset(value, themeId)
   }));
 }
 
@@ -550,15 +676,6 @@ function buildSuggestedCallState(lastCall, minOpeningCount, maxCallCount, curren
   };
 }
 
-function getOccupiedSlotIndices(layout, playerCount) {
-  if (!layout || !layout.occupiedSlotIndicesMap) {
-    return [];
-  }
-
-  const count = Math.max(1, Math.min(8, Number(playerCount) || 0));
-  return layout.occupiedSlotIndicesMap[count] || layout.occupiedSlotIndicesMap[8] || [];
-}
-
 function safeDecodeComponent(raw) {
   const value = String(raw || "");
   if (!value) return "";
@@ -570,16 +687,57 @@ function safeDecodeComponent(raw) {
   }
 }
 
-function buildRoomJoinUrl(roomId) {
+function parseOptionalRoomThemeId(raw) {
+  const value = String(raw || "").trim();
+  if (!value) {
+    return "";
+  }
+  return normalizeRoomThemeId(value);
+}
+
+function readRoomThemeCache() {
+  const raw = wx.getStorageSync(ROOM_THEME_CACHE_KEY);
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+
+  return Object.keys(raw).reduce((acc, roomId) => {
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const themeId = parseOptionalRoomThemeId(raw[roomId]);
+    if (normalizedRoomId && themeId) {
+      acc[normalizedRoomId] = themeId;
+    }
+    return acc;
+  }, {});
+}
+
+function writeRoomThemeCache(nextCache) {
+  const roomIds = Object.keys(nextCache || {}).filter((roomId) => normalizeRoomId(roomId));
+  const trimmed = roomIds
+    .sort((a, b) => Number(b) - Number(a))
+    .slice(0, ROOM_THEME_CACHE_LIMIT)
+    .reduce((acc, roomId) => {
+      const themeId = parseOptionalRoomThemeId(nextCache[roomId]);
+      if (themeId) {
+        acc[roomId] = themeId;
+      }
+      return acc;
+    }, {});
+  wx.setStorageSync(ROOM_THEME_CACHE_KEY, trimmed);
+}
+
+function buildRoomJoinUrl(roomId, themeId = "") {
   const normalizedRoomId = String(roomId || "").trim();
   if (!normalizedRoomId) {
     return "/pages/lobby/lobby";
   }
-  return `/pages/room/room?mode=join&forceNew=1&roomId=${encodeURIComponent(normalizedRoomId)}`;
+  const normalizedThemeId = parseOptionalRoomThemeId(themeId);
+  const themeQuery = normalizedThemeId ? `&themeId=${encodeURIComponent(normalizedThemeId)}` : "";
+  return `/pages/room/room?mode=join&forceNew=1&roomId=${encodeURIComponent(normalizedRoomId)}${themeQuery}`;
 }
 
-function buildRoomShareEntryUrl(roomId) {
-  return buildRoomJoinUrl(roomId);
+function buildRoomShareEntryUrl(roomId, themeId = "") {
+  return buildRoomJoinUrl(roomId, themeId);
 }
 
 function clampPercent(value, min = 0, max = 100) {
@@ -602,6 +760,33 @@ function px(value) {
   return `${Math.max(0, Math.round(num))}px`;
 }
 
+function roundScale(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 1;
+  return Math.round(num * 1000) / 1000;
+}
+
+function buildRoomPlayfieldStyle(nav, shellTopPaddingPx) {
+  const windowWidth = Number(nav && nav.windowWidth) || 0;
+  const windowHeight = Number(nav && nav.windowHeight) || 0;
+  const bottomInset = Math.max(0, Number(nav && nav.bottomInset) || 0);
+  let scale = 1;
+
+  if (windowWidth > 0 && windowHeight > 0) {
+    const pxToRpxRatio = 750 / windowWidth;
+    const viewportHeightRpx = windowHeight * pxToRpxRatio;
+    const shellTopPaddingRpx = Math.max(0, Number(shellTopPaddingPx) || 0) * pxToRpxRatio;
+    const bottomInsetRpx = bottomInset * pxToRpxRatio;
+    const bottomClearanceRpx = Math.max(24, bottomInsetRpx + 12);
+    const availableHeightRpx = viewportHeightRpx - shellTopPaddingRpx + ROOM_PLAYFIELD_LIFT_RPX - bottomClearanceRpx;
+    if (availableHeightRpx > 0) {
+      scale = Math.min(1, Math.max(ROOM_STAGE_MIN_SCALE, availableHeightRpx / ROOM_STAGE_HEIGHT_RPX));
+    }
+  }
+
+  return `transform:translateY(-${ROOM_PLAYFIELD_LIFT_RPX}rpx) scale(${roundScale(scale)});`;
+}
+
 function buildRoomSafeAreaStyles() {
   const nav = getNavigationSafeArea();
   const topInset = Math.max(0, Number(nav.topInset) || 0);
@@ -610,37 +795,33 @@ function buildRoomSafeAreaStyles() {
   const roomLabelHeight = 24;
   const menuTop = Math.max(topInset + 8, Number(nav.menuTop) || 0);
   const roomLabelTopOffset = Math.round((topbarButtonSize - roomLabelHeight) / 6);
+  const shellTopPaddingPx = Math.max(16, topInset + 8);
 
   return {
-    roomShellStyle: `padding-top:${px(Math.max(16, topInset + 8))};`,
+    roomShellStyle: `padding-top:${px(shellTopPaddingPx)};`,
+    roomPlayfieldStyle: buildRoomPlayfieldStyle(nav, shellTopPaddingPx),
     roomTopbarCornerStyle: `margin-top:${px(menuTop)};`,
     roomTopbarCenterStyle: `top:${px(Math.max(menuTop + roomLabelTopOffset, topInset + 18))};`,
-    roomBottomFadeStyle: `top:auto;bottom:${px(Math.max(bottomInset + 16, 16))};`,
-    roomSelfStyle: `bottom:${px(Math.max(72, bottomInset + 72))};`,
+    roomBottomFadeStyle: `top:auto;bottom:${px(bottomInset)};`,
+    roomSelfStyle: `bottom:${px(Math.max(46, bottomInset + 46))};`,
     callPhaseOverlayStyle: ""
   };
 }
 
-function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall, direction = "cw") {
+function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall, direction = "cw", roomThemeId = DEFAULT_ROOM_THEME_ID) {
   const sorted = [...(playersRaw || [])].sort((a, b) => a.seatIndex - b.seatIndex);
   const selectedSet = new Set(selectedTargetIds || []);
   const latestCallerId = latestCall && typeof latestCall === "object" ? String(latestCall.by || "") : "";
-  const layout = getStitchSeatLayout(sorted.length);
-  const occupiedSlotIndices = getOccupiedSlotIndices(layout, sorted.length);
+  const selfPlayer = sorted.find((player) => String(player.id || "") === String(selfPlayerId || ""));
+  const selfSeatIndex = Number(selfPlayer && selfPlayer.seatIndex) || 1;
+  const { layout, seatToSlotIndex } = buildSeatSlotIndexMap(selfSeatIndex, direction);
   const glowClasses = ["glow-gold", "glow-violet", "glow-gold", "glow-amber", "glow-gold", "glow-violet", "glow-gold"];
-  const sourcePlayers = String(direction || "").toLowerCase() === "ccw"
-    ? [...sorted].reverse()
-    : sorted;
-  const targetOrderIndex = occupiedSlotIndices.indexOf(layout ? layout.selfSlotIndex : -1);
-  const orderedPlayers = layout
-    ? rotatePlayersForDisplay(sourcePlayers, selfPlayerId, targetOrderIndex >= 0 ? targetOrderIndex : sorted.length - 1)
-    : sourcePlayers;
   const seatCount = layout ? layout.slots.length : 8;
 
-  return orderedPlayers.map((player, displayIndex) => {
+  return sorted.map((player, displayIndex) => {
     const rawSeat = Number(player.seatIndex);
     const seatIndex = Number.isInteger(rawSeat) ? Math.max(1, Math.min(seatCount, rawSeat)) : 1;
-    const slotIndex = layout ? occupiedSlotIndices[displayIndex] : displayIndex;
+    const slotIndex = layout ? seatToSlotIndex.get(seatIndex) : displayIndex;
     const geometry = layout ? layout.slots[slotIndex] : getSeatGeometry(seatIndex, seatCount);
     const { x: seatX, y: seatY, bx: bubbleX, by: bubbleY } = geometry;
 
@@ -660,6 +841,8 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
     }
 
     const nicknameDecoded = safeDecodeComponent(player.nickname).trim() || "玩家";
+    const nicknameLength = Array.from(nicknameDecoded).length;
+    const nicknameLengthClass = nicknameLength > 6 ? "is-extra-long" : nicknameLength > 4 ? "is-long" : "";
     const cupAlign = geometry.cupAlign || "left";
 
     const bubbleClass = [];
@@ -677,7 +860,8 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
     return {
       ...player,
       shortId: String(player.id || "").slice(0, 8),
-      nicknameShort: nicknameDecoded.slice(0, 5),
+      nicknameShort: nicknameDecoded,
+      nicknameLengthClass,
       avatarText: nicknameDecoded.slice(0, 1) || "玩",
       callText: player.currentCall ? `${player.currentCall.count}个${player.currentCall.point}` : "",
       displayAvatar: avatarPresentation.src,
@@ -702,7 +886,7 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
       callCount,
       callPoint,
       callKey,
-      callPointAsset: getDieAsset(callPoint),
+      callPointAsset: getRoomDieAsset(callPoint, roomThemeId),
       canSelect: player.id !== selfPlayerId,
       selected: selectedSet.has(player.id)
     };
@@ -1284,6 +1468,7 @@ Page({
     containerEnvId: app.globalData.containerConfig ? app.globalData.containerConfig.envId : "",
     containerService: app.globalData.containerConfig ? app.globalData.containerConfig.service : "",
     containerWsPath: app.globalData.containerConfig ? app.globalData.containerConfig.wsPath : DEFAULT_CONTAINER_WS_PATH,
+    runtimeConnectionSource: app.globalData.runtimeConnectionSource || "missing",
     connectionSummaryText: buildContainerSummary(app.globalData.containerConfig || {}),
     wsHintText: "",
     connected: false,
@@ -1301,6 +1486,10 @@ Page({
     createDicePerPlayer: "5",
     createMinOpeningCount: "5",
     createTestMode: false,
+    createRoomThemeId: DEFAULT_ROOM_THEME_ID,
+    roomThemeId: DEFAULT_ROOM_THEME_ID,
+    roomThemeClass: buildRoomThemeClass(DEFAULT_ROOM_THEME_ID),
+    roomThemeAssets: getRoomThemeAssets(DEFAULT_ROOM_THEME_ID),
     devtoolsMode: false,
     roomId: "",
     displayRoomId: "------",
@@ -1335,29 +1524,37 @@ Page({
     settlementRows: [],
     settlementCanContinue: false,
     settlementContinueSec: 0,
+    recentSettlementAvailable: false,
     lastCallKey: "",
     callTimeline: [],
     turnCountdownSec: 0,
+    turnCountdownLabel: "",
     myDiceVisible: false,
     myDicePeekVisible: false,
     myDiceRolling: false,
     myDiceRevealing: false,
     myDiceJustRevealed: false,
+    myDiceCovered: false,
     recording: false,
     voiceTipText: "按住语音键说话，松开发送",
     callCount: "3",
     callPoint: "6",
     callCountOptions: buildCallCountOptionItems(3, 8, 1),
     callPointOptions: ["1", "2", "3", "4", "5", "6"],
-    callPointOptionItems: buildCallPointOptionItems(["1", "2", "3", "4", "5", "6"]),
+    callPointOptionItems: buildCallPointOptionItems(DEFAULT_ROOM_THEME_ID, ["1", "2", "3", "4", "5", "6"]),
     maxCallCount: 1,
     callForcedOpen: false,
     callSelectorMode: "",
     callPanelExpanded: false,
+    callCountTouched: false,
+    callPointTouched: false,
+    callSelectionSummaryText: buildCallSelectionSummary(false, false, 3, 6),
     historyVisible: false,
     historyItems: [],
     historyNextBeforeRound: null,
     historyAppendMode: false,
+    rulesVisible: false,
+    rulesSections: ROOM_RULE_SECTIONS,
     voiceVisible: false,
     chatVisible: false,
     chatDraft: "",
@@ -1369,21 +1566,29 @@ Page({
     playingVoiceId: "",
     playingVoiceTip: "点击语音可播放",
     sfxEnabled: true,
+    turnAlertSfxEnabled: true,
     hapticEnabled: true,
     roomShellStyle: "",
+    roomPlayfieldStyle: "",
     roomTopbarCornerStyle: "",
     roomTopbarCenterStyle: "",
     roomBottomFadeStyle: "",
     roomSelfStyle: "",
     callPhaseOverlayStyle: "",
     topbarMenuVisible: false,
+    toolsBasicVisible: false,
     callPanelVisible: false,
     canOpenAction: false,
+    showQuickOpenAction: false,
+    secondaryActionText: "",
+    secondaryActionKind: "",
+    secondaryActionEnabled: false,
     seatingVisible: false,
     seatingSelectedSeatIndex: 0,
     seatingSelectedText: "未选择",
     seatRows: [],
     legalAccepted: false,
+    legalAgreementChecked: false,
     showLegalModal: false
   },
 
@@ -1445,10 +1650,12 @@ Page({
     }, { ui: false });
 
 	    const storedSfx = wx.getStorageSync(SFX_ENABLED_KEY);
+	    const storedTurnAlertSfx = wx.getStorageSync(TURN_ALERT_SFX_ENABLED_KEY);
 	    const storedHaptic = wx.getStorageSync(HAPTIC_ENABLED_KEY);
 	    const sfxEnabled = storedSfx === "" || storedSfx == null ? true : Boolean(storedSfx);
+	    const turnAlertSfxEnabled = storedTurnAlertSfx === "" || storedTurnAlertSfx == null ? true : Boolean(storedTurnAlertSfx);
 	    const hapticEnabled = storedHaptic === "" || storedHaptic == null ? true : Boolean(storedHaptic);
-	    this.setData({ sfxEnabled, hapticEnabled });
+	    this.setData({ sfxEnabled, turnAlertSfxEnabled, hapticEnabled });
 	    this.voiceStartTs = 0;
 	    this.voiceStopLocked = false;
     this.pendingVoiceFileId = "";
@@ -1468,8 +1675,10 @@ Page({
 	    this.lastAutoRollRound = 0;
     this.hasReceivedRoomState = false;
     this.lastRoundStartSfxKey = "";
+    this.lastTurnAlertKey = "";
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
+    this.pendingAccountRecoveryPromise = null;
     this.settlementCountdownTimer = null;
     this.accelListening = false;
     this.accelLast = null;
@@ -1482,6 +1691,7 @@ Page({
     this.asrFinalText = "";
     this.audioContext = null;
     this.sfxContext = null;
+    this.sfxStopTimer = null;
 
     try {
       if (typeof wx.getRecorderManager === "function") {
@@ -1617,7 +1827,10 @@ Page({
             this.setData({
               callCount: String(parsed.count),
               callPoint: String(parsed.point),
-              callCountOptions: this.buildCallCountOptions(parsed.count)
+              callCountOptions: this.buildCallCountOptions(parsed.count),
+              callCountTouched: true,
+              callPointTouched: true,
+              callSelectionSummaryText: buildCallSelectionSummary(true, true, parsed.count, parsed.point)
             });
 
             const canCall = this.data.phase === "calling"
@@ -1689,15 +1902,28 @@ Page({
       selfAvatarUrl: cachedAvatarUrl
     });
 
-    const shouldResumeSession = String(options.resume || "") === "1";
-    const cached = shouldResumeSession ? wx.getStorageSync(SESSION_KEY) : null;
-    if (cached && cached.roomId && cached.playerId && cached.resumeToken) {
+    const cached = wx.getStorageSync(SESSION_KEY);
+    const cachedRoomId = normalizeRoomId(cached && cached.roomId);
+    const optionRoomId = normalizeRoomId(options.roomId);
+    const shouldResumeSession = Boolean(
+      cached
+      && cachedRoomId
+      && cached.playerId
+      && cached.resumeToken
+      && (
+        String(options.resume || "") === "1"
+        || (!forceNew && optionRoomId && optionRoomId === cachedRoomId)
+      )
+    );
+    if (shouldResumeSession) {
+      const cachedThemeId = parseOptionalRoomThemeId(cached.themeId);
       this.setData({
         roomId: cached.roomId,
         displayRoomId: formatRoomIdDisplay(cached.roomId),
         joinRoomId: cached.roomId,
         playerId: cached.playerId,
-        resumeToken: cached.resumeToken
+        resumeToken: cached.resumeToken,
+        ...(cachedThemeId ? buildRoomThemePresentation(cachedThemeId) : {})
       });
     }
 
@@ -1708,6 +1934,7 @@ Page({
       containerEnvId: containerConfig.envId,
       containerService: containerConfig.service,
       containerWsPath: containerConfig.wsPath,
+      runtimeConnectionSource: String(app && app.globalData ? app.globalData.runtimeConnectionSource || "missing" : "missing"),
       connectionSummaryText: buildContainerSummary(containerConfig)
     });
 
@@ -1718,26 +1945,32 @@ Page({
       && String(legalConsent.version || "") === LEGAL_VERSION
     );
 
+    const mode = String(options.mode || "");
+    const shouldShowEntryLegalModal = !legalAccepted && mode === "join";
+
     this.setData({
       legalAccepted,
-      showLegalModal: !legalAccepted
+      legalAgreementChecked: legalAccepted,
+      showLegalModal: shouldShowEntryLegalModal
     });
     this.refreshWsHint("");
 
-    const mode = String(options.mode || "");
     if (mode === "create") {
       const direction = String(options.direction || "").trim();
       const wildcardOneEnabled = String(options.wildcardOneEnabled || "1") === "1";
       const dicePerPlayer = String(options.dicePerPlayer || "5").trim();
       const minOpeningCount = String(options.minOpeningCount || "5").trim();
       const testMode = String(options.testMode || "0") === "1";
+      const themeId = normalizeRoomThemeId(options.themeId);
 
       this.setData({
         createDirection: direction,
         createWildcardOneEnabled: wildcardOneEnabled,
         createDicePerPlayer: dicePerPlayer,
         createMinOpeningCount: minOpeningCount,
-        createTestMode: testMode
+        createTestMode: testMode,
+        createRoomThemeId: themeId,
+        ...buildRoomThemePresentation(themeId)
       });
 
       try {
@@ -1748,9 +1981,14 @@ Page({
       }
     } else if (mode === "join") {
       const roomId = safeDecodeComponent(options.roomId).trim();
+      const themeId = parseOptionalRoomThemeId(options.themeId);
       this.setData({
-        joinRoomId: roomId
+        joinRoomId: roomId,
+        ...(themeId ? buildRoomThemePresentation(themeId) : {})
       });
+      if (roomId && themeId) {
+        this.cacheRoomTheme(roomId, themeId);
+      }
       if (roomId) {
         this.queuePendingRoomAction({ kind: "join", roomId });
       }
@@ -1794,12 +2032,24 @@ Page({
       this.setData(updates);
     }
 
+    if (this.selfRollInterruptedOnHide || this.data.myDiceRolling || this.data.myDiceRevealing) {
+      this.recoverSelfRollUiAfterInterruption();
+      this.selfRollInterruptedOnHide = false;
+    }
+
     if (this.data.connected && this.data.roomId) {
       this.sendEvent("player:update", {
         nickname: nextNickname || "",
         avatar: avatarUrl || "",
         ...buildAccountAuthPayload()
       }, { silentLog: true });
+    } else if (
+      this.data.roomId
+      && !this.data.connecting
+      && !this.manualClose
+      && !this.pendingLeaveActionId
+    ) {
+      this.connectSocket();
     }
 
     this.startShakeListener();
@@ -1817,6 +2067,10 @@ Page({
     });
     this.stopShakeListener();
     this.clearTurnCountdown();
+    if (this.data.myDiceRolling || this.data.myDiceRevealing) {
+      this.selfRollInterruptedOnHide = true;
+      this.clearMyDiceTimers();
+    }
   },
 
   startShakeListener() {
@@ -1920,19 +2174,27 @@ Page({
     }
     this.turnCountdownKey = "";
     this.turnDeadlineTs = 0;
-    if (this.data.turnCountdownSec !== 0) {
-      this.setData({ turnCountdownSec: 0 });
+    if (this.data.turnCountdownSec !== 0 || this.data.turnCountdownLabel) {
+      this.setData({
+        turnCountdownSec: 0,
+        turnCountdownLabel: ""
+      });
     }
   },
 
-  resetTurnCountdown(turnKey) {
+  resetTurnCountdown(turnKey, deadlineTs = 0, serverTs = Date.now()) {
     const nextKey = String(turnKey || "");
     if (!nextKey || nextKey === this.turnCountdownKey) {
       return;
     }
 
     this.turnCountdownKey = nextKey;
-    this.turnDeadlineTs = Date.now() + 18000;
+    const normalizedDeadline = Number(deadlineTs) || 0;
+    const normalizedServerTs = Number(serverTs) || Date.now();
+    const driftAdjustedDeadline = normalizedDeadline > 0
+      ? Date.now() + Math.max(0, normalizedDeadline - normalizedServerTs)
+      : Date.now() + 30000;
+    this.turnDeadlineTs = driftAdjustedDeadline;
 
     if (this.turnCountdownTimer) {
       clearInterval(this.turnCountdownTimer);
@@ -1941,8 +2203,11 @@ Page({
     const tick = () => {
       const remainMs = this.turnDeadlineTs - Date.now();
       const sec = Math.max(0, Math.ceil(remainMs / 1000));
-      if (sec !== this.data.turnCountdownSec) {
-        this.setData({ turnCountdownSec: sec });
+      if (sec !== this.data.turnCountdownSec || this.data.turnCountdownLabel !== "剩余") {
+        this.setData({
+          turnCountdownSec: sec,
+          turnCountdownLabel: "剩余"
+        });
       }
       if (sec <= 0 && this.turnCountdownTimer) {
         clearInterval(this.turnCountdownTimer);
@@ -1951,7 +2216,7 @@ Page({
     };
 
     tick();
-    this.turnCountdownTimer = setInterval(tick, 200);
+    this.turnCountdownTimer = setInterval(tick, 1000);
   },
 
   onUnload() {
@@ -1961,7 +2226,6 @@ Page({
       manualClose: this.manualClose,
       routeStack: this.getRouteStack()
     }, { ui: false });
-    const waitingForLeaveAck = Boolean(this.pendingLeaveActionId);
     this.clearPendingLeaveRequest();
     this.manualClose = true;
     if (this.reconnectTimer) {
@@ -1971,13 +2235,6 @@ Page({
     this.stopHeartbeat();
     this.clearMyDiceTimers();
     this.resetSelfRollTransientState();
-    if (!this.leaveFinalized && this.data.roomId && this.data.playerId && this.data.resumeToken) {
-      wx.removeStorageSync(SESSION_KEY);
-    }
-
-    if (!this.leaveFinalized && !waitingForLeaveAck) {
-      this.notifyServerLeave({ reason: "page_unload" });
-    }
 
     if (this.socketTask) {
       this.debugClientEvent("ws:close_request", {
@@ -1998,6 +2255,8 @@ Page({
       this.audioContext = null;
     }
 
+    this.clearSfxStopTimer();
+
 	    if (this.sfxContext) {
 	      this.sfxContext.destroy();
 	      this.sfxContext = null;
@@ -2006,26 +2265,71 @@ Page({
 	    this.stopShakeListener();
 	    this.clearTurnCountdown();
     this.clearSettlementCountdown();
+    this.closeRulesPanel();
 
 	    this.actionEventMap = {};
 	  },
 
   onNicknameChange(event) {
-    const nickname = event.detail.value.trim();
+    const nickname = String(event && event.detail && event.detail.value || "");
     this.setData({
       nickname,
       selfInitial: String(nickname || "玩家").slice(0, 1)
     });
-    wx.setStorageSync(NICKNAME_KEY, nickname);
-    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, Boolean(nickname));
+  },
+
+  onNicknameCommit(event) {
+    const inputValue = String(event && event.detail && event.detail.value || this.data.nickname || "");
+    this.commitNicknameInput(inputValue);
+  },
+
+  commitNicknameInput(raw, options = {}) {
+    const { showToastOnError = true } = options;
+    const validation = validateNickname(raw);
+    if (!validation.ok) {
+      const fallback = String(raw || "");
+      this.setData({
+        nickname: fallback,
+        selfInitial: String(fallback || "玩家").slice(0, 1)
+      });
+      if (showToastOnError) {
+        wx.showToast({ title: validation.message, icon: "none" });
+      }
+      return false;
+    }
+
+    const nextNickname = validation.value;
+    const customized = !looksLikeGeneratedNickname(nextNickname);
+    this.applyNicknameLocal(nextNickname, { customized });
+    return true;
+  },
+
+  applyNicknameLocal(nickname, options = {}) {
+    const nextNickname = String(nickname || "").trim();
+    const customized = typeof options.customized === "boolean"
+      ? options.customized
+      : (nextNickname ? !looksLikeGeneratedNickname(nextNickname) : false);
+
+    this.setData({
+      nickname: nextNickname,
+      selfInitial: String(nextNickname || "玩家").slice(0, 1)
+    });
+    wx.setStorageSync(NICKNAME_KEY, nextNickname);
+    wx.setStorageSync(PROFILE_NICKNAME_CUSTOMIZED_KEY, customized);
 
     if (this.data.connected && this.data.roomId) {
       this.sendEvent("player:update", {
-        nickname,
+        nickname: nextNickname,
         avatar: this.data.avatarUrl || "",
         ...buildAccountAuthPayload()
       }, { silentLog: true });
     }
+  },
+
+  refreshEntryNickname() {
+    const seed = `${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+    const nextNickname = buildDefaultNickname(seed);
+    this.applyNicknameLocal(nextNickname, { customized: false });
   },
 
   onJoinRoomIdChange(event) {
@@ -2084,9 +2388,12 @@ Page({
     const max = this.getMaxCallCount();
     const next = this.clampNumber(value, 1, max);
     this.setData({
-      callSelectorMode: "count",
+      callSelectorMode: "point",
+      callPanelExpanded: true,
       callCount: String(next),
-      callCountOptions: this.buildCallCountOptions(next, max)
+      callCountOptions: this.buildCallCountOptions(next, max),
+      callCountTouched: true,
+      callSelectionSummaryText: buildCallSelectionSummary(true, this.data.callPointTouched, next, this.data.callPoint)
     });
   },
 
@@ -2098,7 +2405,10 @@ Page({
     const next = this.clampNumber(value, 1, 6);
     this.setData({
       callSelectorMode: "point",
-      callPoint: String(next)
+      callPanelExpanded: true,
+      callPoint: String(next),
+      callPointTouched: true,
+      callSelectionSummaryText: buildCallSelectionSummary(this.data.callCountTouched, true, this.data.callCount, next)
     });
   },
 
@@ -2297,7 +2607,8 @@ Page({
       openMode: "single",
       dicePerPlayer,
       minOpeningCount,
-      testMode: Boolean(this.data.createTestMode)
+      testMode: Boolean(this.data.createTestMode),
+      themeId: normalizeRoomThemeId(this.data.createRoomThemeId)
     };
   },
 
@@ -2348,6 +2659,7 @@ Page({
       this.debugClientEvent("ws:connect_attempt", {
         socketId,
         connectionMode: "cloud",
+        runtimeConnectionSource: this.data.runtimeConnectionSource,
         service: containerConfig.service,
         wsPath: containerConfig.wsPath,
         roomId: this.data.roomId,
@@ -2439,6 +2751,7 @@ Page({
     this.debugClientEvent("ws:connect_attempt", {
       socketId,
       connectionMode: "direct",
+      runtimeConnectionSource: this.data.runtimeConnectionSource,
       wsUrl: this.data.wsUrl,
       roomId: this.data.roomId,
       playerId: this.data.playerId,
@@ -2649,7 +2962,10 @@ Page({
       this.queuePendingRoomAction({ kind: "create", config });
       this.debugClientEvent("room:create_queued", {
         roomId: this.data.roomId,
-        playerId: this.data.playerId
+        playerId: this.data.playerId,
+        themeId: config.themeId,
+        runtimeConnectionSource: this.data.runtimeConnectionSource,
+        connectionSummaryText: this.data.connectionSummaryText
       });
       this.connectSocket();
       wx.showToast({ title: "连接中，成功后自动创建", icon: "none" });
@@ -2659,7 +2975,10 @@ Page({
     this.clearPendingRoomAction();
     this.debugClientEvent("room:create_send", {
       roomId: this.data.roomId,
-      playerId: this.data.playerId
+      playerId: this.data.playerId,
+      themeId: config.themeId,
+      runtimeConnectionSource: this.data.runtimeConnectionSource,
+      connectionSummaryText: this.data.connectionSummaryText
     });
     this.sendEvent("room:create", {
       nickname: this.data.nickname || "玩家",
@@ -2838,6 +3157,38 @@ Page({
     this.selfRollAudioGatePassed = false;
   },
 
+  recoverSelfRollUiAfterInterruption() {
+    const expected = this.data.roomConfig && typeof this.data.roomConfig.dicePerPlayer === "number"
+      ? this.data.roomConfig.dicePerPlayer
+      : 5;
+    const storedPrivateDice = Array.isArray(this.data.privateDice) ? this.data.privateDice : [];
+    const fallbackPendingDice = Array.isArray(this.pendingPrivateDice) ? this.pendingPrivateDice : [];
+    const stableDice = storedPrivateDice.length === expected
+      ? storedPrivateDice.slice(0, expected)
+      : (fallbackPendingDice.length === expected ? fallbackPendingDice.slice(0, expected) : []);
+    const hasStableDice = stableDice.length === expected;
+    const shouldShowDice = hasStableDice
+      && !this.data.selfIsWaiting
+      && this.data.phase !== "ended"
+      && (this.data.myDiceVisible || this.data.myDiceRolling || this.data.myDiceRevealing);
+
+    this.clearMyDiceTimers();
+    this.resetSelfRollTransientState();
+    this.setData({
+      privateDice: hasStableDice ? stableDice : storedPrivateDice,
+      selfHasDice: this.data.selfIsWaiting ? false : hasStableDice,
+      myDiceVisible: shouldShowDice,
+      myDicePeekVisible: hasStableDice && !shouldShowDice && !this.data.selfIsWaiting && this.data.phase !== "ended",
+      myDiceRolling: false,
+      myDiceRevealing: false,
+      myDiceJustRevealed: false,
+      myDiceCovered: hasStableDice && shouldShowDice ? Boolean(this.data.myDiceCovered) : false,
+      roomSelfDiceFaces: hasStableDice
+        ? buildDiceFaceItems(stableDice, this.data.roomThemeId)
+        : buildSelfDiceDisplayItems(this.data.roomThemeId)
+    });
+  },
+
   getSelfRollAudioDurationMs() {
     return ROOM_SELF_ROLLING_DURATION_MS;
   },
@@ -2856,7 +3207,7 @@ Page({
         count: expected,
         finalDice: this.pendingPrivateDice,
         revealCount: this.selfRollRevealCount
-      })
+      }, this.data.roomThemeId)
     });
   },
 
@@ -2877,7 +3228,8 @@ Page({
     this.setData({
       myDiceRolling: false,
       myDiceRevealing: true,
-      myDiceJustRevealed: false
+      myDiceJustRevealed: false,
+      myDiceCovered: false
     });
 
     const revealNext = () => {
@@ -2894,7 +3246,8 @@ Page({
         this.setData({
           myDiceRevealing: false,
           myDiceJustRevealed: true,
-          roomSelfDiceFaces: buildDiceFaceItems(this.pendingPrivateDice)
+          myDiceCovered: false,
+          roomSelfDiceFaces: buildDiceFaceItems(this.pendingPrivateDice, this.data.roomThemeId)
         });
         this.myDiceRevealTimer = setTimeout(() => {
           if (actionId !== this.currentSelfRollActionId) {
@@ -2946,7 +3299,8 @@ Page({
       myDiceRolling: true,
       myDiceRevealing: false,
       myDiceJustRevealed: false,
-      roomSelfDiceFaces: buildSelfRollDisplayItems({ count: expected })
+      myDiceCovered: false,
+      roomSelfDiceFaces: buildSelfRollDisplayItems({ count: expected }, this.data.roomThemeId)
     });
     this.startRoomSelfRolling(expected, actionId);
 
@@ -2979,7 +3333,8 @@ Page({
       myDiceRolling: false,
       myDiceRevealing: false,
       myDiceJustRevealed: false,
-      roomSelfDiceFaces: buildDiceFaceItems(display)
+      myDiceCovered: false,
+      roomSelfDiceFaces: buildDiceFaceItems(display, this.data.roomThemeId)
     });
   },
 
@@ -2995,8 +3350,26 @@ Page({
       myDicePeekVisible: canPeek,
       myDiceRolling: false,
       myDiceRevealing: false,
-      myDiceJustRevealed: false
+      myDiceJustRevealed: false,
+      myDiceCovered: false
     });
+  },
+
+  toggleSelfDiceCover() {
+    if (this.data.selfIsWaiting || this.data.phase === "ended" || this.data.myDiceRolling || this.data.myDiceRevealing) {
+      return;
+    }
+
+    const expected = this.data.roomConfig && typeof this.data.roomConfig.dicePerPlayer === "number"
+      ? this.data.roomConfig.dicePerPlayer
+      : 5;
+    const hasDice = Array.isArray(this.data.privateDice) && this.data.privateDice.length === expected;
+    if (!hasDice || !this.data.myDiceVisible) {
+      return;
+    }
+
+    this.haptic("light");
+    this.setData({ myDiceCovered: !this.data.myDiceCovered });
   },
 
   clearSettlementCountdown() {
@@ -3051,14 +3424,27 @@ Page({
       openResult: sourceOpenResult,
       roundSummary: matchedSummary,
       playersRaw: this.data.playersRaw,
-      selfPlayerId: this.data.playerId
+      selfPlayerId: this.data.playerId,
+      roomThemeId: this.data.roomThemeId
     });
     if (!model) {
       return;
     }
 
     const selfId = String(this.data.playerId || "");
-    const settlementCanContinue = Boolean(model.loserId) && selfId === String(model.loserId);
+    const playersRaw = this.data.playersRaw || [];
+    const self = playersRaw.find((player) => String(player.id || "") === selfId);
+    const loser = playersRaw.find((player) => String(player.id || "") === String(model.loserId || ""));
+    const winner = model.rows.find((row) => row.kind === "winner") || null;
+    const winnerId = winner ? String(winner.playerId || "") : "";
+    const loserUnavailable = Boolean(model.loserId) && (!loser || loser.onlineStatus === "offline");
+    const settlementCanContinue = Boolean(model.loserId) && (
+      selfId === String(model.loserId)
+      || (Boolean(self && self.isOwner) && loserUnavailable)
+    );
+    const settlementSfxKind = selfId && selfId === String(model.loserId || "")
+      ? "loseAlert"
+      : (selfId && selfId === winnerId ? "settlement" : "settlement");
     const shouldPlaySettlementSfx = !this.data.settlementVisible;
     if (settlementCanContinue) {
       this.startSettlementCountdown(2);
@@ -3066,7 +3452,7 @@ Page({
       this.clearSettlementCountdown();
     }
     if (shouldPlaySettlementSfx) {
-      this.playSfx("settlement");
+      this.playSfx(settlementSfxKind);
     }
     this.setData({
       settlementVisible: true,
@@ -3076,14 +3462,13 @@ Page({
       settlementPointAsset: model.pointAsset,
       settlementRows: model.rows,
       settlementCanContinue,
-      settlementContinueSec: settlementCanContinue ? this.data.settlementContinueSec : 0
+      settlementContinueSec: settlementCanContinue ? this.data.settlementContinueSec : 0,
+      recentSettlementAvailable: true
     });
   },
 
   hideSettlementPanel() {
     this.clearSettlementCountdown();
-    this.latestOpenResult = null;
-    this.latestRoundSummary = null;
     this.setData({
       settlementVisible: false,
       settlementSummaryText: "",
@@ -3092,7 +3477,8 @@ Page({
       settlementPointAsset: "",
       settlementRows: [],
       settlementCanContinue: false,
-      settlementContinueSec: 0
+      settlementContinueSec: 0,
+      recentSettlementAvailable: Boolean(this.latestOpenResult)
     });
   },
 
@@ -3115,7 +3501,7 @@ Page({
       settlementCanContinue: false,
       settlementContinueSec: 0,
       privateDice: [],
-      roomSelfDiceFaces: buildSelfDiceDisplayItems(),
+      roomSelfDiceFaces: buildSelfDiceDisplayItems(this.data.roomThemeId),
       selfHasDice: false,
       selfHasCalled: false,
       selfRollCountThisRound: 0,
@@ -3124,12 +3510,12 @@ Page({
       myDiceRolling: false,
       myDiceRevealing: false,
       myDiceJustRevealed: false,
+      myDiceCovered: false,
       callTimeline: [],
       lastCallKey: ""
     });
     this.clearSettlementCountdown();
-    this.latestOpenResult = null;
-    this.latestRoundSummary = null;
+    this.setData({ recentSettlementAvailable: Boolean(this.latestOpenResult) });
     this.sendEvent("round:restart", {});
   },
 
@@ -3180,6 +3566,10 @@ Page({
       wx.showToast({ title: "已到上限，请直接开牌", icon: "none" });
       return;
     }
+    if (!this.data.callCountTouched || !this.data.callPointTouched) {
+      wx.showToast({ title: this.data.callSelectionSummaryText || "请先选完整叫牌", icon: "none" });
+      return;
+    }
     this.haptic("light");
     const count = Number(this.data.callCount);
     const point = Number(this.data.callPoint);
@@ -3199,7 +3589,10 @@ Page({
       callSelectorMode: "",
       callPanelExpanded: false,
       primaryActionText: "叫牌",
-      callPanelVisible: false
+      callPanelVisible: false,
+      callCountTouched: false,
+      callPointTouched: false,
+      callSelectionSummaryText: buildCallSelectionSummary(false, false, count, point)
     });
   },
 
@@ -3325,7 +3718,10 @@ Page({
     }
 
     const self = (this.data.playersRaw || []).find((player) => player.id === this.data.playerId);
-    if (this.data.phase === "ready" && self && self.isOwner && this.data.round === 0) {
+    const canManageSeating = (this.data.phase === "ready" || this.data.phase === "ended")
+      && self
+      && self.isOwner;
+    if (canManageSeating) {
       const picked = (this.data.playersRaw || []).find((p) => p.id === playerId);
       this.openSeatingPanel(picked);
       return;
@@ -3342,7 +3738,7 @@ Page({
   },
 
   openSeatingPanel(presetPlayer) {
-    if (!(this.data.phase === "ready" && this.data.selfIsOwner && this.data.round === 0)) {
+    if (!((this.data.phase === "ready" || this.data.phase === "ended") && this.data.selfIsOwner)) {
       wx.showToast({ title: "当前不可排位", icon: "none" });
       return;
     }
@@ -3467,10 +3863,7 @@ Page({
   },
 
   openDice() {
-    const isCallingTurn = this.data.phase === "calling"
-      && this.data.currentPlayerId === this.data.playerId
-      && !this.data.selfIsWaiting;
-    if (isCallingTurn && !this.data.canOpenAction) {
+    if (!this.data.canOpenAction) {
       wx.showToast({ title: "当前还不能开牌", icon: "none" });
       return;
     }
@@ -3484,14 +3877,34 @@ Page({
     this.sendEvent("open:request", {});
   },
 
-  toggleHistory() {
-    if (this.data.selfIsWaiting) {
-      wx.showToast({ title: "旁观者不可操作", icon: "none" });
+  onSecondaryAction() {
+    if (!this.data.secondaryActionEnabled) {
       return;
     }
+
+    switch (String(this.data.secondaryActionKind || "")) {
+      case "reroll":
+        this.rollDice();
+        return;
+      case "open":
+        this.openDice();
+        return;
+      case "history":
+        this.toggleHistory();
+        return;
+      case "rules":
+        this.openRulesPanel();
+        return;
+      default:
+        return;
+    }
+  },
+
+  toggleHistory() {
     const nextVisible = !this.data.historyVisible;
     this.setData({
       historyVisible: nextVisible,
+      rulesVisible: false,
       voiceVisible: false,
       chatVisible: false
     });
@@ -3503,30 +3916,27 @@ Page({
 
   loadHistory() {
     this.setData({ historyAppendMode: false });
-    this.sendEvent("history:list", { limit: 10 });
-  },
-
-  loadMoreHistory() {
-    if (!this.data.historyNextBeforeRound) {
-      return;
-    }
-
-    this.setData({ historyAppendMode: true });
-    this.sendEvent("history:list", {
-      limit: 10,
-      beforeRound: this.data.historyNextBeforeRound
-    });
+    this.sendEvent("history:list", { limit: 3 });
   },
 
   onSettlementViewHistory() {
     this.setData({
       historyVisible: true,
+      rulesVisible: false,
       voiceVisible: false,
       chatVisible: false
     });
     if (!this.data.historyItems.length) {
       this.loadHistory();
     }
+  },
+
+  reopenLatestSettlement() {
+    if (!this.latestOpenResult) {
+      wx.showToast({ title: "暂无可回看的结算", icon: "none" });
+      return;
+    }
+    this.showSettlementPanel(this.latestOpenResult, this.latestRoundSummary);
   },
 
   onSettlementContinue() {
@@ -3546,6 +3956,7 @@ Page({
     this.setData({
       voiceVisible: nextVisible,
       historyVisible: false,
+      rulesVisible: false,
       chatVisible: false
     });
 
@@ -3564,6 +3975,7 @@ Page({
       chatVisible: nextVisible,
       chatUnreadCount: nextVisible ? 0 : this.data.chatUnreadCount,
       historyVisible: false,
+      rulesVisible: false,
       voiceVisible: false
     });
 
@@ -3666,6 +4078,61 @@ Page({
     });
   },
 
+  onTapRules() {
+    this.closeTopbarMenu();
+    this.openRulesPanel();
+  },
+
+  cacheRoomTheme(roomId, themeId) {
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const normalizedThemeId = parseOptionalRoomThemeId(themeId);
+    if (!normalizedRoomId || !normalizedThemeId) {
+      return;
+    }
+    const cache = readRoomThemeCache();
+    cache[normalizedRoomId] = normalizedThemeId;
+    writeRoomThemeCache(cache);
+  },
+
+  getCachedRoomTheme(roomId) {
+    const normalizedRoomId = normalizeRoomId(roomId);
+    if (!normalizedRoomId) {
+      return "";
+    }
+    const cache = readRoomThemeCache();
+    return parseOptionalRoomThemeId(cache[normalizedRoomId]);
+  },
+
+  resolveRoomThemeId(roomId, incomingThemeId = "", provisionalThemeId = "") {
+    const explicitThemeId = parseOptionalRoomThemeId(incomingThemeId);
+    const normalizedRoomId = normalizeRoomId(roomId);
+    if (normalizedRoomId && explicitThemeId) {
+      this.cacheRoomTheme(normalizedRoomId, explicitThemeId);
+      return explicitThemeId;
+    }
+
+    const cachedThemeId = this.getCachedRoomTheme(normalizedRoomId);
+    if (cachedThemeId) {
+      return cachedThemeId;
+    }
+
+    const sameRoomThemeId = normalizedRoomId && normalizedRoomId === normalizeRoomId(this.data.roomId)
+      ? parseOptionalRoomThemeId(this.data.roomThemeId)
+      : "";
+    if (sameRoomThemeId) {
+      return sameRoomThemeId;
+    }
+
+    const createThemeId = normalizedRoomId && normalizedRoomId === normalizeRoomId(this.data.roomId)
+      ? parseOptionalRoomThemeId(this.data.createRoomThemeId)
+      : "";
+    if (createThemeId) {
+      return createThemeId;
+    }
+
+    return DEFAULT_ROOM_THEME_ID;
+  },
+
   closeTopbarMenu() {
     if (!this.data.topbarMenuVisible) {
       return;
@@ -3683,6 +4150,11 @@ Page({
     this.openToolsMenu();
   },
 
+  onTapMenuHistory() {
+    this.closeTopbarMenu();
+    this.toggleHistory();
+  },
+
   onTapMenuLeave() {
     this.closeTopbarMenu();
     this.leaveRoom();
@@ -3691,6 +4163,22 @@ Page({
   onTapMenuSeating() {
     this.closeTopbarMenu();
     this.openSeatingPanel();
+  },
+
+  openRulesPanel() {
+    this.setData({
+      rulesVisible: true,
+      historyVisible: false,
+      voiceVisible: false,
+      chatVisible: false
+    });
+  },
+
+  closeRulesPanel() {
+    if (!this.data.rulesVisible) {
+      return;
+    }
+    this.setData({ rulesVisible: false });
   },
 
   ensureShareMenuVisible() {
@@ -3732,6 +4220,7 @@ Page({
   buildRoomShareMessage() {
     const roomId = String(this.data.roomId || "").trim();
     const nickname = safeDecodeComponent(this.data.nickname).trim() || "好友";
+    const themeId = parseOptionalRoomThemeId(this.data.roomThemeId);
 
     if (!roomId) {
       return {
@@ -3742,7 +4231,7 @@ Page({
 
     return {
       title: `${nickname} 邀你加入房间 ${roomId}`,
-      path: buildRoomShareEntryUrl(roomId)
+      path: buildRoomShareEntryUrl(roomId, themeId)
     };
   },
 
@@ -3762,6 +4251,14 @@ Page({
 
     const config = this.data.roomConfig;
     const testMode = Boolean(config && config.testMode);
+    const hasWaitingPlayers = (this.data.waitingPlayersRaw || []).length > 0;
+    if (this.data.selfIsOwner && hasWaitingPlayers) {
+      sections.push({
+        label: "房主工具",
+        open: () => this.openToolsOwnerMenu()
+      });
+    }
+
     if (this.data.selfIsOwner && testMode) {
       sections.push({
         label: "测试工具",
@@ -3794,35 +4291,35 @@ Page({
   },
 
   openToolsBasicMenu() {
-    const items = [];
-    const actions = [];
+    this.setData({ toolsBasicVisible: true });
+  },
 
-    const sfxToggleLabel = this.data.sfxEnabled ? "关闭音效" : "开启音效";
-    items.push(sfxToggleLabel);
-    actions.push(() => {
-      const next = !this.data.sfxEnabled;
-      this.setData({ sfxEnabled: next });
-      wx.setStorageSync(SFX_ENABLED_KEY, next);
-      wx.showToast({ title: next ? "音效已开启" : "音效已关闭", icon: "none" });
-    });
+  closeToolsBasicMenu() {
+    if (!this.data.toolsBasicVisible) {
+      return;
+    }
+    this.setData({ toolsBasicVisible: false });
+  },
 
-    const hapticToggleLabel = this.data.hapticEnabled ? "关闭震动" : "开启震动";
-    items.push(hapticToggleLabel);
-    actions.push(() => {
-      const next = !this.data.hapticEnabled;
-      this.setData({ hapticEnabled: next });
-      wx.setStorageSync(HAPTIC_ENABLED_KEY, next);
-      wx.showToast({ title: next ? "震动已开启" : "震动已关闭", icon: "none" });
-    });
+  onToggleRoomSfx() {
+    const next = !this.data.sfxEnabled;
+    this.setData({ sfxEnabled: next });
+    wx.setStorageSync(SFX_ENABLED_KEY, next);
+    wx.showToast({ title: next ? "音效已开启" : "音效已关闭", icon: "none" });
+  },
 
-    this.showActionSheetSafe({
-      itemList: items,
-      success: (res) => {
-        const action = actions[res.tapIndex];
-        if (action) action();
-      },
-      fail: () => {}
-    });
+  onToggleRoomTurnAlertSfx() {
+    const next = !this.data.turnAlertSfxEnabled;
+    this.setData({ turnAlertSfxEnabled: next });
+    wx.setStorageSync(TURN_ALERT_SFX_ENABLED_KEY, next);
+    wx.showToast({ title: next ? "叫牌提醒已开启" : "叫牌提醒已关闭", icon: "none" });
+  },
+
+  onToggleRoomHaptic() {
+    const next = !this.data.hapticEnabled;
+    this.setData({ hapticEnabled: next });
+    wx.setStorageSync(HAPTIC_ENABLED_KEY, next);
+    wx.showToast({ title: next ? "震动已开启" : "震动已关闭", icon: "none" });
   },
 
   openToolsOwnerMenu() {
@@ -3899,6 +4396,11 @@ Page({
 
   openWaitingAdmitFlow() {
     const waiting = this.data.waitingPlayersRaw || [];
+    if (!waiting.length) {
+      wx.showToast({ title: "暂无等待玩家", icon: "none" });
+      return;
+    }
+
     const labels = waiting.map((p) => `${String(p.nickname || "等待").slice(0, 6)} (${String(p.id || "").slice(0, 6)})`);
 
     this.showActionSheetSafe({
@@ -4047,6 +4549,25 @@ Page({
         const waitingPlayersRaw = payload.waitingPlayers || [];
         this.clearStoredSessionIfSelfMissing(roomId, playersRaw, waitingPlayersRaw);
         const roomConfig = payload.config || null;
+        const incomingThemeId = roomConfig && roomConfig.themeId;
+        const roomThemeId = this.resolveRoomThemeId(roomId, incomingThemeId, this.data.createRoomThemeId);
+        const previousRoomThemeId = normalizeRoomThemeId(this.data.roomThemeId || DEFAULT_ROOM_THEME_ID);
+        const shouldLogThemeSync = !this.hasReceivedRoomState
+          || !incomingThemeId
+          || roomThemeId !== previousRoomThemeId;
+        if (shouldLogThemeSync) {
+          this.debugClientEvent("room:state_theme_sync", {
+            payloadRoomId: roomId,
+            incomingThemeId: incomingThemeId || "",
+            appliedThemeId: roomThemeId,
+            previousThemeId: previousRoomThemeId,
+            runtimeConnectionSource: this.data.runtimeConnectionSource,
+            connectionSummaryText: this.data.connectionSummaryText,
+            phase: payload.phase || "ready",
+            round: Number(payload.round || 0),
+            version: Number(payload.version || 0)
+          });
+        }
         const playerCount = Array.isArray(playersRaw) ? playersRaw.length : 0;
         const validTargets = (this.data.selectedTargetIds || []).filter((id) => {
           return playersRaw.some((player) => player.id === id && player.id !== this.data.playerId);
@@ -4091,7 +4612,7 @@ Page({
         const turnKey = `${incomingRound}:${phase}:${payload.currentPlayerId || "-"}:${lastCallObj ? lastCallObj.ts : 0}`;
 
         if (phase === "calling") {
-          this.resetTurnCountdown(turnKey);
+          this.resetTurnCountdown(turnKey, payload.turnDeadlineTs, payload.serverTs);
         } else {
           this.clearTurnCountdown();
         }
@@ -4142,18 +4663,44 @@ Page({
           && phase === "calling"
           && !this.suppressCallAttention
         );
+        const shouldPlayTurnAlert = Boolean(
+          this.hasReceivedRoomState
+          && phase === "calling"
+          && String(payload.currentPlayerId || "") === String(this.data.playerId || "")
+          && !selfIsWaiting
+          && turnKey !== this.lastTurnAlertKey
+        );
 
         const playersDecorated = decoratePlayers(
           playersRaw,
           this.data.playerId,
           validTargets,
           payload.lastCall,
-          roomDirection
+          roomDirection,
+          roomThemeId
         );
-        const ghostSeats = buildGhostSeats(playersDecorated, playersRaw.length);
+        const ghostSeats = buildGhostSeats(playersDecorated);
 
         const startActionEnabled = Boolean(selfIsOwner && phase === "ready" && playerCount >= 2);
         const startActionText = selfIsOwner ? "开始" : "等待房主";
+        const onlinePlayerCount = playersRaw.filter((player) => player.onlineStatus === "online").length;
+        const lastCallPlayer = lastCallObj
+          ? playersRaw.find((player) => String(player.id || "") === String(lastCallObj.by || ""))
+          : null;
+        const lastCallIsOpenableTarget = Boolean(
+          lastCallObj
+          && lastCallPlayer
+          && String(lastCallObj.by || "") !== String(this.data.playerId || "")
+          && onlinePlayerCount >= 2
+        );
+        const endedStarter = payload.currentPlayerId
+          ? playersRaw.find((player) => String(player.id || "") === String(payload.currentPlayerId || ""))
+          : null;
+        const ownerCanRestartEnded = Boolean(
+          selfIsOwner
+          && phase === "ended"
+          && (!payload.currentPlayerId || !endedStarter || endedStarter.onlineStatus === "offline")
+        );
 
         const isMyCallingTurn = payload.phase === "calling"
           && payload.currentPlayerId === this.data.playerId
@@ -4183,23 +4730,39 @@ Page({
         const nextCallCount = String(nextCallCountNum);
         const nextCallPoint = String(nextCallPointNum);
         const callCountOptions = this.buildCallCountOptions(nextCallCountNum, maxCallCount);
+        const callPointOptionItems = buildCallPointOptionItems(roomThemeId, ["1", "2", "3", "4", "5", "6"]);
         const callForcedOpen = Boolean(isMyCallingTurn && suggestedCall.forcedOpen);
         const callPanelVisible = isMyCallingTurn ? Boolean(this.data.callPanelVisible) : false;
         const callPanelExpanded = isMyCallingTurn ? Boolean(this.data.callPanelExpanded) : false;
-        const canOpenAction = Boolean(isMyCallingTurn && lastCallObj);
+        const canOpenAction = lastCallIsOpenableTarget;
+        const showQuickOpenAction = false;
+        const shouldResetCallSelection = Boolean(
+          !isMyCallingTurn
+          || roundChanged
+          || previousLastCallTs !== nextLastCallTs
+          || this.data.phase !== "calling"
+          || this.data.currentPlayerId !== this.data.playerId
+        );
+        const callCountTouched = isMyCallingTurn && !callForcedOpen && !shouldResetCallSelection
+          ? Boolean(this.data.callCountTouched)
+          : Boolean(isMyCallingTurn && !callForcedOpen);
+        const callPointTouched = isMyCallingTurn && !callForcedOpen && !shouldResetCallSelection
+          ? Boolean(this.data.callPointTouched)
+          : Boolean(isMyCallingTurn && !callForcedOpen);
+        const callSelectionSummaryText = callForcedOpen
+          ? "已到上限，请直接开牌"
+          : buildCallSelectionSummary(callCountTouched, callPointTouched, nextCallCount, nextCallPoint);
 
         const settlementVisible = Boolean(this.data.settlementVisible) && phase === "ended";
         if (!settlementVisible && this.data.settlementVisible) {
           this.clearSettlementCountdown();
-          this.latestOpenResult = null;
-          this.latestRoundSummary = null;
         }
 
         const hasDice = Array.isArray(this.data.privateDice) && this.data.privateDice.length === dicePerPlayer;
         const myDicePeekVisible = !selfIsWaiting && phase !== "ended" && !this.data.myDiceVisible && hasDice;
         const roomSelfDiceFaces = (this.data.myDiceRolling || this.data.myDiceRevealing)
           ? this.data.roomSelfDiceFaces
-          : (hasDice ? buildDiceFaceItems(this.data.privateDice) : buildSelfDiceDisplayItems());
+          : (hasDice ? buildDiceFaceItems(this.data.privateDice, roomThemeId) : buildSelfDiceDisplayItems(roomThemeId));
 
         let primaryActionText = "开始";
         let canPrimaryAction = false;
@@ -4224,7 +4787,7 @@ Page({
           primaryActionText = "开牌中";
           canPrimaryAction = false;
         } else if (phase === "ended") {
-          if (payload.currentPlayerId === this.data.playerId) {
+          if (payload.currentPlayerId === this.data.playerId || ownerCanRestartEnded) {
             primaryActionText = "开始";
             canPrimaryAction = true;
           } else {
@@ -4240,6 +4803,18 @@ Page({
             canPrimaryAction = false;
           }
         }
+        const secondaryAction = this.computeSecondaryActionState({
+          phase,
+          selfIsWaiting,
+          isMyCallingTurn,
+          hasDice,
+          selfRollLocked,
+          selfRollCountThisRound,
+          canOpenAction,
+          callForcedOpen,
+          lastCallExists: Boolean(lastCallObj),
+          lastCallBySelf: Boolean(lastCallObj && String(lastCallObj.by || "") === String(this.data.playerId || ""))
+        });
 
         const seatingSelectedSeatIndex = Number(this.data.seatingSelectedSeatIndex || 0);
         const seatRows = buildSeatRows(playersRaw, 8, seatingSelectedSeatIndex);
@@ -4261,6 +4836,7 @@ Page({
           primaryActionText,
           canPrimaryAction,
           roomConfig,
+          ...buildRoomThemePresentation(roomThemeId),
           playersRaw,
           playersDecorated,
           ghostSeats,
@@ -4282,12 +4858,20 @@ Page({
           callCount: nextCallCount,
           callPoint: nextCallPoint,
           callCountOptions,
+          callPointOptionItems,
           maxCallCount,
           callForcedOpen,
           callSelectorMode: isMyCallingTurn ? (this.data.callSelectorMode || "count") : "",
           callPanelExpanded: isMyCallingTurn ? callPanelExpanded : false,
           callPanelVisible,
+          callCountTouched,
+          callPointTouched,
+          callSelectionSummaryText,
           canOpenAction,
+          showQuickOpenAction,
+          secondaryActionText: secondaryAction.secondaryActionText,
+          secondaryActionKind: secondaryAction.secondaryActionKind,
+          secondaryActionEnabled: secondaryAction.secondaryActionEnabled,
           settlementVisible,
           settlementSummaryText: settlementVisible ? this.data.settlementSummaryText : "",
           settlementDeclaredText: settlementVisible ? this.data.settlementDeclaredText : "",
@@ -4296,16 +4880,18 @@ Page({
           settlementRows: settlementVisible ? this.data.settlementRows : [],
           settlementCanContinue: settlementVisible ? this.data.settlementCanContinue : false,
           settlementContinueSec: settlementVisible ? this.data.settlementContinueSec : 0,
+          recentSettlementAvailable: Boolean(this.latestOpenResult),
           privateDice: (selfIsWaiting || roundChanged) ? [] : this.data.privateDice,
           callTimeline,
           lastCallKey,
           turnCountdownSec: this.data.turnCountdownSec,
-          roomSelfDiceFaces: (selfIsWaiting || roundChanged) ? buildSelfDiceDisplayItems() : roomSelfDiceFaces,
+          roomSelfDiceFaces: (selfIsWaiting || roundChanged) ? buildSelfDiceDisplayItems(roomThemeId) : roomSelfDiceFaces,
           myDiceVisible: (selfIsWaiting || phase === "ended" || roundChanged) ? false : this.data.myDiceVisible,
           myDicePeekVisible: selfIsWaiting ? false : myDicePeekVisible,
           myDiceRolling: (selfIsWaiting || phase === "ended" || roundChanged) ? false : this.data.myDiceRolling,
           myDiceRevealing: (selfIsWaiting || phase === "ended" || roundChanged) ? false : this.data.myDiceRevealing,
-          myDiceJustRevealed: (selfIsWaiting || roundChanged) ? false : this.data.myDiceJustRevealed
+          myDiceJustRevealed: (selfIsWaiting || roundChanged) ? false : this.data.myDiceJustRevealed,
+          myDiceCovered: (selfIsWaiting || phase === "ended" || roundChanged || !hasDice) ? false : this.data.myDiceCovered
         });
 
         this.hasReceivedRoomState = true;
@@ -4315,16 +4901,24 @@ Page({
           this.playSfx("roundStart");
         }
         if (shouldPlayCallAttention) {
-          if (String(lastCallObj && lastCallObj.by || "") !== String(this.data.playerId || "")) {
+          if (String(lastCallObj && lastCallObj.by || "") !== String(this.data.playerId || "") && !shouldPlayTurnAlert) {
             this.playSfx("call");
           }
           if (
             String(payload.currentPlayerId || "") === String(this.data.playerId || "")
             && String(lastCallObj && lastCallObj.by || "") !== String(this.data.playerId || "")
             && !selfIsWaiting
+            && !shouldPlayTurnAlert
           ) {
             this.haptic("light");
           }
+        }
+        if (shouldPlayTurnAlert) {
+          this.lastTurnAlertKey = turnKey;
+          if (this.data.turnAlertSfxEnabled) {
+            this.playSfx("turnAlert");
+          }
+          this.haptic("heavy");
         }
 
         break;
@@ -4365,6 +4959,19 @@ Page({
       case "action:ack": {
         const actionId = payload.actionId;
         const actionEvent = actionId ? this.actionEventMap[actionId] : "";
+        if (actionEvent === "room:create" || actionEvent === "room:join" || actionEvent === "room:rejoin" || actionEvent === "game:start") {
+          this.debugClientEvent("action:ack", {
+            actionEvent,
+            actionId: String(actionId || ""),
+            ok: Boolean(payload.ok),
+            code: String(payload.code || ""),
+            reason: String(payload.reason || ""),
+            ackRoomId: String(payload.roomId || ""),
+            ackPlayerId: String(payload.playerId || ""),
+            runtimeConnectionSource: this.data.runtimeConnectionSource,
+            connectionSummaryText: this.data.connectionSummaryText
+          });
+        }
         if (actionId) {
           delete this.actionEventMap[actionId];
         }
@@ -4375,18 +4982,28 @@ Page({
         }
 
         if (payload.roomId || payload.playerId || payload.resumeToken) {
+          const nextRoomId = payload.roomId || this.data.roomId;
+          const nextThemeId = actionEvent === "room:create"
+            ? parseOptionalRoomThemeId(this.data.createRoomThemeId)
+            : parseOptionalRoomThemeId(this.data.roomThemeId);
           const nextData = {
-            roomId: payload.roomId || this.data.roomId,
-            displayRoomId: formatRoomIdDisplay(payload.roomId || this.data.roomId),
+            roomId: nextRoomId,
+            displayRoomId: formatRoomIdDisplay(nextRoomId),
             playerId: payload.playerId || this.data.playerId,
             resumeToken: payload.resumeToken || this.data.resumeToken,
-            joinRoomId: payload.roomId || this.data.joinRoomId
+            joinRoomId: nextRoomId
           };
 
           this.setData({
             ...nextData
           });
-          this.persistSession(nextData);
+          if (nextRoomId && nextThemeId) {
+            this.cacheRoomTheme(nextRoomId, nextThemeId);
+          }
+          this.persistSession({
+            ...nextData,
+            themeId: nextThemeId
+          });
         }
 
         if (!payload.ok) {
@@ -4401,6 +5018,14 @@ Page({
           const code = String(payload.code || "");
           const reason = String(payload.reason || "操作失败");
           const failText = code ? `${code}: ${reason}` : reason;
+          const isExpiredAccountFailure = code === "FORBIDDEN"
+            && isExpiredAccountSessionMessage(reason)
+            && (actionEvent === "room:create" || actionEvent === "room:join");
+
+          if (isExpiredAccountFailure) {
+            this.pendingAccountRecoveryPromise = this.recoverExpiredAccountBinding(actionEvent);
+            break;
+          }
 
           this.setData({ lastWsError: failText });
           this.refreshWsHint(failText);
@@ -4429,7 +5054,8 @@ Page({
           privateDice: finalDice,
           selfHasDice: finalDice.length === expected,
           myDiceVisible: !this.data.selfIsWaiting && this.data.phase !== "ended",
-          myDicePeekVisible: false
+          myDicePeekVisible: false,
+          myDiceCovered: false
         });
 
         if (!this.data.myDiceRolling && !this.data.myDiceRevealing) {
@@ -4438,9 +5064,10 @@ Page({
             myDiceRolling: false,
             myDiceRevealing: false,
             myDiceJustRevealed: true,
+            myDiceCovered: false,
             roomSelfDiceFaces: buildDiceFaceItems(finalDice.length === expected
               ? finalDice
-              : buildSelfDiceFallback(expected))
+              : buildSelfDiceFallback(expected), this.data.roomThemeId)
           });
 
           this.myDiceRevealTimer = setTimeout(() => {
@@ -4455,16 +5082,53 @@ Page({
         break;
       }
       case "history:list": {
-        const incoming = normalizeHistoryItems(payload.items);
-        const current = this.data.historyItems || [];
+        const incoming = Array.isArray(payload.items) ? payload.items.slice(0, 3) : [];
+        let merged = incoming
+          .map((summary) => {
+            const model = buildSettlementViewModel({
+              openResult: summary && summary.openResult,
+              roundSummary: summary,
+              playersRaw: this.data.playersRaw,
+              selfPlayerId: this.data.playerId,
+              roomThemeId: this.data.roomThemeId
+            });
+            if (!model) {
+              return null;
+            }
+            return {
+              round: Number(summary.round || 0),
+              summaryText: model.summaryText,
+              declaredText: model.declaredText,
+              actualText: model.actualText,
+              pointAsset: model.pointAsset,
+              rows: model.rows
+            };
+          })
+          .filter(Boolean);
 
-        const merged = this.data.historyAppendMode
-          ? [...current, ...incoming]
-          : incoming;
+        if (!merged.length && this.latestOpenResult) {
+          const latestModel = buildSettlementViewModel({
+            openResult: this.latestOpenResult,
+            roundSummary: this.latestRoundSummary,
+            playersRaw: this.data.playersRaw,
+            selfPlayerId: this.data.playerId,
+            roomThemeId: this.data.roomThemeId
+          });
+          if (latestModel) {
+            merged = [{
+              round: Number(this.latestOpenResult.round || 0),
+              summaryText: latestModel.summaryText,
+              declaredText: latestModel.declaredText,
+              actualText: latestModel.actualText,
+              pointAsset: latestModel.pointAsset,
+              rows: latestModel.rows
+            }];
+          }
+        }
 
         this.setData({
           historyItems: merged,
-          historyNextBeforeRound: payload.nextBeforeRound || null,
+          historyNextBeforeRound: null,
           historyAppendMode: false
         });
 
@@ -4596,7 +5260,7 @@ Page({
     this.setData({
       selectedTargetIds: nextIds,
       playersDecorated,
-      ghostSeats: buildGhostSeats(playersDecorated, this.data.playersRaw.length)
+      ghostSeats: buildGhostSeats(playersDecorated)
     });
   },
 
@@ -4606,7 +5270,7 @@ Page({
     lastCall = this.data.lastCallObj
   ) {
     const roomDirection = this.data.roomConfig && this.data.roomConfig.direction === "ccw" ? "ccw" : "cw";
-    return decoratePlayers(playersRaw, this.data.playerId, selectedTargetIds, lastCall, roomDirection);
+    return decoratePlayers(playersRaw, this.data.playerId, selectedTargetIds, lastCall, roomDirection, this.data.roomThemeId);
   },
 
   onSeatAvatarError(event) {
@@ -4628,7 +5292,7 @@ Page({
     this.setData({
       playersRaw,
       playersDecorated,
-      ghostSeats: buildGhostSeats(playersDecorated, playersRaw.length),
+      ghostSeats: buildGhostSeats(playersDecorated),
       ...(playerId === String(this.data.playerId || "") ? { selfAvatarUrl: fallbackAvatar || getSeatAvatarFallback(0) } : {})
     });
   },
@@ -4649,7 +5313,9 @@ Page({
         roll: ROOM_AUDIO_ASSETS.roll,
         settlement: ROOM_AUDIO_ASSETS.settlement,
         primary: ROOM_AUDIO_ASSETS.primary,
-        roundStart: ROOM_AUDIO_ASSETS.roundStart
+        roundStart: ROOM_AUDIO_ASSETS.roundStart,
+        loseAlert: ROOM_AUDIO_ASSETS.loseAlert,
+        turnAlert: ROOM_AUDIO_ASSETS.turnAlert
       };
       return;
     }
@@ -4661,7 +5327,9 @@ Page({
       roll: ROOM_AUDIO_ASSETS.roll,
       settlement: ROOM_AUDIO_ASSETS.settlement,
       primary: ROOM_AUDIO_ASSETS.primary,
-      roundStart: ROOM_AUDIO_ASSETS.roundStart
+      roundStart: ROOM_AUDIO_ASSETS.roundStart,
+      loseAlert: ROOM_AUDIO_ASSETS.loseAlert,
+      turnAlert: ROOM_AUDIO_ASSETS.turnAlert
     };
     for (const key of keys) {
       const path = `${base}/dice_sfx_${key}.wav`;
@@ -4677,6 +5345,22 @@ Page({
     this.sfxPaths = nextPaths;
   },
 
+  clearSfxStopTimer() {
+    if (this.sfxStopTimer) {
+      clearTimeout(this.sfxStopTimer);
+      this.sfxStopTimer = null;
+    }
+  },
+
+  getSfxStopDelayMs(kind) {
+    const duration = Number(ROOM_AUDIO_DURATIONS_MS[kind]) || 0;
+    const ratio = Number(ROOM_AUDIO_STOP_RATIOS[kind]) || 0;
+    if (duration <= 0 || ratio <= 0 || ratio >= 1) {
+      return 0;
+    }
+    return Math.max(0, Math.round(duration * ratio));
+  },
+
   playSfx(kind) {
     if (!this.data.sfxEnabled) {
       return;
@@ -4689,9 +5373,21 @@ Page({
       return;
     }
     try {
+      this.clearSfxStopTimer();
       this.sfxContext.stop();
       this.sfxContext.src = path;
       this.sfxContext.play();
+      const stopDelay = this.getSfxStopDelayMs(kind);
+      if (stopDelay > 0) {
+        this.sfxStopTimer = setTimeout(() => {
+          this.sfxStopTimer = null;
+          try {
+            this.sfxContext && this.sfxContext.stop();
+          } catch (error) {
+            // ignore stop failure
+          }
+        }, stopDelay);
+      }
     } catch (error) {
       // ignore play failure
     }
@@ -4724,18 +5420,93 @@ Page({
     if (this.data.phase !== "calling" || this.data.currentPlayerId !== this.data.playerId || this.data.selfIsWaiting) {
       return;
     }
+    const nextCountTouched = !this.data.callForcedOpen;
+    const nextPointTouched = !this.data.callForcedOpen;
     this.setData({
       callPanelVisible: true,
       callPanelExpanded: true,
-      callSelectorMode: this.data.callSelectorMode || "count"
+      callSelectorMode: "count",
+      callCountTouched: nextCountTouched,
+      callPointTouched: nextPointTouched,
+      callSelectionSummaryText: buildCallSelectionSummary(nextCountTouched, nextPointTouched, this.data.callCount, this.data.callPoint)
     });
   },
 
   closeCallPanel() {
     this.setData({
       callPanelVisible: false,
-      callPanelExpanded: false
+      callPanelExpanded: false,
+      callSelectionSummaryText: buildCallSelectionSummary(this.data.callCountTouched, this.data.callPointTouched, this.data.callCount, this.data.callPoint)
     });
+  },
+
+  computeSecondaryActionState(context = {}) {
+    const phase = String(context.phase || this.data.phase || "ready");
+    const selfIsWaiting = Boolean(context.selfIsWaiting);
+    const isMyCallingTurn = Boolean(context.isMyCallingTurn);
+    const hasDice = Boolean(context.hasDice);
+    const selfRollLocked = Boolean(context.selfRollLocked);
+    const canOpenAction = Boolean(context.canOpenAction);
+    const callForcedOpen = Boolean(context.callForcedOpen);
+    const lastCallExists = Boolean(context.lastCallExists);
+    const lastCallBySelf = Boolean(context.lastCallBySelf);
+
+    if (selfIsWaiting) {
+      return {
+        secondaryActionText: "规则",
+        secondaryActionKind: "rules",
+        secondaryActionEnabled: true
+      };
+    }
+
+    if (phase === "rolling" && hasDice && !selfRollLocked && hasSelfRollsRemaining({
+      selfRollCountThisRound: context.selfRollCountThisRound
+    })) {
+      return {
+        secondaryActionText: "再摇",
+        secondaryActionKind: "reroll",
+        secondaryActionEnabled: true
+      };
+    }
+
+    if (phase === "calling") {
+      if (!isMyCallingTurn && lastCallBySelf) {
+        return {
+          secondaryActionText: "",
+          secondaryActionKind: "",
+          secondaryActionEnabled: false
+        };
+      }
+
+      if (isMyCallingTurn) {
+        if (callForcedOpen || canOpenAction) {
+          return {
+            secondaryActionText: "开牌",
+            secondaryActionKind: "open",
+            secondaryActionEnabled: true
+          };
+        }
+        return {
+          secondaryActionText: "",
+          secondaryActionKind: "",
+          secondaryActionEnabled: false
+        };
+      }
+
+      if (lastCallExists && canOpenAction) {
+        return {
+          secondaryActionText: "跳开",
+          secondaryActionKind: "open",
+          secondaryActionEnabled: true
+        };
+      }
+    }
+
+    return {
+      secondaryActionText: "",
+      secondaryActionKind: "",
+      secondaryActionEnabled: false
+    };
   },
 
   clampNumber(value, min, max) {
@@ -4844,11 +5615,13 @@ Page({
     }
     this.clearMyDiceTimers();
     this.resetSelfRollTransientState();
+    this.clearTurnCountdown();
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
     this.hasReceivedRoomState = false;
     this.lastRoundStartSfxKey = "";
+    this.lastTurnAlertKey = "";
     this.suppressCallAttention = false;
 
     this.pendingVoiceFileId = "";
@@ -4866,6 +5639,7 @@ Page({
       primaryActionText: "开始",
       canPrimaryAction: false,
       roomConfig: null,
+      ...buildRoomThemePresentation(DEFAULT_ROOM_THEME_ID),
       playersRaw: [],
       playersDecorated: [],
       ghostSeats: [],
@@ -4887,17 +5661,22 @@ Page({
       settlementRows: [],
       settlementCanContinue: false,
       settlementContinueSec: 0,
+      recentSettlementAvailable: false,
       lastCallKey: "",
       callTimeline: [],
+      turnCountdownSec: 0,
+      turnCountdownLabel: "",
       myDiceVisible: false,
       myDicePeekVisible: false,
       myDiceRolling: false,
       myDiceRevealing: false,
       myDiceJustRevealed: false,
-      roomSelfDiceFaces: buildSelfDiceDisplayItems(),
+      myDiceCovered: false,
+      roomSelfDiceFaces: buildSelfDiceDisplayItems(this.data.roomThemeId),
       historyItems: [],
       historyNextBeforeRound: null,
       historyVisible: false,
+      rulesVisible: false,
       voiceItemsRaw: [],
       voiceItems: [],
       voiceVisible: false,
@@ -4912,8 +5691,15 @@ Page({
       callForcedOpen: false,
       callSelectorMode: "",
       callPanelExpanded: false,
+      callCountTouched: false,
+      callPointTouched: false,
+      callSelectionSummaryText: buildCallSelectionSummary(false, false, 3, 6),
       callPanelVisible: false,
       canOpenAction: false,
+      showQuickOpenAction: false,
+      secondaryActionText: "",
+      secondaryActionKind: "",
+      secondaryActionEnabled: false,
       seatingVisible: false,
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "未选择",
@@ -5036,15 +5822,20 @@ Page({
     const roomId = sessionLike.roomId || this.data.roomId;
     const playerId = sessionLike.playerId || this.data.playerId;
     const resumeToken = sessionLike.resumeToken || this.data.resumeToken;
+    const themeId = parseOptionalRoomThemeId(sessionLike.themeId || this.data.roomThemeId);
 
     if (!roomId || !playerId || !resumeToken) {
       return;
     }
 
+    if (themeId) {
+      this.cacheRoomTheme(roomId, themeId);
+    }
     wx.setStorageSync(SESSION_KEY, {
       roomId,
       playerId,
-      resumeToken
+      resumeToken,
+      themeId
     });
   },
 
@@ -5056,6 +5847,8 @@ Page({
     this.clearMyDiceTimers();
     this.resetSelfRollTransientState();
     this.suppressCallAttention = false;
+    this.lastTurnAlertKey = "";
+    this.clearTurnCountdown();
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
@@ -5076,14 +5869,22 @@ Page({
       settlementRows: [],
       settlementCanContinue: false,
       settlementContinueSec: 0,
+      recentSettlementAvailable: false,
       callCount: "3",
       callPoint: "6",
       callCountOptions: buildCallCountOptionItems(3, 8, 1),
       callForcedOpen: false,
       callSelectorMode: "",
       callPanelExpanded: false,
+      callCountTouched: false,
+      callPointTouched: false,
+      callSelectionSummaryText: buildCallSelectionSummary(false, false, 3, 6),
       callPanelVisible: false,
       canOpenAction: false,
+      showQuickOpenAction: false,
+      secondaryActionText: "",
+      secondaryActionKind: "",
+      secondaryActionEnabled: false,
       seatingVisible: false,
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "未选择",
@@ -5091,15 +5892,65 @@ Page({
       pendingActionText: "",
       lastCallKey: "",
       callTimeline: [],
+      turnCountdownSec: 0,
+      turnCountdownLabel: "",
+      historyVisible: false,
+      rulesVisible: false,
       myDiceVisible: false,
       myDicePeekVisible: false,
       myDiceRolling: false,
       myDiceRevealing: false,
       myDiceJustRevealed: false,
-      roomSelfDiceFaces: buildSelfDiceDisplayItems(),
+      myDiceCovered: false,
+      roomSelfDiceFaces: buildSelfDiceDisplayItems(this.data.roomThemeId),
       selfRollLocked: false,
       selfRollCountThisRound: 0,
     });
+  },
+
+  clearExpiredAccountBinding() {
+    clearAccountSession();
+    wx.removeStorageSync(WECHAT_LOGIN_TS_KEY);
+  },
+
+  async recoverExpiredAccountBinding(actionEvent) {
+    this.setData({
+      networkStatusText: "恢复登录中",
+      lastWsError: ""
+    });
+    this.refreshWsHint("");
+
+    if (!globalThis.wx || typeof globalThis.wx.login !== "function") {
+      this.clearExpiredAccountBinding();
+      const message = "账号登录已失效，请重新进入";
+      this.setData({ lastWsError: message });
+      this.refreshWsHint(message);
+      wx.showToast({ title: message, icon: "none" });
+      return;
+    }
+
+    try {
+      await refreshWechatSessionSilently();
+      if (actionEvent === "room:create") {
+        this.createRoom();
+        return;
+      }
+      if (actionEvent === "room:join") {
+        this.joinRoom();
+        return;
+      }
+      if (actionEvent === "room:rejoin" && this.data.connected) {
+        this.rejoinRoom();
+        return;
+      }
+      wx.showToast({ title: "登录状态已恢复", icon: "none" });
+    } catch (error) {
+      this.clearExpiredAccountBinding();
+      const message = error && error.message ? String(error.message) : "登录状态已失效，请重新进入";
+      this.setData({ lastWsError: message });
+      this.refreshWsHint(message);
+      wx.showToast({ title: message, icon: "none" });
+    }
   },
 
   openPrivacyPage() {
@@ -5177,6 +6028,15 @@ Page({
   },
 
   acceptLegal() {
+    if (!this.data.legalAgreementChecked) {
+      wx.showToast({ title: "请先勾选协议", icon: "none" });
+      return;
+    }
+
+    if (!this.commitNicknameInput(this.data.nickname)) {
+      return;
+    }
+
     const payload = {
       accepted: true,
       version: LEGAL_VERSION,
@@ -5186,6 +6046,7 @@ Page({
 
     this.setData({
       legalAccepted: true,
+      legalAgreementChecked: true,
       showLegalModal: false
     });
 
@@ -5201,7 +6062,23 @@ Page({
   },
 
   declineLegal() {
-    wx.showToast({ title: "同意后方可继续使用", icon: "none" });
+    const stack = this.getRouteStack();
+    if (stack.length > 1 && wx.navigateBack && typeof wx.navigateBack === "function") {
+      wx.navigateBack({ delta: 1 });
+      return;
+    }
+
+    wx.reLaunch({ url: "/pages/lobby/lobby" });
+  },
+
+  returnToLobby() {
+    wx.reLaunch({ url: "/pages/lobby/lobby" });
+  },
+
+  toggleLegalAgreement() {
+    this.setData({
+      legalAgreementChecked: !this.data.legalAgreementChecked
+    });
   },
 
   getRouteStack() {

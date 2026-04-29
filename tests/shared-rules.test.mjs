@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { countPointWithOptions } from "../packages/shared/dist/index.js";
+import { countPointWithOptions, getPointCountBreakdown } from "../packages/shared/dist/index.js";
 
 test("shared rules: straight counts as 0; leopard adds +1", () => {
   const allDice = [
@@ -31,4 +31,37 @@ test("shared rules: wildcard one can complete a non-1 leopard when no one has ca
   const allDice = [[5, 5, 5, 5, 1]];
   assert.equal(countPointWithOptions(allDice, 5, { oneAsWildcard: true }), 6);
   assert.equal(countPointWithOptions(allDice, 5, { oneAsWildcard: false }), 4);
+});
+
+test("shared rules: count breakdown marks straights as zero contribution", () => {
+  const breakdown = getPointCountBreakdown(
+    [[1, 2, 3, 4, 5], [2, 2, 2, 4, 6]],
+    2,
+    { oneAsWildcard: true },
+    ["straight-player", "counting-player"]
+  );
+
+  assert.equal(breakdown.total, 3);
+  assert.equal(breakdown.players[0].playerId, "straight-player");
+  assert.equal(breakdown.players[0].straight, true);
+  assert.equal(breakdown.players[0].contribution, 0);
+  assert.equal(breakdown.players[0].dice.every((die) => die.counted === false), true);
+  assert.equal(breakdown.players[1].contribution, 3);
+  assert.equal(breakdown.players[1].dice.filter((die) => die.counted).length, 3);
+});
+
+test("shared rules: count breakdown exposes wildcard ones and leopard +1 separately", () => {
+  const breakdown = getPointCountBreakdown(
+    [[5, 5, 5, 5, 1]],
+    5,
+    { oneAsWildcard: true },
+    ["leopard-player"]
+  );
+  const player = breakdown.players[0];
+
+  assert.equal(breakdown.total, 6);
+  assert.equal(player.contribution, 6);
+  assert.equal(player.leopardBonus, true);
+  assert.equal(player.dice.filter((die) => die.counted).length, 5);
+  assert.equal(player.dice.find((die) => die.index === 4).wildcard, true);
 });
