@@ -15,8 +15,13 @@
   <view class="room-shell" style="{{roomShellStyle}}">
     <view class="room-topbar">
       <view class="room-topbar__corner" style="{{roomTopbarCornerStyle}}">
-        <view class="room-chrome-btn room-chrome-btn--menu" bindtap="onTapMore">
-          <image class="room-chrome-btn__icon" src="{{roomThemeAssets.menuIconSrc}}" mode="aspectFit"></image>
+        <view class="room-topbar__shortcut-group">
+          <view class="room-topbar__shortcut" bindtap="onTapMore">
+            <text class="room-topbar__shortcut-text">设置</text>
+          </view>
+          <view class="room-topbar__shortcut room-topbar__shortcut--ghost" bindtap="onTapRules">
+            <text class="room-topbar__shortcut-text">规则</text>
+          </view>
         </view>
         <view wx:if="{{topbarMenuVisible}}" class="room-topbar-menu-popover" catchtap="noop">
           <view wx:if="{{selfIsOwner && phase === 'ready' && round === 0}}" class="room-topbar-menu-popover__item" bindtap="onTapMenuSeating">
@@ -50,13 +55,27 @@
           <view class="room-stage__table">
             <view class="room-stage__halo"></view>
             <view class="room-stage__table-frame"></view>
-            <view class="room-stage__table-felt"></view>
+            <view class="room-stage__table-felt">
+              <image wx:if="{{roomThemeAssets.tableclothSrc}}" class="room-stage__table-theme-image" src="{{roomThemeAssets.tableclothSrc}}" mode="scaleToFill"></image>
+            </view>
             <view class="room-stage__table-line"></view>
 
             <view class="room-stage__watermark">
               <text class="room-stage__watermark-cn">吹牛</text>
               <text class="room-stage__watermark-en">LIAR'S DICE</text>
             </view>
+          </view>
+
+          <view wx:if="{{phase === 'calling' && turnCountdownSec > 0}}" class="room-turn-countdown">
+            <text class="room-turn-countdown__label">{{turnCountdownLabel || '剩余'}}</text>
+            <view class="room-turn-countdown__value-row">
+              <text class="room-turn-countdown__value">{{turnCountdownSec}}</text>
+              <text class="room-turn-countdown__unit">秒</text>
+            </view>
+          </view>
+
+          <view wx:if="{{pendingOpenRequestText}}" class="room-open-request-banner">
+            <text class="room-open-request-banner__text">{{pendingOpenRequestText}}</text>
           </view>
 
           <block wx:for="{{ghostSeats}}" wx:key="visualSlotIndex">
@@ -121,14 +140,16 @@
 
         <view wx:if="{{!callPanelVisible}}" class="room-shell__bottom-fade" style="{{roomBottomFadeStyle}}">
           <view
-            wx:if="{{showQuickOpenAction}}"
-            class="room-fab-secondary {{roomThemeAssets.secondaryButtonClass}}"
-            bindtap="openDice"
-            hover-class="room-fab-secondary--pressing"
+            wx:if="{{secondaryActionText}}"
+            class="room-fab-secondary room-fab-secondary--left {{secondaryActionEnabled ? '' : 'is-disabled'}} {{secondaryActionKind === 'open' ? roomThemeAssets.secondaryButtonClass : ''}}"
+            bindtap="onSecondaryAction"
+            hover-class="{{secondaryActionEnabled ? 'room-fab-secondary--pressing' : 'none'}}"
             hover-start-time="0"
             hover-stay-time="70"
           >
-            <text class="room-fab-secondary__text">开牌</text>
+            <image wx:if="{{secondaryActionKind === 'open' && roomThemeAssets.openButtonSrc}}" class="room-fab-secondary__skin" src="{{roomThemeAssets.openButtonSrc}}" mode="scaleToFill"></image>
+            <image wx:if="{{secondaryActionKind === 'open' && roomThemeAssets.secondaryIconSrc}}" class="room-fab-secondary__icon-image" src="{{roomThemeAssets.secondaryIconSrc}}" mode="aspectFit"></image>
+            <text class="room-fab-secondary__text">{{secondaryActionText}}</text>
           </view>
           <view
             class="room-fab {{canPrimaryAction ? '' : 'is-disabled'}} {{primaryActionText === '叫牌' ? roomThemeAssets.primaryButtonClass : ''}}"
@@ -227,6 +248,9 @@
         </view>
 
         <view class="call-phase-panel__actions">
+          <view class="call-phase-panel__summary">
+            <text class="call-phase-panel__summary-text">{{callSelectionSummaryText}}</text>
+          </view>
           <view
             class="call-phase-panel__value-box"
             data-mode="count"
@@ -260,9 +284,9 @@
             <text class="call-phase-panel__btn-text call-phase-panel__btn-text--ghost">开牌</text>
           </view>
           <view
-            class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen ? 'is-disabled' : ''}}"
+            class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen || !callCountTouched || !callPointTouched ? 'is-disabled' : ''}}"
             bindtap="makeCallWithInput"
-            hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__btn--pressing'}}"
+            hover-class="{{callForcedOpen || !callCountTouched || !callPointTouched ? 'none' : 'call-phase-panel__btn--pressing'}}"
             hover-start-time="0"
             hover-stay-time="60"
           >
@@ -278,6 +302,13 @@
         </view>
 
         <scroll-view class="room-social__scroll" scroll-y="true">
+          <view wx:if="{{recentSettlementAvailable}}" class="drawer-card drawer-card--latest" bindtap="reopenLatestSettlement">
+            <view class="drawer-card__row">
+              <text class="drawer-card__title">上局结算</text>
+              <text class="drawer-card__meta">点击回看</text>
+            </view>
+            <text class="drawer-card__body">即使有人秒点继续，这里也能重新打开上一局的结算详情。</text>
+          </view>
           <block wx:if="{{historyItems.length}}">
             <block wx:for="{{historyItems}}" wx:key="round">
               <view class="drawer-card">
@@ -324,7 +355,7 @@
                   </view>
                   <view class="settlement-text">
                     <text class="settlement-name {{item.nameLengthClass}}">{{item.name}}</text>
-                    <text class="settlement-score settlement-score--{{item.scoreClass}}">✶ {{item.deltaText}}</text>
+                    <text class="settlement-score settlement-score--{{item.scoreClass}}">{{item.deltaText}}</text>
                   </view>
                 </view>
                 <view class="settlement-dice-list">
@@ -334,11 +365,13 @@
                         <image class="settlement-die" src="{{item.asset}}" mode="aspectFit"></image>
                       </view>
                     </block>
-                    <text wx:if="{{item.countBonusText}}" class="settlement-dice-bonus">{{item.countBonusText}}</text>
                   </block>
                   <text wx:else class="settlement-dice settlement-dice--empty">—</text>
                 </view>
-                <text wx:if="{{item.countNoteText}}" class="settlement-count-note">{{item.countNoteText}}</text>
+                <view class="settlement-row__meta" wx:if="{{item.featureTagText || item.countSummaryText}}">
+                  <text wx:if="{{item.featureTagText}}" class="settlement-feature-tag">{{item.featureTagText}}</text>
+                  <text wx:if="{{item.countSummaryText}}" class="settlement-count-note">{{item.countSummaryText}}</text>
+                </view>
               </view>
             </block>
           </view>
@@ -362,6 +395,9 @@
         <view wx:if="{{settlementCanContinue}}" class="sheet-actions">
           <view class="dock-btn dock-btn--settlement" bindtap="onSettlementContinue" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
             <text class="dock-btn__label">继续</text>
+          </view>
+          <view class="dock-btn dock-btn--ghost" bindtap="onSettlementViewHistory" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
+            <text class="dock-btn__label">记录</text>
           </view>
         </view>
       </view>
@@ -417,6 +453,30 @@
           </view>
         </view>
       </view>
+    </view>
+  </view>
+
+  <view wx:if="{{rulesVisible}}" class="room-mask room-mask--settings" bindtap="closeRulesPanel">
+    <view class="room-sheet room-sheet--settings room-sheet--rules" catchtap="noop">
+      <view class="room-sheet__glow room-sheet__glow--settings-a"></view>
+      <view class="room-sheet__glow room-sheet__glow--settings-b"></view>
+      <view class="sheet-head sheet-head--settings">
+        <view class="sheet-heading">
+          <text class="sheet-eyebrow">GAME RULES</text>
+          <text class="sheet-title">玩法说明</text>
+        </view>
+        <view class="sheet-close sheet-close--pill" bindtap="closeRulesPanel">完成</view>
+      </view>
+      <scroll-view class="sheet-body sheet-body--settings sheet-body--rules" scroll-y="true" enhanced="true" show-scrollbar="false">
+        <block wx:for="{{rulesSections}}" wx:key="title">
+          <view class="rules-card">
+            <text class="rules-card__title">{{item.title}}</text>
+            <block wx:for="{{item.items}}" wx:key="index">
+              <text class="rules-card__item">{{index + 1}}. {{item}}</text>
+            </block>
+          </view>
+        </block>
+      </scroll-view>
     </view>
   </view>
 

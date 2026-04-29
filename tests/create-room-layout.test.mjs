@@ -18,7 +18,7 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(script, /devtoolsMode:\s*false/);
   assert.match(script, /app\.globalData && app\.globalData\.isDevtoolsMode/);
   assert.match(script, /themePreviewId:\s*DEFAULT_ROOM_THEME_ID/);
-  assert.match(script, /devtoolsMode \? pickRandomRoomThemeId\(\) : DEFAULT_ROOM_THEME_ID/);
+  assert.match(script, /themePreviewId:\s*pickRandomRoomThemeId\(\)/);
   assert.doesNotMatch(script, /playerCountOptions/);
   assert.doesNotMatch(script, /allowSpectator/);
   assert.doesNotMatch(script, /lockRoom/);
@@ -34,7 +34,7 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxml, /房间始终保留 8 个座位，来几个人算几个人，最多 8 人同局。/);
   assert.match(wxml, /class="toggle-card__signal \{\{wildcardOneEnabled \? 'is-on' : 'is-off'\}\}"/);
   assert.match(wxml, /class="create-note-card"/);
-  assert.match(wxml, /wx:if="\{\{devtoolsMode\}\}" class="create-note-card create-note-card--experiment"/);
+  assert.match(wxml, /class="create-note-card create-note-card--experiment"/);
   assert.match(wxml, /class="create-actions"/);
   assert.doesNotMatch(wxml, /允许旁观/);
   assert.doesNotMatch(wxml, /锁定房间/);

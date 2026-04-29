@@ -1,11 +1,29 @@
-<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display:block;" viewBox="0 0 25.9966 25.9966" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g>
-<path d="M19.9974 1.99974H5.99922C3.79037 1.99974 1.99974 3.79037 1.99974 5.99922V19.9974C1.99974 22.2063 3.79037 23.9969 5.99922 23.9969H19.9974C22.2063 23.9969 23.9969 22.2063 23.9969 19.9974V5.99922C23.9969 3.79037 22.2063 1.99974 19.9974 1.99974Z" fill="#F7F3EA" stroke="#D7C7A1" stroke-width="0.99987"/>
-<path d="M7.99929 9.49942C9.38 9.49942 10.4993 8.38013 10.4993 6.99942C10.4993 5.6187 9.38 4.49942 7.99929 4.49942C6.61857 4.49942 5.49929 5.6187 5.49929 6.99942C5.49929 8.38013 6.61857 9.49942 7.99929 9.49942Z" fill="#1C1A20"/>
-<path d="M17.998 9.49942C19.3787 9.49942 20.498 8.38013 20.498 6.99942C20.498 5.6187 19.3787 4.49942 17.998 4.49942C16.6173 4.49942 15.498 5.6187 15.498 6.99942C15.498 8.38013 16.6173 9.49942 17.998 9.49942Z" fill="#1C1A20"/>
-<path d="M7.99929 15.4986C9.38 15.4986 10.4993 14.3793 10.4993 12.9986C10.4993 11.6179 9.38 10.4986 7.99929 10.4986C6.61857 10.4986 5.49929 11.6179 5.49929 12.9986C5.49929 14.3793 6.61857 15.4986 7.99929 15.4986Z" fill="#1C1A20"/>
-<path d="M17.998 15.4986C19.3787 15.4986 20.498 14.3793 20.498 12.9986C20.498 11.6179 19.3787 10.4986 17.998 10.4986C16.6173 10.4986 15.498 11.6179 15.498 12.9986C15.498 14.3793 16.6173 15.4986 17.998 15.4986Z" fill="#1C1A20"/>
-<path d="M7.99929 21.4979C9.38 21.4979 10.4993 20.3786 10.4993 18.9979C10.4993 17.6171 9.38 16.4979 7.99929 16.4979C6.61857 16.4979 5.49929 17.6171 5.49929 18.9979C5.49929 20.3786 6.61857 21.4979 7.99929 21.4979Z" fill="#1C1A20"/>
-<path d="M17.998 21.4979C19.3787 21.4979 20.498 20.3786 20.498 18.9979C20.498 17.6171 19.3787 16.4979 17.998 16.4979C16.6173 16.4979 15.498 17.6171 15.498 18.9979C15.498 20.3786 16.6173 21.4979 17.998 21.4979Z" fill="#1C1A20"/>
-</g>
+<svg preserveAspectRatio="xMidYMid meet" width="100%" height="100%" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="dieShadow" x="-45%" y="-45%" width="190%" height="205%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="2.3" stdDeviation="1.9" flood-color="#000000" flood-opacity="0.42"/>
+      <feDropShadow dx="0" dy="0.8" stdDeviation="0.5" flood-color="#E8D09A" flood-opacity="0.08"/>
+    </filter>
+    <filter id="innerShadow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feOffset dx="0" dy="0.4"/>
+      <feGaussianBlur stdDeviation="0.55"/>
+      <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.36 0 0 0 0 0.30 0 0 0 0 0.20 0 0 0 0.22 0"/>
+      <feBlend in2="SourceGraphic" mode="multiply"/>
+    </filter>
+    <filter id="pipShadow-0" x="-120%" y="-120%" width="340%" height="340%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="0.34" stdDeviation="0.28" flood-color="#4A1713" flood-opacity="0.28"/></filter><filter id="pipShadow-1" x="-120%" y="-120%" width="340%" height="340%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="0.34" stdDeviation="0.28" flood-color="#4A1713" flood-opacity="0.28"/></filter><filter id="pipShadow-2" x="-120%" y="-120%" width="340%" height="340%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="0.34" stdDeviation="0.28" flood-color="#4A1713" flood-opacity="0.28"/></filter><filter id="pipShadow-3" x="-120%" y="-120%" width="340%" height="340%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="0.34" stdDeviation="0.28" flood-color="#4A1713" flood-opacity="0.28"/></filter><filter id="pipShadow-4" x="-120%" y="-120%" width="340%" height="340%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="0.34" stdDeviation="0.28" flood-color="#4A1713" flood-opacity="0.28"/></filter><filter id="pipShadow-5" x="-120%" y="-120%" width="340%" height="340%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="0.34" stdDeviation="0.28" flood-color="#4A1713" flood-opacity="0.28"/></filter>
+  </defs>
+  <g filter="url(#dieShadow)" transform="rotate(6 13 13)">
+    <rect x="3.2" y="3.2" width="19.6" height="19.6" rx="5.2" fill="#F7F3EA" stroke="#D7C5A4" stroke-width="0.78"/>
+    <path d="M6.1 5.9C8.3 4.6 12 4.1 16.5 4.7C19 5 20.7 5.7 21.7 6.9V10.4C20.7 9.2 19 8.4 16.5 8.1C12 7.5 8.3 8 6.1 9.3V5.9Z" fill="#FFFFFF" opacity="0.62"/>
+    <path d="M5.6 16.6C8.8 17.8 13 18.2 18.2 17.5C19.8 17.3 21 16.9 21.9 16.3V20C20.8 20.9 19.4 21.5 17.7 21.8C12.7 22.6 8.6 22.2 5.6 20.8V16.6Z" fill="#DEE3EE" opacity="0.5"/>
+    <path d="M4.8 8.4C5.8 6.4 7.4 4.9 9.7 4.1C7.6 5.8 6.4 8.3 6.2 11.5C6 14.6 6.9 17.6 8.9 20.4C6.6 19.2 5.1 17.3 4.4 14.8C3.8 12.5 3.9 10.4 4.8 8.4Z" fill="#FFFFFF" opacity="0.28"/>
+    <rect x="3.6" y="3.6" width="18.8" height="18.8" rx="4.8" filter="url(#innerShadow)" fill="transparent"/>
+    <g filter="url(#pipShadow-0)"><circle cx="8.2" cy="8.2" r="1.95" fill="#893F2E"/><ellipse cx="7.72" cy="7.64" rx="0.88" ry="0.72" fill="#C97B67" opacity="0.52"/><ellipse cx="8.58" cy="8.74" rx="1.42" ry="1.12" fill="#5B211B" opacity="0.2"/></g>
+    <g filter="url(#pipShadow-1)"><circle cx="17.8" cy="8.2" r="1.95" fill="#893F2E"/><ellipse cx="17.32" cy="7.64" rx="0.88" ry="0.72" fill="#C97B67" opacity="0.52"/><ellipse cx="18.18" cy="8.74" rx="1.42" ry="1.12" fill="#5B211B" opacity="0.2"/></g>
+    <g filter="url(#pipShadow-2)"><circle cx="8.2" cy="13" r="1.95" fill="#893F2E"/><ellipse cx="7.72" cy="12.44" rx="0.88" ry="0.72" fill="#C97B67" opacity="0.52"/><ellipse cx="8.58" cy="13.54" rx="1.42" ry="1.12" fill="#5B211B" opacity="0.2"/></g>
+    <g filter="url(#pipShadow-3)"><circle cx="17.8" cy="13" r="1.95" fill="#893F2E"/><ellipse cx="17.32" cy="12.44" rx="0.88" ry="0.72" fill="#C97B67" opacity="0.52"/><ellipse cx="18.18" cy="13.54" rx="1.42" ry="1.12" fill="#5B211B" opacity="0.2"/></g>
+    <g filter="url(#pipShadow-4)"><circle cx="8.2" cy="17.8" r="1.95" fill="#893F2E"/><ellipse cx="7.72" cy="17.24" rx="0.88" ry="0.72" fill="#C97B67" opacity="0.52"/><ellipse cx="8.58" cy="18.34" rx="1.42" ry="1.12" fill="#5B211B" opacity="0.2"/></g>
+    <g filter="url(#pipShadow-5)"><circle cx="17.8" cy="17.8" r="1.95" fill="#893F2E"/><ellipse cx="17.32" cy="17.24" rx="0.88" ry="0.72" fill="#C97B67" opacity="0.52"/><ellipse cx="18.18" cy="18.34" rx="1.42" ry="1.12" fill="#5B211B" opacity="0.2"/></g>
+  </g>
 </svg>

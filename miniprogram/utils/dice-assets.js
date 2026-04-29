@@ -16,14 +16,6 @@ const SELF_DICE_THEME_ASSETS = {
     5: "/assets/room-themes/ruby-red-die-face-5.svg",
     6: "/assets/room-themes/ruby-red-die-face-6.svg"
   },
-  "sapphire-blue": {
-    1: "/assets/room-themes/sapphire-blue-die-face-1.svg",
-    2: "/assets/room-themes/sapphire-blue-die-face-2.svg",
-    3: "/assets/room-themes/sapphire-blue-die-face-3.svg",
-    4: "/assets/room-themes/sapphire-blue-die-face-4.svg",
-    5: "/assets/room-themes/sapphire-blue-die-face-5.svg",
-    6: "/assets/room-themes/sapphire-blue-die-face-6.svg"
-  },
   "imperial-red": {
     1: "/assets/room-themes/imperial-red-die-face-1.svg",
     2: "/assets/room-themes/imperial-red-die-face-2.svg",
@@ -31,14 +23,6 @@ const SELF_DICE_THEME_ASSETS = {
     4: "/assets/room-themes/imperial-red-die-face-4.svg",
     5: "/assets/room-themes/imperial-red-die-face-5.svg",
     6: "/assets/room-themes/imperial-red-die-face-6.svg"
-  },
-  "mist-ivory": {
-    1: "/assets/room-themes/mist-ivory-die-face-1.svg",
-    2: "/assets/room-themes/mist-ivory-die-face-2.svg",
-    3: "/assets/room-themes/mist-ivory-die-face-3.svg",
-    4: "/assets/room-themes/mist-ivory-die-face-4.svg",
-    5: "/assets/room-themes/mist-ivory-die-face-5.svg",
-    6: "/assets/room-themes/mist-ivory-die-face-6.svg"
   }
 };
 
@@ -59,6 +43,10 @@ function getSelfDieAsset(point, themeId = "") {
   return getDieAsset(point);
 }
 
+function getRoomDieAsset(point, themeId = "") {
+  return getSelfDieAsset(point, themeId);
+}
+
 function mapDicePointsToAssets(points) {
   return (Array.isArray(points) ? points : []).map((point) => getDieAsset(point));
 }
@@ -75,5 +63,6 @@ module.exports = {
   LOBBY_FLOAT_DICE_ASSETS,
   LOBBY_CREATE_DIE_ASSET,
   getDieAsset,
-  getSelfDieAsset
+  getSelfDieAsset,
+  getRoomDieAsset
 };

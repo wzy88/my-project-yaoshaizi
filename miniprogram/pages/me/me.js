@@ -21,7 +21,7 @@ const {
   persistLegalConsent,
   clearWechatProfile
 } = require("../../utils/wechat-auth");
-const { performWechatOneTapLogin } = require("../../utils/wechat-login-flow");
+const { performWechatOneTapLogin, refreshWechatSessionSilently } = require("../../utils/wechat-login-flow");
 
 function buildTimeText() {
   const date = new Date();
@@ -383,14 +383,19 @@ Page({
     } catch (error) {
       const message = error && error.message ? String(error.message) : "账号信息同步失败";
       if (isAccountSessionExpiredMessage(message)) {
-        const localProfile = getStoredWechatProfile();
-        this.setData({
-          nickname: localProfile.nickname,
-          avatarUrl: localProfile.avatarUrl,
-          initial: String(localProfile.nickname || "玩家").slice(0, 1),
-          ...buildAccountData({}),
-          accountLoading: false
-        });
+        try {
+          await refreshWechatSessionSilently();
+          return await this.refreshAccountProfile();
+        } catch (refreshError) {
+          const localProfile = getStoredWechatProfile();
+          this.setData({
+            nickname: localProfile.nickname,
+            avatarUrl: localProfile.avatarUrl,
+            initial: String(localProfile.nickname || "玩家").slice(0, 1),
+            ...buildAccountData(getStoredAccountSession()),
+            accountLoading: false
+          });
+        }
         return;
       }
 

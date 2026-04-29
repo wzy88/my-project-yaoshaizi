@@ -51,6 +51,13 @@ interface BoundAccountIdentity {
   avatarUrl: string;
 }
 
+interface PendingOpenAssistRequest {
+  requesterId: string;
+  targetPlayerId: string;
+  expiresAt: number;
+  turnKey: string;
+}
+
 export class RoomService {
   private rooms = new Map<string, RoomEngine>();
   private sessions = new Map<WebSocket, Session>();
@@ -59,6 +66,9 @@ export class RoomService {
   private reconnectTimers = new Map<string, NodeJS.Timeout>();
   private turnTimers = new Map<string, NodeJS.Timeout>();
   private turnTimerKeys = new Map<string, string>();
+  private turnDeadlineTsByRoom = new Map<string, number>();
+  private pendingOpenAssistByRoom = new Map<string, PendingOpenAssistRequest>();
+  private pendingOpenAssistTimers = new Map<string, NodeJS.Timeout>();
   private readonly accountStore: AccountStore;
   private historyStore = new HistoryStore();
   private voiceStore = new VoiceStore();
@@ -194,6 +204,9 @@ export class RoomService {
         break;
       case "open:request":
         await this.handleOpenRequest(ws, message.payload, message.actionId);
+        break;
+      case "open:assistRequest":
+        await this.handleOpenAssistRequest(ws, message.actionId);
         break;
       case "round:restart":
         this.handleRoundRestart(ws, message.actionId);
@@ -394,6 +407,61 @@ export class RoomService {
     const nickname = nicknameResult.ok ? nicknameResult.value : "玩家";
     const avatar = String(payload.avatar || "");
     const boundAccount = await this.resolveBoundAccount(payload);
+
+    const restoredParticipant = boundAccount
+      ? this.findRoomParticipantByAccountId(room, boundAccount.accountId)
+      : null;
+    if (restoredParticipant) {
+      const restoredPlayerId = restoredParticipant.id;
+      this.clearReconnectTimer(payload.roomId, restoredPlayerId);
+      room.updatePlayerProfile(restoredPlayerId, {
+        nickname,
+        avatar
+      });
+      room.setPlayerOnlineStatus(restoredPlayerId, "online");
+      this.bindSession(ws, payload.roomId, restoredPlayerId);
+
+      const restoredResumeToken = this.createOrRefreshResumeToken(payload.roomId, restoredPlayerId);
+      if (boundAccount) {
+        await this.accountStore.touchRoom(boundAccount.accountId, payload.roomId, "guest");
+      }
+
+      this.logDiagnostic("log", "room:join:restored", {
+        actionId: actionId || "",
+        requestedRoomId: payload.roomId,
+        restoredPlayerId,
+        accountId: boundAccount?.accountId || "",
+        nickname,
+        ...this.getRoomDiagnostics(payload.roomId),
+        ...this.getSocketMeta(ws)
+      });
+
+      this.sendAck(ws, {
+        actionId,
+        ok: true,
+        roomId: payload.roomId,
+        playerId: restoredPlayerId,
+        resumeToken: restoredResumeToken
+      });
+
+      const roomState = room.getState();
+      this.broadcastRoomState(payload.roomId);
+
+      if (roomState.players.some((player) => player.id === restoredPlayerId)) {
+        const dice = room.getPlayerPrivateDice(restoredPlayerId);
+        if (dice.length > 0) {
+          this.sendToPlayer(payload.roomId, restoredPlayerId, "dice:privateResult", {
+            round: roomState.round,
+            playerId: restoredPlayerId,
+            dice,
+            serverTs: Date.now()
+          });
+        }
+      }
+
+      void this.sendLatestSummaryIfEnded(payload.roomId, restoredPlayerId);
+      return;
+    }
 
     const playerId = createPlayerId();
     const phase = room.getState().phase;
@@ -665,6 +733,7 @@ export class RoomService {
   ): void {
     const { room, session } = this.getRoomAndSession(ws);
     this.ensureActivePlayer(room, session.playerId);
+    this.clearPendingOpenAssist(session.roomId);
     room.makeCall(session.playerId, payload.count, payload.point);
 
     this.sendAck(ws, {
@@ -682,6 +751,7 @@ export class RoomService {
   ): Promise<void> {
     const { room, session } = this.getRoomAndSession(ws);
     this.ensureActivePlayer(room, session.playerId);
+    this.clearPendingOpenAssist(session.roomId);
     const currentState = room.getState();
     const lastBy = currentState.lastCall?.by;
 
@@ -939,6 +1009,32 @@ export class RoomService {
     }
 
     return state.waitingPlayers.find((player) => player.id === playerId)?.accountId;
+  }
+
+  private findRoomParticipantByAccountId(room: RoomEngine, accountId: string): { id: string; kind: "player" | "waiting" } | null {
+    const normalizedAccountId = String(accountId || "").trim();
+    if (!normalizedAccountId) {
+      return null;
+    }
+
+    const state = room.getState();
+    const active = state.players.find((player) => player.accountId === normalizedAccountId);
+    if (active) {
+      return {
+        id: active.id,
+        kind: "player"
+      };
+    }
+
+    const waiting = state.waitingPlayers.find((player) => player.accountId === normalizedAccountId);
+    if (waiting) {
+      return {
+        id: waiting.id,
+        kind: "waiting"
+      };
+    }
+
+    return null;
   }
 
   private getRoomAndSession(ws: WebSocket): { room: RoomEngine; session: Session } {
@@ -1231,6 +1327,8 @@ export class RoomService {
       this.turnTimers.delete(roomId);
     }
     this.turnTimerKeys.delete(roomId);
+    this.turnDeadlineTsByRoom.delete(roomId);
+    this.clearPendingOpenAssist(roomId);
     this.chatStore.clearRoom(roomId);
   }
 
@@ -1251,8 +1349,83 @@ export class RoomService {
       return;
     }
 
-    this.broadcastRoom(roomId, "room:state", room.getState());
+    const state = room.getState();
+    this.syncPendingOpenAssist(roomId, state);
+    const pendingOpenRequest = this.pendingOpenAssistByRoom.get(roomId);
+    this.broadcastRoom(roomId, "room:state", {
+      ...state,
+      turnDeadlineTs: this.turnDeadlineTsByRoom.get(roomId),
+      pendingOpenRequest: pendingOpenRequest
+        ? {
+          requesterId: pendingOpenRequest.requesterId,
+          targetPlayerId: pendingOpenRequest.targetPlayerId,
+          expiresAt: pendingOpenRequest.expiresAt
+        }
+        : undefined
+    });
     this.rescheduleTurnTimer(roomId);
+  }
+
+  private clearPendingOpenAssist(roomId: string): void {
+    const timer = this.pendingOpenAssistTimers.get(roomId);
+    if (timer) {
+      clearTimeout(timer);
+      this.pendingOpenAssistTimers.delete(roomId);
+    }
+    this.pendingOpenAssistByRoom.delete(roomId);
+  }
+
+  private syncPendingOpenAssist(roomId: string, state = this.rooms.get(roomId)?.getState()): void {
+    const pending = this.pendingOpenAssistByRoom.get(roomId);
+    if (!pending || !state) {
+      return;
+    }
+
+    const currentTurnKey = `${state.phase}:${state.currentPlayerId || "-"}:${state.lastCall ? state.lastCall.ts : 0}`;
+    if (
+      state.phase !== "calling"
+      || !state.currentPlayerId
+      || !state.lastCall
+      || pending.turnKey !== currentTurnKey
+      || pending.targetPlayerId !== state.currentPlayerId
+      || pending.expiresAt <= Date.now()
+    ) {
+      this.clearPendingOpenAssist(roomId);
+    }
+  }
+
+  private async finalizePendingOpenAssist(roomId: string, expectedTurnKey: string, targetPlayerId: string): Promise<void> {
+    const room = this.rooms.get(roomId);
+    const pending = this.pendingOpenAssistByRoom.get(roomId);
+    if (!room || !pending) {
+      return;
+    }
+
+    const state = room.getState();
+    const currentTurnKey = `${state.phase}:${state.currentPlayerId || "-"}:${state.lastCall ? state.lastCall.ts : 0}`;
+    if (
+      currentTurnKey !== expectedTurnKey
+      || state.phase !== "calling"
+      || state.currentPlayerId !== targetPlayerId
+      || pending.turnKey !== expectedTurnKey
+    ) {
+      this.clearPendingOpenAssist(roomId);
+      this.broadcastRoomState(roomId);
+      return;
+    }
+
+    this.clearPendingOpenAssist(roomId);
+
+    try {
+      const { openResult, roundSummary } = room.openDice(targetPlayerId, room.getRuleOptionsForCurrentRound());
+      await this.historyStore.saveRoundSummary(roundSummary);
+      await this.accountStore.recordRoundSummary(roundSummary);
+      this.broadcastRoom(roomId, "open:result", openResult);
+      this.broadcastRoom(roomId, "round:summary", roundSummary);
+      this.broadcastRoomState(roomId);
+    } catch {
+      this.broadcastRoomState(roomId);
+    }
   }
 
   private rescheduleTurnTimer(roomId: string): void {
@@ -1264,6 +1437,8 @@ export class RoomService {
         this.turnTimers.delete(roomId);
       }
       this.turnTimerKeys.delete(roomId);
+      this.turnDeadlineTsByRoom.delete(roomId);
+      this.clearPendingOpenAssist(roomId);
       return;
     }
 
@@ -1283,15 +1458,23 @@ export class RoomService {
     }
 
     if (!state.currentPlayerId) {
+      this.turnDeadlineTsByRoom.delete(roomId);
+      this.clearPendingOpenAssist(roomId);
       return;
     }
 
     if (state.phase === "calling") {
+      const deadlineTs = Date.now() + CALL_TIMEOUT_MS;
+      this.turnDeadlineTsByRoom.set(roomId, deadlineTs);
       const timer = setTimeout(() => {
         void this.handleCallTimeout(roomId, turnKey, state.currentPlayerId!);
       }, CALL_TIMEOUT_MS);
       this.turnTimers.set(roomId, timer);
+      return;
     }
+
+    this.turnDeadlineTsByRoom.delete(roomId);
+    this.clearPendingOpenAssist(roomId);
   }
 
   private handleRollTimeout(roomId: string, version: number, playerId: string): void {
@@ -1348,6 +1531,7 @@ export class RoomService {
     if (!room) {
       return;
     }
+    this.clearPendingOpenAssist(roomId);
 
     const state = room.getState();
     if (state.phase !== "calling" || state.currentPlayerId !== playerId) {
@@ -1368,6 +1552,47 @@ export class RoomService {
     this.broadcastRoom(roomId, "open:result", openResult);
     this.broadcastRoom(roomId, "round:summary", roundSummary);
     this.broadcastRoomState(roomId);
+  }
+
+  private async handleOpenAssistRequest(
+    ws: WebSocket,
+    actionId?: string
+  ): Promise<void> {
+    const { room, session } = this.getRoomAndSession(ws);
+    this.ensureActivePlayer(room, session.playerId);
+    const currentState = room.getState();
+    const currentPlayerId = String(currentState.currentPlayerId || "");
+    const targetPlayerId = currentPlayerId;
+
+    if (currentState.phase !== "calling" || !currentPlayerId || !currentState.lastCall) {
+      throw new GameError(ErrorCode.INVALID_PHASE, "当前不可申请跳开");
+    }
+
+    if (session.playerId === currentPlayerId) {
+      throw new GameError(ErrorCode.FORBIDDEN, "当前轮到你，可直接开牌");
+    }
+
+    const turnKey = `${currentState.phase}:${currentPlayerId}:${currentState.lastCall ? currentState.lastCall.ts : 0}`;
+    const expiresAt = Date.now() + 3000;
+
+    this.clearPendingOpenAssist(session.roomId);
+    this.pendingOpenAssistByRoom.set(session.roomId, {
+      requesterId: session.playerId,
+      targetPlayerId,
+      expiresAt,
+      turnKey
+    });
+
+    const timer = setTimeout(() => {
+      void this.finalizePendingOpenAssist(session.roomId, turnKey, targetPlayerId);
+    }, Math.max(0, expiresAt - Date.now()));
+    this.pendingOpenAssistTimers.set(session.roomId, timer);
+
+    this.sendAck(ws, {
+      actionId,
+      ok: true
+    });
+    this.broadcastRoomState(session.roomId);
   }
 
   private sendToPlayer<E extends keyof ServerEventMap>(

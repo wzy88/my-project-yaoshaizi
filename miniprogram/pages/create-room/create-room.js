@@ -2,7 +2,6 @@ const app = getApp();
 const { NICKNAME_KEY } = require("../../utils/constants");
 const {
   DEFAULT_ROOM_THEME_ID,
-  ROOM_THEME_IDS,
   normalizeRoomThemeId,
   pickRandomRoomThemeId,
   getRoomThemeLabel
@@ -26,8 +25,7 @@ Page({
     playerCount: 8,
     wildcardOneEnabled: true,
     themePreviewId: DEFAULT_ROOM_THEME_ID,
-    themePreviewLabel: getRoomThemeLabel(DEFAULT_ROOM_THEME_ID),
-    themePreviewOptions: ROOM_THEME_IDS
+    themePreviewLabel: getRoomThemeLabel(DEFAULT_ROOM_THEME_ID)
   },
 
   onLoad(options) {

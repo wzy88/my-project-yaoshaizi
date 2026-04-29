@@ -63,12 +63,10 @@ test("room shell supports experimental room theme classes without changing the d
   assert.match(script, /normalizeRoomThemeId\(this\.data\.createRoomThemeId \|\| this\.data\.roomThemeId\)/);
   assert.match(wxss, /\.page\.room-theme-imperial-red \.room-stage__table-frame\s*\{/);
   assert.match(wxss, /\.page\.room-theme-imperial-red \.ghost-cup \.figma-cup__body\s*\{/);
-  assert.match(wxss, /\.page\.room-theme-mist-ivory \.room-stage__table-frame\s*\{/);
-  assert.match(wxss, /\.page\.room-theme-mist-ivory \.ghost-cup \.figma-cup__body\s*\{/);
   assert.match(wxss, /\.page\.room-theme-ruby-red \.room-stage__table-frame\s*\{/);
-  assert.match(wxss, /\.page\.room-theme-sapphire-blue \.room-stage__table-frame\s*\{/);
   assert.match(wxss, /\.page\.room-theme-ruby-red \.seat__bubble\s*\{/);
-  assert.match(wxss, /\.page\.room-theme-sapphire-blue \.room-fab\s*\{/);
+  assert.doesNotMatch(wxss, /\.page\.room-theme-sapphire-blue /);
+  assert.doesNotMatch(wxss, /\.page\.room-theme-mist-ivory /);
   assert.match(script, /getSelfDieAsset/);
   assert.match(script, /buildDiceFaceItems\(this\.data\.privateDice,\s*roomThemeId\)/);
 });

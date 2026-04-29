@@ -133,6 +133,28 @@ function instantiateRoomPage({
   }
 
   const cleanup = () => {
+    if (typeof page.clearTurnCountdown === "function") {
+      page.clearTurnCountdown();
+    }
+    if (typeof page.clearSettlementCountdown === "function") {
+      page.clearSettlementCountdown();
+    }
+    if (typeof page.clearPendingLeaveRequest === "function") {
+      page.clearPendingLeaveRequest();
+    }
+    if (typeof page.clearMyDiceTimers === "function") {
+      page.clearMyDiceTimers();
+    }
+    if (typeof page.stopHeartbeat === "function") {
+      page.stopHeartbeat();
+    }
+    if (typeof page.clearSfxStopTimer === "function") {
+      page.clearSfxStopTimer();
+    }
+    if (page.reconnectTimer) {
+      clearTimeout(page.reconnectTimer);
+      page.reconnectTimer = null;
+    }
     if (page.clockTimer) {
       clearInterval(page.clockTimer);
     }
@@ -984,6 +1006,33 @@ test("room page: plain entry ignores cached session and does not auto-rejoin old
   }
 });
 
+test("room page: join entry for the same room restores the cached session automatically", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [SESSION_KEY]: {
+        roomId: "123456",
+        playerId: "player-a",
+        resumeToken: "resume-token"
+      }
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({ mode: "join", roomId: "123456" });
+
+    assert.equal(page.data.roomId, "123456");
+    assert.equal(page.data.playerId, "player-a");
+    assert.equal(page.data.resumeToken, "resume-token");
+    assert.equal(page.data.displayRoomId, "123456");
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: mode join enters on the room shell while the pending join action waits", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -1079,7 +1128,7 @@ test("room page: action ack keeps room identity on the room shell before room st
   }
 });
 
-test("room page: expired account session during join is downgraded to guest and retried once", () => {
+test("room page: expired account session during join no longer retries as guest", async () => {
   const sentPackets = [];
   const { page, storageState, toasts, cleanup } = instantiateRoomPage({
     storage: {
@@ -1132,13 +1181,9 @@ test("room page: expired account session during join is downgraded to guest and 
 
     assert.equal(storageState[ACCOUNT_SESSION_KEY], undefined);
     assert.equal(storageState[WECHAT_LOGIN_TS_KEY], undefined);
-    assert.equal(toasts.includes("账号登录已失效，请重新进入"), false);
-    assert.equal(sentPackets.length, 1);
-    assert.equal(sentPackets[0].event, "room:join");
-    assert.equal(sentPackets[0].payload.roomId, "123456");
-    assert.equal(sentPackets[0].payload.nickname, "手机玩家");
-    assert.equal("accountId" in sentPackets[0].payload, false);
-    assert.equal("accountSessionToken" in sentPackets[0].payload, false);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(toasts.includes("账号登录已失效，请重新进入"), true);
+    assert.equal(sentPackets.length, 0);
   } finally {
     cleanup();
   }
@@ -1936,7 +1981,7 @@ test("room page: leave waits for the server ack before clearing the local room s
   }
 });
 
-test("room page: page unload best-effort notifies room leave and clears the resumable session", () => {
+test("room page: page unload closes the socket but preserves the resumable session", () => {
   const { page, storageState, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -1950,15 +1995,8 @@ test("room page: page unload best-effort notifies room leave and clears the resu
   });
 
   try {
-    let sentPacket = null;
     let closeCalls = 0;
     page.socketTask = {
-      send({ data, success }) {
-        sentPacket = JSON.parse(data);
-        if (typeof success === "function") {
-          success();
-        }
-      },
       close() {
         closeCalls += 1;
       }
@@ -1972,9 +2010,12 @@ test("room page: page unload best-effort notifies room leave and clears the resu
 
     page.onUnload();
 
-    assert.equal(sentPacket && sentPacket.event, "room:leave");
     assert.equal(closeCalls, 1);
-    assert.equal(storageState[SESSION_KEY], undefined);
+    assert.deepEqual(storageState[SESSION_KEY], {
+      roomId: "123456",
+      playerId: "player-a",
+      resumeToken: "resume-token"
+    });
   } finally {
     cleanup();
   }
@@ -3624,9 +3665,9 @@ test("room page: all players see the settlement dialog and only the loser can co
     assert.equal(page.data.settlementCanContinue, true);
     assert.equal(page.data.settlementRows.length, 2);
     const loserRow = page.data.settlementRows.find((row) => row.playerId === "loser");
-    assert.equal(loserRow.countBonusText, "+1");
+    assert.equal(loserRow.featureTagText, "豹");
     assert.equal(loserRow.diceItems.filter((item) => item.highlighted).length, 5);
-    assert.equal(loserRow.diceItems.find((item) => item.index === 3).wildcard, true);
+    assert.equal(loserRow.diceItems.find((item) => item.value === 1).wildcard, true);
   } finally {
     cleanup();
   }
@@ -3729,9 +3770,10 @@ test("room page: settlement fallback highlights wildcard ones when they are coun
 
     const ownerRow = page.data.settlementRows.find((row) => row.playerId === "owner");
     const targetRow = page.data.settlementRows.find((row) => row.playerId === "target");
-    assert.deepEqual(ownerRow.diceItems.map((item) => item.highlighted), [true, false, false, false, false]);
-    assert.deepEqual(targetRow.diceItems.map((item) => item.highlighted), [true, false, true, true, false]);
-    assert.deepEqual(targetRow.diceItems.map((item) => item.wildcard), [true, false, true, false, false]);
+    assert.equal(ownerRow.diceItems.filter((item) => item.highlighted).length, 1);
+    assert.equal(targetRow.diceItems.filter((item) => item.highlighted).length, 3);
+    assert.equal(targetRow.diceItems.filter((item) => item.wildcard).length, 2);
+    assert.deepEqual(targetRow.diceItems.map((item) => item.value), [1, 1, 3, 5, 6]);
   } finally {
     cleanup();
   }
@@ -3897,7 +3939,7 @@ test("room page: opening the call panel from the hud primary button stays audio 
   }
 });
 
-test("room page: calling-turn room state exposes the quick open action only when opening is allowed", () => {
+test("room page: calling-turn room state routes open into the left secondary action when opening is allowed", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -3915,7 +3957,9 @@ test("room page: calling-turn room state exposes the quick open action only when
         lastCall: { count: 3, point: 4, by: "P2", ts: 101 }
       })
     }));
-    assert.equal(page.data.showQuickOpenAction, true);
+    assert.equal(page.data.showQuickOpenAction, false);
+    assert.equal(page.data.secondaryActionKind, "open");
+    assert.equal(page.data.secondaryActionText, "开牌");
     assert.equal(page.data.primaryActionText, "叫牌");
 
     page.handleServerPacket(JSON.stringify({
@@ -3925,7 +3969,7 @@ test("room page: calling-turn room state exposes the quick open action only when
         lastCall: null
       })
     }));
-    assert.equal(page.data.showQuickOpenAction, false);
+    assert.equal(page.data.secondaryActionKind, "history");
   } finally {
     cleanup();
   }
@@ -4087,6 +4131,8 @@ test("room page: submitting a manual call from the panel uses the bundled primar
       callPanelExpanded: true,
       callCount: "4",
       callPoint: "5",
+      callCountTouched: true,
+      callPointTouched: true,
       primaryActionText: "叫牌"
     });
 

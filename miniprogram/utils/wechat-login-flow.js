@@ -32,6 +32,11 @@ async function performWechatOneTapLogin() {
   };
 }
 
+async function refreshWechatSessionSilently() {
+  return performWechatOneTapLogin();
+}
+
 module.exports = {
-  performWechatOneTapLogin
+  performWechatOneTapLogin,
+  refreshWechatSessionSilently
 };

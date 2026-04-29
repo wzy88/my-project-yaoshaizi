@@ -15,7 +15,7 @@ const {
   TURN_ALERT_SFX_ENABLED_KEY,
   HAPTIC_ENABLED_KEY
 } = require("../../utils/constants");
-const { SELF_DICE_PLACEHOLDER, getDieAsset, getSelfDieAsset } = require("../../utils/dice-assets");
+const { SELF_DICE_PLACEHOLDER, getDieAsset, getSelfDieAsset, getRoomDieAsset } = require("../../utils/dice-assets");
 const {
   DEFAULT_ROOM_THEME_ID,
   normalizeRoomThemeId,
@@ -24,6 +24,7 @@ const {
 const { getRoomThemeAssets } = require("../../utils/room-theme-assets");
 const { getStoredAccountSession, clearAccountSession } = require("../../utils/account-api");
 const { getStoredWechatProfile } = require("../../utils/wechat-auth");
+const { refreshWechatSessionSilently } = require("../../utils/wechat-login-flow");
 const {
   DEFAULT_PROFILE_AVATAR_ASSETS,
   buildDefaultNickname,
@@ -56,6 +57,32 @@ const ROOM_AUDIO_STOP_RATIOS = {};
 const ROOM_PLAYFIELD_LIFT_RPX = 48;
 const ROOM_STAGE_HEIGHT_RPX = 1608;
 const ROOM_STAGE_MIN_SCALE = 0.9;
+const ROOM_RULE_SECTIONS = [
+  {
+    title: "基础玩法",
+    items: [
+      "每局每人先摇出自己的骰子，别人只能看到你的杯子，看不到你的点数。",
+      "进入叫牌阶段后，大家按顺序报出“几个几”，后一手必须严格大于前一手。",
+      "1 可按房间规则作为万能点，但一旦有人叫 1，本局 1 不再充当万能点。"
+    ]
+  },
+  {
+    title: "开牌与跳开",
+    items: [
+      "轮到你时，如果你认为上一手在吹牛，可以直接点“开牌”。",
+      "如果别人迟迟不开，你可以点“跳开”；申请发出 3 秒后若仍无人处理，系统会自动代为开牌。",
+      "叫牌达到上限后，下家不能再继续叫，只能开牌。"
+    ]
+  },
+  {
+    title: "特殊判定",
+    items: [
+      "顺子不计入目标点数，结算时会标记“顺”。",
+      "豹子会额外有加成，结算时会标记“豹”。",
+      "结算面板和房间记录里都能回看最近结果，不怕别人秒点继续。"
+    ]
+  }
+];
 
 function buildRoomThemePresentation(themeId) {
   const normalizedThemeId = normalizeRoomThemeId(themeId);
@@ -184,7 +211,7 @@ function shouldFallbackHighlightWildcardOnes(summaryPlayers, declaredPoint, actu
   return wildcardTotal !== plainTotal && wildcardTotal === Number(actualCount || 0);
 }
 
-function buildSettlementDiceItems(values, countDetail = null, fallbackHighlightValue = 0, fallbackWildcardOnes = false) {
+function buildSettlementDiceItems(values, themeId = DEFAULT_ROOM_THEME_ID, countDetail = null, fallbackHighlightValue = 0, fallbackWildcardOnes = false) {
   const detailDice = countDetail && Array.isArray(countDetail.dice) ? countDetail.dice : [];
   const detailByIndex = new Map(detailDice.map((item) => [Number(item.index), item]));
   return (Array.isArray(values) ? values : []).map((value, index) => {
@@ -194,11 +221,19 @@ function buildSettlementDiceItems(values, countDetail = null, fallbackHighlightV
     const fallbackWildcard = Boolean(fallbackWildcardOnes && num === 1);
     return {
       value: num,
-      asset: getDieAsset(num),
+      asset: getRoomDieAsset(num, themeId),
       highlighted: hasDetail ? Boolean(detail.counted) : (num === Number(fallbackHighlightValue || 0) || fallbackWildcard),
       wildcard: hasDetail ? Boolean(detail.wildcard) : fallbackWildcard,
       index
     };
+  }).sort((a, b) => {
+    if (a.value !== b.value) {
+      return a.value - b.value;
+    }
+    if (a.highlighted !== b.highlighted) {
+      return a.highlighted ? -1 : 1;
+    }
+    return a.index - b.index;
   });
 }
 
@@ -268,6 +303,19 @@ function buildCallEventKey(call, fallbackBy = "") {
   return `${by}_${count}_${point}_${ts}`;
 }
 
+function buildCallSelectionSummary(countTouched, pointTouched, count, point) {
+  if (!countTouched && !pointTouched) {
+    return "先选数量，再选点数";
+  }
+  if (!countTouched) {
+    return "请选择数量";
+  }
+  if (!pointTouched) {
+    return "请选择点数";
+  }
+  return `将叫 ${count} 个 ${point}`;
+}
+
 function normalizeHistoryItems(items) {
   return (items || []).map((item) => {
     const openResult = item && item.openResult ? item.openResult : {};
@@ -288,7 +336,7 @@ function normalizeHistoryItems(items) {
   });
 }
 
-function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPlayerId }) {
+function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPlayerId, roomThemeId = DEFAULT_ROOM_THEME_ID }) {
   const result = openResult && typeof openResult === "object" ? openResult : null;
   const first = result && Array.isArray(result.targets) ? result.targets[0] : null;
   if (!result || !first || !first.declared) {
@@ -365,27 +413,28 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     let tagText = "";
     let deltaText = "+0";
     let deltaClass = "neutral";
-    let countNoteText = "";
-    let countBonusText = "";
+    let featureTagText = "";
+    let countSummaryText = "";
 
     if (id === winnerId) {
       kind = "winner";
       tagText = "胜";
-      deltaText = "🏆 +1";
+      deltaText = "+1";
       deltaClass = "winner";
     } else if (id === loserId) {
       kind = "loser";
       tagText = "负";
-      deltaText = "💀 -1";
+      deltaText = "-1";
       deltaClass = "loser";
     }
     if (countDetail && countDetail.straight) {
-      countNoteText = "顺子 0";
-    } else if (countDetail && Number(countDetail.contribution) > 0) {
-      countNoteText = `计入 ${Number(countDetail.contribution)}`;
+      featureTagText = "顺";
     }
     if (countDetail && countDetail.leopardBonus) {
-      countBonusText = "+1";
+      featureTagText = featureTagText ? `${featureTagText} / 豹` : "豹";
+    }
+    if (countDetail && !countDetail.straight && Number(countDetail.contribution) > 0) {
+      countSummaryText = `计数 ${Number(countDetail.contribution)}`;
     }
 
     return {
@@ -394,9 +443,9 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
       nameLengthClass: Array.from(displayName).length > 5 ? "is-extra-long" : Array.from(displayName).length > 4 ? "is-long" : "",
       avatarUrl: getSeatAvatarPresentation(player ? player.avatar : "", Math.max(0, getSeatIndex(id) - 1)).src,
       avatarText: String(name || "玩").slice(0, 1),
-      diceItems: buildSettlementDiceItems(dice, countDetail, declaredPoint, fallbackWildcardOnes),
-      countNoteText,
-      countBonusText,
+      diceItems: buildSettlementDiceItems(dice, roomThemeId, countDetail, declaredPoint, fallbackWildcardOnes),
+      featureTagText,
+      countSummaryText,
       kind,
       tagText,
       deltaText,
@@ -417,7 +466,7 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
     summaryText: `【${getPlayerName(openerId)}】 开 【${getPlayerName(targetId)}】`,
     declaredText: `${declaredCount}个`,
     actualText: `${actualCount}个`,
-    pointAsset: getDieAsset(declaredPoint),
+    pointAsset: getRoomDieAsset(declaredPoint, roomThemeId),
     rows,
     loserId
   };
@@ -538,10 +587,10 @@ function buildGhostSeats(playersDecorated) {
     }));
 }
 
-function buildCallPointOptionItems(options) {
+function buildCallPointOptionItems(themeId, options) {
   return (Array.isArray(options) ? options : []).map((value) => ({
     value: String(value),
-    asset: getDieAsset(value)
+    asset: getRoomDieAsset(value, themeId)
   }));
 }
 
@@ -723,7 +772,7 @@ function buildRoomSafeAreaStyles() {
   };
 }
 
-function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall, direction = "cw") {
+function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall, direction = "cw", roomThemeId = DEFAULT_ROOM_THEME_ID) {
   const sorted = [...(playersRaw || [])].sort((a, b) => a.seatIndex - b.seatIndex);
   const selectedSet = new Set(selectedTargetIds || []);
   const latestCallerId = latestCall && typeof latestCall === "object" ? String(latestCall.by || "") : "";
@@ -801,7 +850,7 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
       callCount,
       callPoint,
       callKey,
-      callPointAsset: getDieAsset(callPoint),
+      callPointAsset: getRoomDieAsset(callPoint, roomThemeId),
       canSelect: player.id !== selfPlayerId,
       selected: selectedSet.has(player.id)
     };
@@ -1438,9 +1487,13 @@ Page({
     settlementRows: [],
     settlementCanContinue: false,
     settlementContinueSec: 0,
+    recentSettlementAvailable: false,
     lastCallKey: "",
     callTimeline: [],
     turnCountdownSec: 0,
+    turnCountdownLabel: "",
+    pendingOpenRequest: null,
+    pendingOpenRequestText: "",
     myDiceVisible: false,
     myDicePeekVisible: false,
     myDiceRolling: false,
@@ -1453,15 +1506,20 @@ Page({
     callPoint: "6",
     callCountOptions: buildCallCountOptionItems(3, 8, 1),
     callPointOptions: ["1", "2", "3", "4", "5", "6"],
-    callPointOptionItems: buildCallPointOptionItems(["1", "2", "3", "4", "5", "6"]),
+    callPointOptionItems: buildCallPointOptionItems(DEFAULT_ROOM_THEME_ID, ["1", "2", "3", "4", "5", "6"]),
     maxCallCount: 1,
     callForcedOpen: false,
     callSelectorMode: "",
     callPanelExpanded: false,
+    callCountTouched: false,
+    callPointTouched: false,
+    callSelectionSummaryText: buildCallSelectionSummary(false, false, 3, 6),
     historyVisible: false,
     historyItems: [],
     historyNextBeforeRound: null,
     historyAppendMode: false,
+    rulesVisible: false,
+    rulesSections: ROOM_RULE_SECTIONS,
     voiceVisible: false,
     chatVisible: false,
     chatDraft: "",
@@ -1487,6 +1545,9 @@ Page({
     callPanelVisible: false,
     canOpenAction: false,
     showQuickOpenAction: false,
+    secondaryActionText: "",
+    secondaryActionKind: "",
+    secondaryActionEnabled: false,
     seatingVisible: false,
     seatingSelectedSeatIndex: 0,
     seatingSelectedText: "未选择",
@@ -1582,6 +1643,7 @@ Page({
     this.lastTurnAlertKey = "";
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
+    this.pendingAccountRecoveryPromise = null;
     this.settlementCountdownTimer = null;
     this.accelListening = false;
     this.accelLast = null;
@@ -1730,7 +1792,10 @@ Page({
             this.setData({
               callCount: String(parsed.count),
               callPoint: String(parsed.point),
-              callCountOptions: this.buildCallCountOptions(parsed.count)
+              callCountOptions: this.buildCallCountOptions(parsed.count),
+              callCountTouched: true,
+              callPointTouched: true,
+              callSelectionSummaryText: buildCallSelectionSummary(true, true, parsed.count, parsed.point)
             });
 
             const canCall = this.data.phase === "calling"
@@ -1802,9 +1867,20 @@ Page({
       selfAvatarUrl: cachedAvatarUrl
     });
 
-    const shouldResumeSession = String(options.resume || "") === "1";
-    const cached = shouldResumeSession ? wx.getStorageSync(SESSION_KEY) : null;
-    if (cached && cached.roomId && cached.playerId && cached.resumeToken) {
+    const cached = wx.getStorageSync(SESSION_KEY);
+    const cachedRoomId = normalizeRoomId(cached && cached.roomId);
+    const optionRoomId = normalizeRoomId(options.roomId);
+    const shouldResumeSession = Boolean(
+      cached
+      && cachedRoomId
+      && cached.playerId
+      && cached.resumeToken
+      && (
+        String(options.resume || "") === "1"
+        || (!forceNew && optionRoomId && optionRoomId === cachedRoomId)
+      )
+    );
+    if (shouldResumeSession) {
       this.setData({
         roomId: cached.roomId,
         displayRoomId: formatRoomIdDisplay(cached.roomId),
@@ -2055,19 +2131,27 @@ Page({
     }
     this.turnCountdownKey = "";
     this.turnDeadlineTs = 0;
-    if (this.data.turnCountdownSec !== 0) {
-      this.setData({ turnCountdownSec: 0 });
+    if (this.data.turnCountdownSec !== 0 || this.data.turnCountdownLabel) {
+      this.setData({
+        turnCountdownSec: 0,
+        turnCountdownLabel: ""
+      });
     }
   },
 
-  resetTurnCountdown(turnKey) {
+  resetTurnCountdown(turnKey, deadlineTs = 0, serverTs = Date.now()) {
     const nextKey = String(turnKey || "");
     if (!nextKey || nextKey === this.turnCountdownKey) {
       return;
     }
 
     this.turnCountdownKey = nextKey;
-    this.turnDeadlineTs = Date.now() + 18000;
+    const normalizedDeadline = Number(deadlineTs) || 0;
+    const normalizedServerTs = Number(serverTs) || Date.now();
+    const driftAdjustedDeadline = normalizedDeadline > 0
+      ? Date.now() + Math.max(0, normalizedDeadline - normalizedServerTs)
+      : Date.now() + 30000;
+    this.turnDeadlineTs = driftAdjustedDeadline;
 
     if (this.turnCountdownTimer) {
       clearInterval(this.turnCountdownTimer);
@@ -2076,8 +2160,11 @@ Page({
     const tick = () => {
       const remainMs = this.turnDeadlineTs - Date.now();
       const sec = Math.max(0, Math.ceil(remainMs / 1000));
-      if (sec !== this.data.turnCountdownSec) {
-        this.setData({ turnCountdownSec: sec });
+      if (sec !== this.data.turnCountdownSec || this.data.turnCountdownLabel !== "剩余") {
+        this.setData({
+          turnCountdownSec: sec,
+          turnCountdownLabel: "剩余"
+        });
       }
       if (sec <= 0 && this.turnCountdownTimer) {
         clearInterval(this.turnCountdownTimer);
@@ -2096,7 +2183,6 @@ Page({
       manualClose: this.manualClose,
       routeStack: this.getRouteStack()
     }, { ui: false });
-    const waitingForLeaveAck = Boolean(this.pendingLeaveActionId);
     this.clearPendingLeaveRequest();
     this.manualClose = true;
     if (this.reconnectTimer) {
@@ -2106,13 +2192,6 @@ Page({
     this.stopHeartbeat();
     this.clearMyDiceTimers();
     this.resetSelfRollTransientState();
-    if (!this.leaveFinalized && this.data.roomId && this.data.playerId && this.data.resumeToken) {
-      wx.removeStorageSync(SESSION_KEY);
-    }
-
-    if (!this.leaveFinalized && !waitingForLeaveAck) {
-      this.notifyServerLeave({ reason: "page_unload" });
-    }
 
     if (this.socketTask) {
       this.debugClientEvent("ws:close_request", {
@@ -2143,6 +2222,7 @@ Page({
 	    this.stopShakeListener();
 	    this.clearTurnCountdown();
     this.clearSettlementCountdown();
+    this.closeRulesPanel();
 
 	    this.actionEventMap = {};
 	  },
@@ -2267,7 +2347,9 @@ Page({
     this.setData({
       callSelectorMode: "count",
       callCount: String(next),
-      callCountOptions: this.buildCallCountOptions(next, max)
+      callCountOptions: this.buildCallCountOptions(next, max),
+      callCountTouched: true,
+      callSelectionSummaryText: buildCallSelectionSummary(true, this.data.callPointTouched, next, this.data.callPoint)
     });
   },
 
@@ -2279,7 +2361,9 @@ Page({
     const next = this.clampNumber(value, 1, 6);
     this.setData({
       callSelectorMode: "point",
-      callPoint: String(next)
+      callPoint: String(next),
+      callPointTouched: true,
+      callSelectionSummaryText: buildCallSelectionSummary(this.data.callCountTouched, true, this.data.callCount, next)
     });
   },
 
@@ -3287,7 +3371,8 @@ Page({
       openResult: sourceOpenResult,
       roundSummary: matchedSummary,
       playersRaw: this.data.playersRaw,
-      selfPlayerId: this.data.playerId
+      selfPlayerId: this.data.playerId,
+      roomThemeId: this.data.roomThemeId
     });
     if (!model) {
       return;
@@ -3324,14 +3409,13 @@ Page({
       settlementPointAsset: model.pointAsset,
       settlementRows: model.rows,
       settlementCanContinue,
-      settlementContinueSec: settlementCanContinue ? this.data.settlementContinueSec : 0
+      settlementContinueSec: settlementCanContinue ? this.data.settlementContinueSec : 0,
+      recentSettlementAvailable: true
     });
   },
 
   hideSettlementPanel() {
     this.clearSettlementCountdown();
-    this.latestOpenResult = null;
-    this.latestRoundSummary = null;
     this.setData({
       settlementVisible: false,
       settlementSummaryText: "",
@@ -3340,7 +3424,8 @@ Page({
       settlementPointAsset: "",
       settlementRows: [],
       settlementCanContinue: false,
-      settlementContinueSec: 0
+      settlementContinueSec: 0,
+      recentSettlementAvailable: Boolean(this.latestOpenResult)
     });
   },
 
@@ -3377,8 +3462,7 @@ Page({
       lastCallKey: ""
     });
     this.clearSettlementCountdown();
-    this.latestOpenResult = null;
-    this.latestRoundSummary = null;
+    this.setData({ recentSettlementAvailable: Boolean(this.latestOpenResult) });
     this.sendEvent("round:restart", {});
   },
 
@@ -3429,6 +3513,10 @@ Page({
       wx.showToast({ title: "已到上限，请直接开牌", icon: "none" });
       return;
     }
+    if (!this.data.callCountTouched || !this.data.callPointTouched) {
+      wx.showToast({ title: this.data.callSelectionSummaryText || "请先选完整叫牌", icon: "none" });
+      return;
+    }
     this.haptic("light");
     const count = Number(this.data.callCount);
     const point = Number(this.data.callPoint);
@@ -3448,7 +3536,10 @@ Page({
       callSelectorMode: "",
       callPanelExpanded: false,
       primaryActionText: "叫牌",
-      callPanelVisible: false
+      callPanelVisible: false,
+      callCountTouched: false,
+      callPointTouched: false,
+      callSelectionSummaryText: buildCallSelectionSummary(false, false, count, point)
     });
   },
 
@@ -3736,6 +3827,47 @@ Page({
     this.sendEvent("open:request", {});
   },
 
+  requestOpenAssist() {
+    if (this.data.phase !== "calling" || this.data.selfIsWaiting) {
+      wx.showToast({ title: "当前不可申请跳开", icon: "none" });
+      return;
+    }
+    const pending = this.data.pendingOpenRequest;
+    if (pending && String(pending.requesterId || "") === String(this.data.playerId || "")) {
+      wx.showToast({ title: "已发起跳开申请", icon: "none" });
+      return;
+    }
+
+    this.haptic("light");
+    this.sendEvent("open:assistRequest", {});
+  },
+
+  onSecondaryAction() {
+    if (!this.data.secondaryActionEnabled) {
+      return;
+    }
+
+    switch (String(this.data.secondaryActionKind || "")) {
+      case "reroll":
+        this.rollDice();
+        return;
+      case "open":
+        this.openDice();
+        return;
+      case "assist-open":
+        this.requestOpenAssist();
+        return;
+      case "history":
+        this.toggleHistory();
+        return;
+      case "rules":
+        this.openRulesPanel();
+        return;
+      default:
+        return;
+    }
+  },
+
   toggleHistory() {
     if (this.data.selfIsWaiting) {
       wx.showToast({ title: "旁观者不可操作", icon: "none" });
@@ -3744,6 +3876,7 @@ Page({
     const nextVisible = !this.data.historyVisible;
     this.setData({
       historyVisible: nextVisible,
+      rulesVisible: false,
       voiceVisible: false,
       chatVisible: false
     });
@@ -3773,12 +3906,21 @@ Page({
   onSettlementViewHistory() {
     this.setData({
       historyVisible: true,
+      rulesVisible: false,
       voiceVisible: false,
       chatVisible: false
     });
     if (!this.data.historyItems.length) {
       this.loadHistory();
     }
+  },
+
+  reopenLatestSettlement() {
+    if (!this.latestOpenResult) {
+      wx.showToast({ title: "暂无可回看的结算", icon: "none" });
+      return;
+    }
+    this.showSettlementPanel(this.latestOpenResult, this.latestRoundSummary);
   },
 
   onSettlementContinue() {
@@ -3798,6 +3940,7 @@ Page({
     this.setData({
       voiceVisible: nextVisible,
       historyVisible: false,
+      rulesVisible: false,
       chatVisible: false
     });
 
@@ -3816,6 +3959,7 @@ Page({
       chatVisible: nextVisible,
       chatUnreadCount: nextVisible ? 0 : this.data.chatUnreadCount,
       historyVisible: false,
+      rulesVisible: false,
       voiceVisible: false
     });
 
@@ -3918,6 +4062,11 @@ Page({
     });
   },
 
+  onTapRules() {
+    this.closeTopbarMenu();
+    this.openRulesPanel();
+  },
+
   closeTopbarMenu() {
     if (!this.data.topbarMenuVisible) {
       return;
@@ -3943,6 +4092,22 @@ Page({
   onTapMenuSeating() {
     this.closeTopbarMenu();
     this.openSeatingPanel();
+  },
+
+  openRulesPanel() {
+    this.setData({
+      rulesVisible: true,
+      historyVisible: false,
+      voiceVisible: false,
+      chatVisible: false
+    });
+  },
+
+  closeRulesPanel() {
+    if (!this.data.rulesVisible) {
+      return;
+    }
+    this.setData({ rulesVisible: false });
   },
 
   ensureShareMenuVisible() {
@@ -4360,7 +4525,7 @@ Page({
         const turnKey = `${incomingRound}:${phase}:${payload.currentPlayerId || "-"}:${lastCallObj ? lastCallObj.ts : 0}`;
 
         if (phase === "calling") {
-          this.resetTurnCountdown(turnKey);
+          this.resetTurnCountdown(turnKey, payload.turnDeadlineTs, payload.serverTs);
         } else {
           this.clearTurnCountdown();
         }
@@ -4424,7 +4589,8 @@ Page({
           this.data.playerId,
           validTargets,
           payload.lastCall,
-          roomDirection
+          roomDirection,
+          roomThemeId
         );
         const ghostSeats = buildGhostSeats(playersDecorated);
 
@@ -4477,17 +4643,39 @@ Page({
         const nextCallCount = String(nextCallCountNum);
         const nextCallPoint = String(nextCallPointNum);
         const callCountOptions = this.buildCallCountOptions(nextCallCountNum, maxCallCount);
+        const callPointOptionItems = buildCallPointOptionItems(roomThemeId, ["1", "2", "3", "4", "5", "6"]);
         const callForcedOpen = Boolean(isMyCallingTurn && suggestedCall.forcedOpen);
         const callPanelVisible = isMyCallingTurn ? Boolean(this.data.callPanelVisible) : false;
         const callPanelExpanded = isMyCallingTurn ? Boolean(this.data.callPanelExpanded) : false;
         const canOpenAction = Boolean(isMyCallingTurn && lastCallIsOpenableTarget);
-        const showQuickOpenAction = Boolean(canOpenAction && !callForcedOpen);
+        const showQuickOpenAction = false;
+        const pendingOpenRequest = payload && payload.pendingOpenRequest ? payload.pendingOpenRequest : null;
+        const pendingOpenRequester = pendingOpenRequest
+          ? playersRaw.find((player) => String(player.id || "") === String(pendingOpenRequest.requesterId || ""))
+          : null;
+        const pendingOpenRequestText = pendingOpenRequester
+          ? `${safeDecodeComponent(pendingOpenRequester.nickname).trim() || "有玩家"}申请跳开`
+          : "";
+        const shouldResetCallSelection = Boolean(
+          !isMyCallingTurn
+          || roundChanged
+          || previousLastCallTs !== nextLastCallTs
+          || this.data.phase !== "calling"
+          || this.data.currentPlayerId !== this.data.playerId
+        );
+        const callCountTouched = isMyCallingTurn && !callForcedOpen && !shouldResetCallSelection
+          ? Boolean(this.data.callCountTouched)
+          : false;
+        const callPointTouched = isMyCallingTurn && !callForcedOpen && !shouldResetCallSelection
+          ? Boolean(this.data.callPointTouched)
+          : false;
+        const callSelectionSummaryText = callForcedOpen
+          ? "已到上限，请直接开牌"
+          : buildCallSelectionSummary(callCountTouched, callPointTouched, nextCallCount, nextCallPoint);
 
         const settlementVisible = Boolean(this.data.settlementVisible) && phase === "ended";
         if (!settlementVisible && this.data.settlementVisible) {
           this.clearSettlementCountdown();
-          this.latestOpenResult = null;
-          this.latestRoundSummary = null;
         }
 
         const hasDice = Array.isArray(this.data.privateDice) && this.data.privateDice.length === dicePerPlayer;
@@ -4535,6 +4723,18 @@ Page({
             canPrimaryAction = false;
           }
         }
+        const secondaryAction = this.computeSecondaryActionState({
+          phase,
+          selfIsWaiting,
+          isMyCallingTurn,
+          hasDice,
+          selfRollLocked,
+          selfRollCountThisRound,
+          canOpenAction,
+          callForcedOpen,
+          lastCallExists: Boolean(lastCallObj),
+          pendingOpenRequest
+        });
 
         const seatingSelectedSeatIndex = Number(this.data.seatingSelectedSeatIndex || 0);
         const seatRows = buildSeatRows(playersRaw, 8, seatingSelectedSeatIndex);
@@ -4578,13 +4778,22 @@ Page({
           callCount: nextCallCount,
           callPoint: nextCallPoint,
           callCountOptions,
+          callPointOptionItems,
           maxCallCount,
           callForcedOpen,
           callSelectorMode: isMyCallingTurn ? (this.data.callSelectorMode || "count") : "",
           callPanelExpanded: isMyCallingTurn ? callPanelExpanded : false,
           callPanelVisible,
+          callCountTouched,
+          callPointTouched,
+          callSelectionSummaryText,
           canOpenAction,
           showQuickOpenAction,
+          pendingOpenRequest,
+          pendingOpenRequestText,
+          secondaryActionText: secondaryAction.secondaryActionText,
+          secondaryActionKind: secondaryAction.secondaryActionKind,
+          secondaryActionEnabled: secondaryAction.secondaryActionEnabled,
           settlementVisible,
           settlementSummaryText: settlementVisible ? this.data.settlementSummaryText : "",
           settlementDeclaredText: settlementVisible ? this.data.settlementDeclaredText : "",
@@ -4593,6 +4802,7 @@ Page({
           settlementRows: settlementVisible ? this.data.settlementRows : [],
           settlementCanContinue: settlementVisible ? this.data.settlementCanContinue : false,
           settlementContinueSec: settlementVisible ? this.data.settlementContinueSec : 0,
+          recentSettlementAvailable: Boolean(this.latestOpenResult),
           privateDice: (selfIsWaiting || roundChanged) ? [] : this.data.privateDice,
           callTimeline,
           lastCallKey,
@@ -4712,12 +4922,7 @@ Page({
             && (actionEvent === "room:create" || actionEvent === "room:join");
 
           if (isExpiredAccountFailure) {
-            this.clearExpiredAccountBinding();
-            this.setData({ lastWsError: "" });
-            this.refreshWsHint("");
-            if (!this.retryEntryWithoutAccount(actionEvent)) {
-              wx.showToast({ title: "登录状态已更新，请重试", icon: "none" });
-            }
+            this.pendingAccountRecoveryPromise = this.recoverExpiredAccountBinding(actionEvent);
             break;
           }
 
@@ -4927,7 +5132,7 @@ Page({
     lastCall = this.data.lastCallObj
   ) {
     const roomDirection = this.data.roomConfig && this.data.roomConfig.direction === "ccw" ? "ccw" : "cw";
-    return decoratePlayers(playersRaw, this.data.playerId, selectedTargetIds, lastCall, roomDirection);
+    return decoratePlayers(playersRaw, this.data.playerId, selectedTargetIds, lastCall, roomDirection, this.data.roomThemeId);
   },
 
   onSeatAvatarError(event) {
@@ -5077,18 +5282,91 @@ Page({
     if (this.data.phase !== "calling" || this.data.currentPlayerId !== this.data.playerId || this.data.selfIsWaiting) {
       return;
     }
+    const nextCountTouched = false;
+    const nextPointTouched = false;
     this.setData({
       callPanelVisible: true,
       callPanelExpanded: true,
-      callSelectorMode: this.data.callSelectorMode || "count"
+      callSelectorMode: "count",
+      callCountTouched: nextCountTouched,
+      callPointTouched: nextPointTouched,
+      callSelectionSummaryText: buildCallSelectionSummary(nextCountTouched, nextPointTouched, this.data.callCount, this.data.callPoint)
     });
   },
 
   closeCallPanel() {
     this.setData({
       callPanelVisible: false,
-      callPanelExpanded: false
+      callPanelExpanded: false,
+      callCountTouched: false,
+      callPointTouched: false,
+      callSelectionSummaryText: buildCallSelectionSummary(false, false, this.data.callCount, this.data.callPoint)
     });
+  },
+
+  computeSecondaryActionState(context = {}) {
+    const phase = String(context.phase || this.data.phase || "ready");
+    const selfIsWaiting = Boolean(context.selfIsWaiting);
+    const isMyCallingTurn = Boolean(context.isMyCallingTurn);
+    const hasDice = Boolean(context.hasDice);
+    const selfRollLocked = Boolean(context.selfRollLocked);
+    const canOpenAction = Boolean(context.canOpenAction);
+    const callForcedOpen = Boolean(context.callForcedOpen);
+    const lastCallExists = Boolean(context.lastCallExists);
+    const pendingOpenRequest = context.pendingOpenRequest || null;
+    const selfRequestedOpen = Boolean(
+      pendingOpenRequest
+      && String(pendingOpenRequest.requesterId || "") === String(this.data.playerId || "")
+    );
+
+    if (selfIsWaiting) {
+      return {
+        secondaryActionText: "规则",
+        secondaryActionKind: "rules",
+        secondaryActionEnabled: true
+      };
+    }
+
+    if (phase === "rolling" && hasDice && !selfRollLocked && hasSelfRollsRemaining({
+      selfRollCountThisRound: context.selfRollCountThisRound
+    })) {
+      return {
+        secondaryActionText: "再摇",
+        secondaryActionKind: "reroll",
+        secondaryActionEnabled: true
+      };
+    }
+
+    if (phase === "calling") {
+      if (isMyCallingTurn) {
+        if (callForcedOpen || canOpenAction) {
+          return {
+            secondaryActionText: "开牌",
+            secondaryActionKind: "open",
+            secondaryActionEnabled: true
+          };
+        }
+        return {
+          secondaryActionText: "记录",
+          secondaryActionKind: "history",
+          secondaryActionEnabled: true
+        };
+      }
+
+      if (lastCallExists) {
+        return {
+          secondaryActionText: selfRequestedOpen ? "跳开中" : "跳开",
+          secondaryActionKind: "assist-open",
+          secondaryActionEnabled: !selfRequestedOpen
+        };
+      }
+    }
+
+    return {
+      secondaryActionText: "记录",
+      secondaryActionKind: "history",
+      secondaryActionEnabled: true
+    };
   },
 
   clampNumber(value, min, max) {
@@ -5197,6 +5475,7 @@ Page({
     }
     this.clearMyDiceTimers();
     this.resetSelfRollTransientState();
+    this.clearTurnCountdown();
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
@@ -5242,8 +5521,13 @@ Page({
       settlementRows: [],
       settlementCanContinue: false,
       settlementContinueSec: 0,
+      recentSettlementAvailable: false,
       lastCallKey: "",
       callTimeline: [],
+      turnCountdownSec: 0,
+      turnCountdownLabel: "",
+      pendingOpenRequest: null,
+      pendingOpenRequestText: "",
       myDiceVisible: false,
       myDicePeekVisible: false,
       myDiceRolling: false,
@@ -5254,6 +5538,7 @@ Page({
       historyItems: [],
       historyNextBeforeRound: null,
       historyVisible: false,
+      rulesVisible: false,
       voiceItemsRaw: [],
       voiceItems: [],
       voiceVisible: false,
@@ -5268,9 +5553,15 @@ Page({
       callForcedOpen: false,
       callSelectorMode: "",
       callPanelExpanded: false,
+      callCountTouched: false,
+      callPointTouched: false,
+      callSelectionSummaryText: buildCallSelectionSummary(false, false, 3, 6),
       callPanelVisible: false,
       canOpenAction: false,
       showQuickOpenAction: false,
+      secondaryActionText: "",
+      secondaryActionKind: "",
+      secondaryActionEnabled: false,
       seatingVisible: false,
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "未选择",
@@ -5414,6 +5705,7 @@ Page({
     this.resetSelfRollTransientState();
     this.suppressCallAttention = false;
     this.lastTurnAlertKey = "";
+    this.clearTurnCountdown();
     this.clearSettlementCountdown();
     this.latestOpenResult = null;
     this.latestRoundSummary = null;
@@ -5434,15 +5726,22 @@ Page({
       settlementRows: [],
       settlementCanContinue: false,
       settlementContinueSec: 0,
+      recentSettlementAvailable: false,
       callCount: "3",
       callPoint: "6",
       callCountOptions: buildCallCountOptionItems(3, 8, 1),
       callForcedOpen: false,
       callSelectorMode: "",
       callPanelExpanded: false,
+      callCountTouched: false,
+      callPointTouched: false,
+      callSelectionSummaryText: buildCallSelectionSummary(false, false, 3, 6),
       callPanelVisible: false,
       canOpenAction: false,
       showQuickOpenAction: false,
+      secondaryActionText: "",
+      secondaryActionKind: "",
+      secondaryActionEnabled: false,
       seatingVisible: false,
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "未选择",
@@ -5450,6 +5749,12 @@ Page({
       pendingActionText: "",
       lastCallKey: "",
       callTimeline: [],
+      turnCountdownSec: 0,
+      turnCountdownLabel: "",
+      pendingOpenRequest: null,
+      pendingOpenRequestText: "",
+      historyVisible: false,
+      rulesVisible: false,
       myDiceVisible: false,
       myDicePeekVisible: false,
       myDiceRolling: false,
@@ -5467,18 +5772,44 @@ Page({
     wx.removeStorageSync(WECHAT_LOGIN_TS_KEY);
   },
 
-  retryEntryWithoutAccount(actionEvent) {
-    if (actionEvent === "room:create") {
-      this.createRoom();
-      return true;
+  async recoverExpiredAccountBinding(actionEvent) {
+    this.setData({
+      networkStatusText: "恢复登录中",
+      lastWsError: ""
+    });
+    this.refreshWsHint("");
+
+    if (!globalThis.wx || typeof globalThis.wx.login !== "function") {
+      this.clearExpiredAccountBinding();
+      const message = "账号登录已失效，请重新进入";
+      this.setData({ lastWsError: message });
+      this.refreshWsHint(message);
+      wx.showToast({ title: message, icon: "none" });
+      return;
     }
 
-    if (actionEvent === "room:join") {
-      this.joinRoom();
-      return true;
+    try {
+      await refreshWechatSessionSilently();
+      if (actionEvent === "room:create") {
+        this.createRoom();
+        return;
+      }
+      if (actionEvent === "room:join") {
+        this.joinRoom();
+        return;
+      }
+      if (actionEvent === "room:rejoin" && this.data.connected) {
+        this.rejoinRoom();
+        return;
+      }
+      wx.showToast({ title: "登录状态已恢复", icon: "none" });
+    } catch (error) {
+      this.clearExpiredAccountBinding();
+      const message = error && error.message ? String(error.message) : "登录状态已失效，请重新进入";
+      this.setData({ lastWsError: message });
+      this.refreshWsHint(message);
+      wx.showToast({ title: message, icon: "none" });
     }
-
-    return false;
   },
 
   openPrivacyPage() {

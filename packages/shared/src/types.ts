@@ -6,7 +6,7 @@ export type NetworkHealth = "good" | "lag" | "disconnected";
 export type RoomDirection = "cw" | "ccw";
 export type OpenMode = "single" | "multi";
 export type AccountProvider = "wechat";
-export type RoomThemeId = "jade-green" | "ruby-red" | "sapphire-blue" | "imperial-red" | "mist-ivory";
+export type RoomThemeId = "ruby-red" | "imperial-red";
 
 export interface RoomConfigDTO {
   direction: RoomDirection;
@@ -59,6 +59,12 @@ export interface RoomStateDTO {
   players: PlayerState[];
   waitingPlayers: WaitingPlayerState[];
   lastCall?: DiceCall;
+  turnDeadlineTs?: number;
+  pendingOpenRequest?: {
+    requesterId: string;
+    targetPlayerId: string;
+    expiresAt: number;
+  };
   networkHealth: NetworkHealth;
   version: number;
   serverTs: number;
@@ -234,6 +240,7 @@ export interface ClientEventMap {
   "rolling:finish": Record<string, never>;
   "call:make": { count: number; point: 1 | 2 | 3 | 4 | 5 | 6 };
   "open:request": { targetPlayerIds?: string[] };
+  "open:assistRequest": Record<string, never>;
   "round:restart": Record<string, never>;
   "chat:send": { text: string };
   "chat:list": { limit?: number };
