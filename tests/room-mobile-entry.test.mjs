@@ -1036,7 +1036,7 @@ test("room page: join entry for the same room restores the cached session automa
   }
 });
 
-test("room page: create flow does not mask missing server theme with the selected theme", () => {
+test("room page: create flow falls back to the selected theme when server state omits themeId", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -1072,8 +1072,8 @@ test("room page: create flow does not mask missing server theme with the selecte
       }
     }));
 
-    assert.equal(page.data.roomThemeId, "jade-green");
-    assert.equal(page.data.roomThemeClass, "room-theme-jade-green");
+    assert.equal(page.data.roomThemeId, "ruby-red");
+    assert.equal(page.data.roomThemeClass, "room-theme-ruby-red");
   } finally {
     cleanup();
   }
@@ -1244,7 +1244,7 @@ test("room page: create payload keeps each selected premium theme when remote ma
   }
 });
 
-test("room page: mode join ignores queried room theme when server state omits themeId", () => {
+test("room page: mode join uses the queried room theme when server state omits themeId", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -1280,8 +1280,8 @@ test("room page: mode join ignores queried room theme when server state omits th
       }
     }));
 
-    assert.equal(page.data.roomThemeId, "jade-green");
-    assert.equal(page.data.roomThemeClass, "room-theme-jade-green");
+    assert.equal(page.data.roomThemeId, "ruby-red");
+    assert.equal(page.data.roomThemeClass, "room-theme-ruby-red");
   } finally {
     cleanup();
   }

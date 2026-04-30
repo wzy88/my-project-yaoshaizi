@@ -4459,6 +4459,14 @@ Page({
       return cachedThemeId;
     }
 
+    const fallbackThemeId = parseOptionalRoomThemeId(provisionalThemeId) || sameRoomThemeId || cachedThemeId;
+    if (fallbackThemeId) {
+      if (normalizedRoomId) {
+        this.cacheRoomTheme(normalizedRoomId, fallbackThemeId);
+      }
+      return fallbackThemeId;
+    }
+
     return DEFAULT_ROOM_THEME_ID;
   },
 
