@@ -22,4 +22,5 @@ export const WECHAT_CODE2SESSION_URL = String(
 export const WECHAT_AUTH_MOCK = process.env.WECHAT_AUTH_MOCK === "1";
 
 export const ROLL_TIMEOUT_MS = Number(process.env.ROLL_TIMEOUT_MS || 15000);
-export const CALL_TIMEOUT_MS = Number(process.env.CALL_TIMEOUT_MS || 30000);
+// 叫牌倒计时是产品规则，不允许云托管环境变量把线上改回 18 秒。
+export const CALL_TIMEOUT_MS = 30000;

@@ -1,9 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 
 import { CALL_TIMEOUT_MS } from "../apps/server/dist/config.js";
 import { RoomEngine } from "../apps/server/dist/engine/room-engine.js";
 import { RoomService } from "../apps/server/dist/engine/room-service.js";
+
+const serverConfigSourcePath = path.join(process.cwd(), "apps/server/src/config.ts");
 
 function createCallingRoom(roomId = "T90001") {
   const room = new RoomEngine(roomId, { id: "P1", nickname: "p1", avatar: "" }, {
@@ -19,6 +23,13 @@ function createCallingRoom(roomId = "T90001") {
   room.finishRolling("P1");
   return room;
 }
+
+test("room service: call timeout is fixed at 30 seconds and cannot be shortened by deployment env", () => {
+  const source = fs.readFileSync(serverConfigSourcePath, "utf8");
+
+  assert.equal(CALL_TIMEOUT_MS, 30000);
+  assert.doesNotMatch(source, /process\.env\.CALL_TIMEOUT_MS/);
+});
 
 test("room service: calling turn state broadcasts a fresh deadline before clients reset countdown", () => {
   const roomId = "T90001";
