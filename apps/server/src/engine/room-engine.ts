@@ -219,7 +219,7 @@ export class RoomEngine {
   }
 
   addPlayer(input: AddPlayerInput): void {
-    if (this.players.size >= MAX_PLAYERS) {
+    if (this.players.size + this.waitingPlayers.size >= MAX_PLAYERS) {
       throw new GameError(ErrorCode.ROOM_FULL, "房间人数已达上限");
     }
 
@@ -260,7 +260,7 @@ export class RoomEngine {
   }
 
   addWaitingPlayer(input: Omit<AddPlayerInput, "isOwner">): void {
-    if (this.players.size >= MAX_PLAYERS) {
+    if (this.players.size + this.waitingPlayers.size >= MAX_PLAYERS) {
       throw new GameError(ErrorCode.ROOM_FULL, "房间人数已达上限");
     }
 

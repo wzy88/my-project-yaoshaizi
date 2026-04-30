@@ -7,9 +7,9 @@ const ROOM_THEME_IDS = [
 ];
 
 const ROOM_THEME_LABELS = {
-  "jade-green": "绿色",
-  "imperial-red": "红金",
-  "ruby-red": "黑色"
+  "jade-green": "青岚",
+  "imperial-red": "绛华",
+  "ruby-red": "玄曜"
 };
 
 function normalizeRoomThemeId(raw) {

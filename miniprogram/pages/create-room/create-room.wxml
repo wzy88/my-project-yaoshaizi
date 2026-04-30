@@ -11,73 +11,64 @@
       </view>
     </view>
 
-    <view class="create-sheet__body">
-      <view class="block block--hero">
-        <text class="block-title">房间形式</text>
-        <view class="room-form-card">
-          <view class="room-form-card__glow"></view>
-          <view class="room-form-card__badge">固定房间</view>
-          <text class="room-form-card__title">固定 8 个座位</text>
-          <text class="room-form-card__desc">房间始终保留 8 个座位，来几个人算几个人，最多 8 人同局。</text>
+    <scroll-view class="create-sheet__scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+      <view class="create-sheet__body">
+        <view class="block block--hero">
+          <text class="block-title">房间形式</text>
+          <view class="room-form-card">
+            <view class="room-form-card__glow"></view>
+            <view class="room-form-card__badge">固定房间</view>
+            <text class="room-form-card__title">固定 8 个座位</text>
+            <text class="room-form-card__desc">房间始终保留 8 个座位，来几个人算几个人，最多 8 人同局。</text>
+          </view>
         </view>
-      </view>
 
-      <view class="block">
-        <text class="block-title">房间主题</text>
-        <view class="theme-picker">
-          <block wx:for="{{roomThemeOptions}}" wx:key="id">
-            <view
-              class="theme-card theme-card--{{item.id}} {{themePreviewId === item.id ? 'is-active' : ''}}"
-              data-theme-id="{{item.id}}"
-              bindtap="onSelectTheme"
-            >
-              <view class="theme-card__preview">
-                <view class="theme-card__preview-glow"></view>
-                <view class="theme-card__preview-table"></view>
-                <view class="theme-card__preview-ring"></view>
-                <view class="theme-card__preview-bubble"></view>
-                <view class="theme-card__preview-action theme-card__preview-action--primary"></view>
-                <view class="theme-card__preview-action theme-card__preview-action--secondary"></view>
-                <view class="theme-card__preview-cup theme-card__preview-cup--left"></view>
-                <view class="theme-card__preview-cup theme-card__preview-cup--right"></view>
-              </view>
-              <view class="theme-card__meta">
-                <view class="theme-card__title-row">
+        <view class="block">
+          <text class="block-title">房间主题</text>
+          <view class="theme-picker">
+            <block wx:for="{{roomThemeOptions}}" wx:key="id">
+              <view
+                class="theme-card theme-card--{{item.id}} {{themePreviewId === item.id ? 'is-active' : ''}}"
+                data-theme-id="{{item.id}}"
+                bindtap="onSelectTheme"
+              >
+                <view wx:if="{{themePreviewId === item.id}}" class="theme-card__check">已选</view>
+                <view class="theme-card__preview"></view>
+                <view class="theme-card__meta">
                   <text class="theme-card__title">{{item.label}}</text>
-                  <view wx:if="{{themePreviewId === item.id}}" class="theme-card__badge">当前</view>
                 </view>
-                <text class="theme-card__caption">{{item.caption}}</text>
-                <text class="theme-card__desc">{{item.desc}}</text>
               </view>
+            </block>
+          </view>
+        </view>
+
+        <view class="block">
+          <text class="block-title">局内规则</text>
+          <view class="toggle-card" data-field="wildcardOneEnabled" bindtap="onToggleField">
+            <view class="toggle-card__signal {{wildcardOneEnabled ? 'is-on' : 'is-off'}}"></view>
+            <view class="toggle-copy">
+              <text class="toggle-title">通配 1</text>
+              <text class="toggle-sub">有人叫 1 之后通配效果失效</text>
             </view>
-          </block>
-        </view>
-      </view>
-
-      <view class="block">
-        <text class="block-title">局内规则</text>
-        <view class="toggle-card" data-field="wildcardOneEnabled" bindtap="onToggleField">
-          <view class="toggle-card__signal {{wildcardOneEnabled ? 'is-on' : 'is-off'}}"></view>
-          <view class="toggle-copy">
-            <text class="toggle-title">通配 1</text>
-            <text class="toggle-sub">有人叫 1 之后通配效果失效</text>
-          </view>
-          <view class="toggle-pill {{wildcardOneEnabled ? 'is-on' : ''}}">
-            <view class="toggle-pill__thumb"></view>
+            <view class="toggle-pill {{wildcardOneEnabled ? 'is-on' : ''}}">
+              <view class="toggle-pill__thumb"></view>
+            </view>
           </view>
         </view>
-      </view>
 
-      <view class="create-note-card">
-        <text class="create-note-card__title">开局说明</text>
-        <text class="create-note-card__desc">默认每人 5 颗骰子。创建后会直接进入房间，空位会保留杯位但不显示头像。</text>
-      </view>
+        <view class="create-note-card">
+          <text class="create-note-card__title">开局说明</text>
+          <text class="create-note-card__desc">默认每人 5 颗骰子。创建后会直接进入房间，空位会保留杯位但不显示头像。</text>
+        </view>
 
-      <view class="create-note-card create-note-card--experiment">
-        <text class="create-note-card__title">测试主题</text>
-        <text class="create-note-card__desc">本次创建会带入 {{themePreviewLabel}} 主题，用于真机验证牌桌、气泡、杯子和按钮效果。</text>
+        <view class="create-note-card create-note-card--experiment">
+          <text class="create-note-card__title">测试主题</text>
+          <text class="create-note-card__desc">本次创建会带入 {{themePreviewLabel}} 主题，用于真机验证牌桌、气泡、杯子和按钮效果。</text>
+        </view>
       </view>
+    </scroll-view>
 
+    <view class="create-sheet__footer">
       <view class="create-actions">
         <button class="create-btn" bindtap="createAndEnter">创建并进入</button>
         <button class="cancel-btn" bindtap="back">取消</button>

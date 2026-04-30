@@ -360,7 +360,8 @@ export class RoomService {
       ok: true,
       roomId,
       playerId,
-      resumeToken
+      resumeToken,
+      themeId: room.getState().config.themeId
     });
 
     this.broadcastRoomState(roomId);
@@ -431,7 +432,8 @@ export class RoomService {
         ok: true,
         roomId: payload.roomId,
         playerId: restoredPlayerId,
-        resumeToken: restoredResumeToken
+        resumeToken: restoredResumeToken,
+        themeId: room.getState().config.themeId
       });
 
       const roomState = room.getState();
@@ -454,10 +456,11 @@ export class RoomService {
     }
 
     const playerId = createPlayerId();
-    const phase = room.getState().phase;
-    const playerCount = room.getState().players.length;
+    const roomState = room.getState();
+    const phase = roomState.phase;
+    const participantCount = roomState.players.length + roomState.waitingPlayers.length;
 
-    if (playerCount >= MAX_PLAYERS) {
+    if (participantCount >= MAX_PLAYERS) {
       throw new GameError(ErrorCode.ROOM_FULL, "房间已满，无法旁观");
     }
 
@@ -501,7 +504,8 @@ export class RoomService {
       ok: true,
       roomId: payload.roomId,
       playerId,
-      resumeToken
+      resumeToken,
+      themeId: room.getState().config.themeId
     });
 
     this.broadcastRoomState(payload.roomId);
@@ -544,7 +548,8 @@ export class RoomService {
       ok: true,
       roomId: payload.roomId,
       playerId: payload.playerId,
-      resumeToken: payload.resumeToken
+      resumeToken: payload.resumeToken,
+      themeId: room.getState().config.themeId
     });
 
     const roomState = room.getState();

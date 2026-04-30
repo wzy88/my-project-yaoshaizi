@@ -268,6 +268,7 @@ export interface ServerEventMap {
     roomId?: string;
     playerId?: string;
     resumeToken?: string;
+    themeId?: RoomThemeId;
   };
   "dice:privateResult": {
     round: number;

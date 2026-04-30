@@ -23,11 +23,11 @@ function buildThemeOptions() {
     id,
     label: getRoomThemeLabel(id),
     caption: id === "jade-green"
-      ? "经典绿房"
-      : (id === "ruby-red" ? "黑金暗纹" : "宫廷红金"),
+      ? "青玉微雾"
+      : (id === "ruby-red" ? "玄金夜色" : "绛金宫阙"),
     desc: id === "jade-green"
-      ? "沿用线上默认绿房视觉，最稳妥。"
-      : (id === "ruby-red" ? "黑色桌面、金色强调，适合夜场感。" : "红金主视觉，氛围感更强。")
+      ? "偏青玉与雾感金边，清透安静。"
+      : (id === "ruby-red" ? "偏墨金与暗纹火光，沉稳华丽。" : "偏绛红与暖金主调，浓郁典雅。")
   }));
 }
 

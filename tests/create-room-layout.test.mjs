@@ -31,6 +31,8 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxml, /class="create-sheet"/);
   assert.match(wxml, /class="create-sheet__eyebrow">ROOM SETUP<\/text>/);
   assert.match(wxml, /class="create-sheet__title">创建房间<\/text>/);
+  assert.match(wxml, /<scroll-view class="create-sheet__scroll" scroll-y="true"/);
+  assert.match(wxml, /class="create-sheet__footer"/);
   assert.match(wxml, /class="room-form-card"/);
   assert.match(wxml, /class="room-form-card__badge">固定房间<\/view>/);
   assert.match(wxml, /class="room-form-card__title">固定 8 个座位<\/text>/);
@@ -38,6 +40,7 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxml, /<text class="block-title">房间主题<\/text>/);
   assert.match(wxml, /class="theme-picker"/);
   assert.match(wxml, /class="theme-card theme-card--\{\{item\.id\}\} \{\{themePreviewId === item\.id \? 'is-active' : ''\}\}"/);
+  assert.match(wxml, /class="theme-card__check">已选<\/view>/);
   assert.match(wxml, /class="theme-card__preview"/);
   assert.match(wxml, /class="theme-card__title">\{\{item\.label\}\}<\/text>/);
   assert.match(wxml, /class="toggle-card__signal \{\{wildcardOneEnabled \? 'is-on' : 'is-off'\}\}"/);
@@ -57,11 +60,18 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(script, /wx\.switchTab\(\{ url: "\/pages\/lobby\/lobby" \}\)/);
 
   assert.match(wxss, /\.create-sheet\s*\{/);
+  assert.match(wxss, /\.create-sheet\s*\{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
+  assert.match(wxss, /\.create-sheet\s*\{[\s\S]*height:\s*min\(1320rpx,\s*calc\(100vh - env\(safe-area-inset-top\) - env\(safe-area-inset-bottom\) - 84rpx\)\)/);
+  assert.match(wxss, /\.create-sheet__scroll\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0/);
+  assert.match(wxss, /\.create-sheet__footer\s*\{[\s\S]*flex:\s*0 0 auto/);
   assert.match(wxss, /\.create-page\s*\{[\s\S]*display:\s*flex[\s\S]*align-items:\s*flex-end[\s\S]*justify-content:\s*center/);
   assert.match(wxss, /\.create-sheet__glow--a\s*\{/);
   assert.match(wxss, /\.toggle-card__signal\.is-on\s*\{/);
   assert.match(wxss, /\.theme-picker\s*\{/);
+  assert.match(wxss, /\.theme-picker\s*\{[\s\S]*display:\s*flex[\s\S]*align-items:\s*stretch/);
   assert.match(wxss, /\.theme-card\s*\{/);
+  assert.match(wxss, /\.theme-card\s*\{[\s\S]*flex:\s*1 1 0[\s\S]*flex-direction:\s*column/);
+  assert.match(wxss, /\.theme-card__check\s*\{/);
   assert.match(wxss, /\.theme-card--jade-green \.theme-card__preview\s*\{/);
   assert.match(wxss, /\.theme-card--ruby-red \.theme-card__preview\s*\{/);
   assert.match(wxss, /\.theme-card--imperial-red \.theme-card__preview\s*\{/);

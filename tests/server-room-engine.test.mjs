@@ -261,3 +261,26 @@ test("room engine: owner can adjust seats after settlement before the next round
   assert.equal(state.players.find((player) => player.id === "P_OWNER").seatIndex, 8);
   assert.equal(state.players.find((player) => player.id === "P_C").seatIndex, 1);
 });
+
+test("room engine: total participants cannot exceed eight even when waiting players exist", () => {
+  const roomId = "T20009";
+  const engine = new RoomEngine(roomId, { id: "P1", nickname: "p1", avatar: "" }, {
+    direction: "cw",
+    wildcardOneEnabled: true,
+    openMode: "single",
+    dicePerPlayer: 5,
+    minOpeningCount: 2,
+    testMode: true
+  });
+
+  for (let i = 2; i <= 7; i += 1) {
+    engine.addPlayer({ id: `P${i}`, nickname: `p${i}`, avatar: "" });
+  }
+
+  engine.addWaitingPlayer({ id: "W8", nickname: "w8", avatar: "" });
+
+  assert.equal(engine.getState().players.length, 7);
+  assert.equal(engine.getState().waitingPlayers.length, 1);
+  assert.throws(() => engine.addPlayer({ id: "P9", nickname: "p9", avatar: "" }), (err) => err && err.code === ErrorCode.ROOM_FULL);
+  assert.throws(() => engine.addWaitingPlayer({ id: "W9", nickname: "w9", avatar: "" }), (err) => err && err.code === ErrorCode.ROOM_FULL);
+});
