@@ -269,10 +269,14 @@ test("room theme details keep seat color, bubble tail, and button geometry consi
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*bottom:\s*auto[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx[\s\S]*border-radius:\s*999rpx/);
   assert.match(qaSection, /black room call button uses native dark-gold chrome[\s\S]*\.page\.room-theme-ruby-red \.room-fab\.room-fab--ruby-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
   assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab\.room-fab--ruby-slice \.room-fab__skin\s*\{[\s\S]*display:\s*none/);
-  assert.match(qaSection, /every room action button uses the black-room geometry baseline[\s\S]*\.page\.room-theme-jade-green \.room-fab,[\s\S]*\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice\s*\{[\s\S]*right:\s*18rpx[\s\S]*top:\s*36rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
+  const actionGeometryStart = qaSection.indexOf("/* theme QA locks: non-black room action buttons use the black-room geometry baseline */");
+  const actionGeometryEnd = qaSection.indexOf("/* theme QA locks: red room buttons use the black-room geometry without shrunken SVG slice padding */", actionGeometryStart);
+  assert.ok(actionGeometryStart >= 0);
+  assert.ok(actionGeometryEnd > actionGeometryStart);
+  const actionGeometrySection = qaSection.slice(actionGeometryStart, actionGeometryEnd);
+  assert.doesNotMatch(actionGeometrySection, /room-theme-ruby-red/);
+  assert.match(actionGeometrySection, /\.page\.room-theme-jade-green \.room-fab,[\s\S]*\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice\s*\{[\s\S]*right:\s*18rpx[\s\S]*top:\s*36rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
   assert.match(qaSection, /\.page\.room-theme-jade-green \.room-fab\.room-fab--paired\.room-fab--left,[\s\S]*\.page\.room-theme-glacier-blue \.room-fab\.room-fab--paired\.room-fab--left\s*\{[\s\S]*left:\s*24rpx[\s\S]*right:\s*auto[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
-  assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab-secondary\.room-fab-secondary--ruby-slice\s*\{[\s\S]*left:\s*32rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
-  assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab-secondary\.room-fab-secondary--ruby-slice \.room-fab-secondary__skin\s*\{[\s\S]*display:\s*none/);
   assert.match(qaSection, /red room buttons use the black-room geometry without shrunken SVG slice padding[\s\S]*\.page\.room-theme-imperial-red \.room-fab\.room-fab--imperial-slice,[\s\S]*\.page\.room-theme-imperial-red \.room-fab-secondary\.room-fab-secondary--imperial-slice\s*\{[\s\S]*border:\s*2rpx solid rgba\(244, 216, 139, 0\.82\)/);
   assert.match(qaSection, /\.page\.room-theme-imperial-red \.room-fab\.room-fab--imperial-slice \.room-fab__skin,[\s\S]*\.page\.room-theme-imperial-red \.room-fab-secondary\.room-fab-secondary--imperial-slice \.room-fab-secondary__skin\s*\{[\s\S]*display:\s*none/);
   assert.match(qaSection, /white room buttons use the black-room geometry without shrunken SVG slice padding[\s\S]*\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice\s*\{[\s\S]*border:\s*2rpx solid rgba\(225, 252, 255, 0\.9\)/);
@@ -282,7 +286,6 @@ test("room theme details keep seat color, bubble tail, and button geometry consi
   assert.match(qaSection, /\.page\.room-theme-jade-green \.room-fab--pressing,[\s\S]*\.page\.room-theme-glacier-blue \.room-fab\.is-disabled\s*\{[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
   assert.match(qaSection, /\.page\.room-theme-jade-green \.room-fab-secondary--pressing,[\s\S]*\.page\.room-theme-glacier-blue \.room-fab-secondary\.is-disabled\s*\{[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*bottom:\s*auto[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
-  assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab-secondary\.room-fab-secondary--ruby-slice,[\s\S]*height:\s*84rpx/);
 });
 
 test("call panel disabled choices read as locked across themes", () => {
