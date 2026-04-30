@@ -469,3 +469,30 @@ test("index page: invalid cloud host errors are translated into a config hint", 
     cleanup();
   }
 });
+
+test("index page: invalid cloud host error messages are also translated", async () => {
+  const { page, toasts, cleanup } = instantiateIndexPage({
+    appWsUrl: "",
+    appContainerConfig: {
+      envId: "prod-env-1",
+      service: "dice-prod",
+      wsPath: "/ws"
+    },
+    cloudApi: {
+      init() {},
+      callContainer({ fail }) {
+        fail(new Error("Invalid host. For more information, please refer to https://docs.cloudbase.net/error-code/service/INVALID_HOST"));
+      }
+    }
+  });
+
+  try {
+    page.onLoad({});
+    await page.onWechatLogin();
+
+    assert.equal(page.data.loginHintText, "当前服务连接异常，请稍后再试");
+    assert.equal(toasts.includes("当前服务连接异常，请稍后再试"), true);
+  } finally {
+    cleanup();
+  }
+});

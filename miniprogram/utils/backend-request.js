@@ -131,7 +131,8 @@ function normalizeResponse(res, requestContext = {}) {
 }
 
 function resolveContainerFailMessage(errorLike) {
-  const rawMessage = errorLike && errorLike.errMsg ? String(errorLike.errMsg) : "云托管请求失败";
+  const source = errorLike && typeof errorLike === "object" ? errorLike : {};
+  const rawMessage = String(source.errMsg || source.message || source.reason || errorLike || "云托管请求失败");
   if (/INVALID_HOST/i.test(rawMessage)) {
     return "当前服务连接异常，请稍后再试";
   }
