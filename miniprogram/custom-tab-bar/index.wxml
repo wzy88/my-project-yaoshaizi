@@ -1,5 +1,6 @@
 <view wx:if="{{!hidden}}" class="tab-shell">
   <view class="tab-inner">
+    <view class="tab-notch"></view>
     <view class="tab-item {{selected === 0 ? 'active' : ''}}" data-index="0" data-path="/pages/lobby/lobby" bindtap="onSwitchTab">
       <view class="tab-icon tab-icon--home">
         <view class="icon-home__roof"></view>
@@ -11,7 +12,7 @@
     <view class="tab-center-wrap">
       <view class="tab-center" bindtap="onCenterTap">
         <view class="tab-center-ball">
-          <image class="tab-center-ball__die" src="/assets/figma-room-v2/9b8ee1a1-733d-4cea-bae9-76357c6c7fc8.svg" mode="aspectFit"></image>
+          <image class="tab-center-dice" src="/assets/tab-dice.png" mode="aspectFit"></image>
         </view>
       </view>
     </view>

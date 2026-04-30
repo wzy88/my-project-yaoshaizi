@@ -3,9 +3,14 @@
   <view class="bg-layer bg-pattern"></view>
   <view class="bg-glow bg-glow--top"></view>
   <view class="bg-glow bg-glow--bottom"></view>
+  <view class="bg-beam bg-beam--cyan"></view>
+  <view class="bg-beam bg-beam--pink"></view>
+  <image class="float-die float-die--a" src="{{floatDiceAssets[0]}}" mode="aspectFit"></image>
+  <image class="float-die float-die--b" src="{{floatDiceAssets[1]}}" mode="aspectFit"></image>
 
   <view class="me-shell">
     <view class="profile-card">
+      <view class="profile-card__shine"></view>
       <view class="avatar-shell">
         <view class="avatar">
           <image wx:if="{{avatarUrl}}" class="avatar-img" src="{{avatarUrl}}" mode="aspectFill" />
@@ -14,6 +19,7 @@
         <view class="avatar-badge {{accountReady ? 'is-on' : 'is-off'}}">{{accountReady ? '✓' : '游'}}</view>
       </view>
       <view class="profile-main">
+        <text class="profile-kicker">{{accountReady ? 'PLAYER PROFILE' : 'GUEST PROFILE'}}</text>
         <text class="profile-title">{{nickname || '玩家'}}</text>
         <text class="profile-sub">{{accountReady ? '你的对局战绩和最近房间会跟着当前微信登录一起保留' : '当前为浏览状态，未登录时不会保留个人战绩数据'}}</text>
       </view>
@@ -28,7 +34,7 @@
             <input
               class="nickname-input"
               value="{{nickname}}"
-              maxlength="5"
+              maxlength="12"
               bindinput="onNicknameChange"
               bindblur="onNicknameBlur"
               bindconfirm="onNicknameSave"

@@ -21,6 +21,7 @@ import { createPlayerId, createResumeToken, createRoomId } from "../utils/random
 import { AccountStore } from "./account-store.js";
 import { HistoryStore } from "./history-store.js";
 import { RoomEngine } from "./room-engine.js";
+import { getRoomThemeManifest } from "./room-theme-catalog.js";
 import { VoiceStore } from "./voice-store.js";
 import { ChatStore } from "./chat-store.js";
 
@@ -327,6 +328,13 @@ export class RoomService {
     const roomId = createRoomId(new Set(this.rooms.keys()));
     const playerId = createPlayerId();
 
+    const themeManifest = getRoomThemeManifest(payload.config?.themeId);
+    const roomConfig = {
+      ...payload.config,
+      themeId: themeManifest.id,
+      themeVersion: themeManifest.version
+    };
+
     const room = new RoomEngine(roomId, {
       id: playerId,
       accountId: boundAccount?.accountId,
@@ -334,7 +342,7 @@ export class RoomService {
       nickname,
       avatar,
       isOwner: true
-    }, payload.config);
+    }, roomConfig);
 
     this.rooms.set(roomId, room);
     this.bindSession(ws, roomId, playerId);
@@ -361,7 +369,9 @@ export class RoomService {
       roomId,
       playerId,
       resumeToken,
-      themeId: room.getState().config.themeId
+      themeId: room.getState().config.themeId,
+      themeVersion: room.getState().config.themeVersion,
+      themeManifest: getRoomThemeManifest(room.getState().config.themeId, room.getState().config.themeVersion)
     });
 
     this.broadcastRoomState(roomId);
@@ -433,7 +443,9 @@ export class RoomService {
         roomId: payload.roomId,
         playerId: restoredPlayerId,
         resumeToken: restoredResumeToken,
-        themeId: room.getState().config.themeId
+        themeId: room.getState().config.themeId,
+        themeVersion: room.getState().config.themeVersion,
+        themeManifest: getRoomThemeManifest(room.getState().config.themeId, room.getState().config.themeVersion)
       });
 
       const roomState = room.getState();
@@ -505,7 +517,9 @@ export class RoomService {
       roomId: payload.roomId,
       playerId,
       resumeToken,
-      themeId: room.getState().config.themeId
+      themeId: room.getState().config.themeId,
+      themeVersion: room.getState().config.themeVersion,
+      themeManifest: getRoomThemeManifest(room.getState().config.themeId, room.getState().config.themeVersion)
     });
 
     this.broadcastRoomState(payload.roomId);
@@ -549,7 +563,9 @@ export class RoomService {
       roomId: payload.roomId,
       playerId: payload.playerId,
       resumeToken: payload.resumeToken,
-      themeId: room.getState().config.themeId
+      themeId: room.getState().config.themeId,
+      themeVersion: room.getState().config.themeVersion,
+      themeManifest: getRoomThemeManifest(room.getState().config.themeId, room.getState().config.themeVersion)
     });
 
     const roomState = room.getState();
@@ -1352,12 +1368,14 @@ export class RoomService {
       return;
     }
 
+    this.rescheduleTurnTimer(roomId);
     const state = room.getState();
+    const themeManifest = getRoomThemeManifest(state.config.themeId, state.config.themeVersion);
     this.broadcastRoom(roomId, "room:state", {
       ...state,
+      themeManifest,
       turnDeadlineTs: this.turnDeadlineTsByRoom.get(roomId)
     });
-    this.rescheduleTurnTimer(roomId);
   }
 
   private rescheduleTurnTimer(roomId: string): void {

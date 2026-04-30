@@ -35,3 +35,26 @@ test("miniprogram page scripts avoid optional chaining and nullish coalescing fo
     );
   }
 });
+
+test("miniprogram includes babel runtime helper shims required by devtools ES6 transform", () => {
+  const helperPaths = [
+    "miniprogram/miniprogram_npm/@babel/runtime/helpers/arrayWithHoles.js",
+    "miniprogram/miniprogram_npm/@babel/runtime/helpers/arrayLikeToArray.js",
+    "miniprogram/miniprogram_npm/@babel/runtime/helpers/arrayWithoutHoles.js",
+    "miniprogram/miniprogram_npm/@babel/runtime/helpers/iterableToArray.js",
+    "miniprogram/miniprogram_npm/@babel/runtime/helpers/iterableToArrayLimit.js",
+    "miniprogram/miniprogram_npm/@babel/runtime/helpers/nonIterableRest.js",
+    "miniprogram/miniprogram_npm/@babel/runtime/helpers/nonIterableSpread.js",
+    "miniprogram/miniprogram_npm/@babel/runtime/helpers/slicedToArray.js",
+    "miniprogram/miniprogram_npm/@babel/runtime/helpers/toConsumableArray.js",
+    "miniprogram/miniprogram_npm/@babel/runtime/helpers/unsupportedIterableToArray.js"
+  ];
+
+  for (const relativePath of helperPaths) {
+    assert.equal(
+      fs.existsSync(path.join(projectRoot, relativePath)),
+      true,
+      `${relativePath} should exist for WeChat DevTools runtime helper resolution`
+    );
+  }
+});

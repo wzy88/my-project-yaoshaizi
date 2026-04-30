@@ -1,0 +1,49 @@
+<svg preserveAspectRatio="none" width="640" height="420" viewBox="0 0 640 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="coolGlassBase" x1="0" y1="0" x2="640" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7FFFF"/>
+      <stop offset="0.36" stop-color="#D8F3FB"/>
+      <stop offset="0.7" stop-color="#9FCFE2"/>
+      <stop offset="1" stop-color="#5F9AB9"/>
+    </linearGradient>
+    <radialGradient id="milkyBloomA" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(174 92) rotate(20) scale(300 150)">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.7"/>
+      <stop offset="0.44" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="milkyBloomB" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(468 272) rotate(-18) scale(280 160)">
+      <stop offset="0" stop-color="#F0FDFF" stop-opacity="0.42"/>
+      <stop offset="0.52" stop-color="#F0FDFF" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#F0FDFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="coolDepth" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(336 226) rotate(90) scale(270 390)">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.16"/>
+      <stop offset="0.58" stop-color="#BFE8F2" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#285B82" stop-opacity="0.24"/>
+    </radialGradient>
+    <filter id="cloudedFrost" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.018 0.034" numOctaves="4" seed="221" result="cloud"/>
+      <feGaussianBlur in="cloud" stdDeviation="9" result="softCloud"/>
+      <feColorMatrix in="softCloud" type="matrix" values="0 0 0 0 0.92 0 0 0 0 0.98 0 0 0 0 1 0 0 0 0.24 0" result="milk"/>
+      <feBlend in="SourceGraphic" in2="milk" mode="screen"/>
+    </filter>
+    <filter id="fineFrost" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="1.35 1.15" numOctaves="3" seed="312" result="grain"/>
+      <feColorMatrix in="grain" type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.13 0" result="whiteGrain"/>
+      <feBlend in="SourceGraphic" in2="whiteGrain" mode="screen"/>
+    </filter>
+    <filter id="softScratch" x="-4%" y="-4%" width="108%" height="108%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.11 0.9" numOctaves="1" seed="27" result="streaks"/>
+      <feGaussianBlur in="streaks" stdDeviation="0.6" result="softStreaks"/>
+      <feColorMatrix in="softStreaks" type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.055 0" result="paleStreaks"/>
+      <feBlend in="SourceGraphic" in2="paleStreaks" mode="screen"/>
+    </filter>
+  </defs>
+  <rect width="640" height="420" fill="url(#coolGlassBase)" filter="url(#cloudedFrost)"/>
+  <rect width="640" height="420" fill="url(#milkyBloomA)" opacity="0.82"/>
+  <rect width="640" height="420" fill="url(#milkyBloomB)" opacity="0.72"/>
+  <rect width="640" height="420" fill="url(#coolDepth)"/>
+  <rect width="640" height="420" fill="#FFFFFF" opacity="0.1" filter="url(#fineFrost)"/>
+  <rect width="640" height="420" fill="#D7F1FA" opacity="0.16" filter="url(#softScratch)"/>
+  <rect width="640" height="420" fill="#FFFFFF" opacity="0.16"/>
+</svg>

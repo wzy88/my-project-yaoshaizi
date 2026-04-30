@@ -203,6 +203,39 @@ test("lobby page lets the user browse first without forcing the login gate", () 
   }
 });
 
+test("lobby page exposes the account entry card and opens the profile tab", () => {
+  const { page, switchTabs, cleanup } = instantiateLobbyPage({
+    storage: {
+      [NICKNAME_KEY]: "梨花",
+      [AVATAR_URL_KEY]: "/assets/figma-room-v2/avatar-hibiscus.svg",
+      [WECHAT_LOGIN_TS_KEY]: Date.now(),
+      [ACCOUNT_SESSION_KEY]: {
+        accountId: "acct_mock_952",
+        displayId: "WX-000952",
+        sessionToken: "session-token-952",
+        loginAt: Date.now(),
+        authMode: "mock",
+        profile: {
+          accountId: "acct_mock_952",
+          displayId: "WX-000952",
+          nickname: "梨花",
+          avatarUrl: "/assets/figma-room-v2/avatar-hibiscus.svg"
+        }
+      }
+    }
+  });
+
+  try {
+    page.onLoad({});
+
+    assert.equal(page.data.profileDisplayNo, "952");
+    page.goProfile();
+    assert.deepEqual(switchTabs, ["/pages/me/me"]);
+  } finally {
+    cleanup();
+  }
+});
+
 test("lobby page queues the intended destination before login and continues after one-tap login", async () => {
   const { page, storageState, redirects, tabBarState, cleanup } = instantiateLobbyPage({
     loginFlowOverride: {
@@ -305,6 +338,41 @@ test("lobby page consumes a pending center-tab create action and opens the login
 
     assert.equal(page.data.showLoginGate, true);
     assert.equal(page.data.pendingRedirectUrl, "/pages/create-room/create-room");
+    assert.equal(storageState[LOGIN_GATE_REDIRECT_KEY], undefined);
+  } finally {
+    cleanup();
+  }
+});
+
+test("lobby page consumes a pending center-tab create action as the shared create page after login", () => {
+  const { page, storageState, redirects, cleanup } = instantiateLobbyPage({
+    storage: {
+      [LOGIN_GATE_REDIRECT_KEY]: "/pages/create-room/create-room",
+      [NICKNAME_KEY]: "阿伟",
+      [AVATAR_URL_KEY]: "https://example.com/a.png",
+      [WECHAT_LOGIN_TS_KEY]: Date.now(),
+      [ACCOUNT_SESSION_KEY]: {
+        accountId: "acct_mock_1",
+        displayId: "WX-MOCK001",
+        sessionToken: "session-token-1",
+        loginAt: Date.now(),
+        authMode: "mock",
+        profile: {
+          accountId: "acct_mock_1",
+          displayId: "WX-MOCK001",
+          nickname: "阿伟",
+          avatarUrl: "https://example.com/a.png"
+        }
+      }
+    }
+  });
+
+  try {
+    page.onLoad({});
+    page.onShow();
+
+    assert.equal(page.data.showLoginGate, false);
+    assert.deepEqual(redirects, ["/pages/create-room/create-room"]);
     assert.equal(storageState[LOGIN_GATE_REDIRECT_KEY], undefined);
   } finally {
     cleanup();

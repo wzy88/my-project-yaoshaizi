@@ -19,6 +19,7 @@ import {
 
 import { DEFAULT_DICE_PER_PLAYER, MAX_PLAYERS, MIN_PLAYERS_TO_START } from "../config.js";
 import { rollDice } from "../utils/random.js";
+import { getRoomThemeManifest, normalizeRoomThemeId } from "./room-theme-catalog.js";
 
 interface AddPlayerInput {
   id: string;
@@ -77,14 +78,6 @@ class SeededRng {
   }
 }
 
-const DEFAULT_ROOM_THEME_ID: RoomThemeId = "jade-green";
-const ROOM_THEME_IDS = new Set<RoomThemeId>(["jade-green", "ruby-red", "imperial-red"]);
-
-function normalizeRoomThemeId(input: unknown): RoomThemeId {
-  const value = String(input || "").trim() as RoomThemeId;
-  return ROOM_THEME_IDS.has(value) ? value : DEFAULT_ROOM_THEME_ID;
-}
-
 export class RoomEngine {
   readonly roomId: string;
 
@@ -98,6 +91,7 @@ export class RoomEngine {
   private configLocked = false;
   private wildcardOneLockedOff = false;
   private nextRoundStarterId?: string;
+  private ownerRestartRequired = false;
   private testSeed?: number;
   private rng?: SeededRng;
   private nextDiceOverride = new Map<string, number[]>();
@@ -156,6 +150,10 @@ export class RoomEngine {
     const waiting = this.waitingPlayers.get(playerId);
     if (waiting) {
       waiting.onlineStatus = status;
+      if (this.phase === "ended" && status === "online") {
+        this.ownerRestartRequired = true;
+        this.promoteOwnerAsRestartControllerIfNeeded();
+      }
       this.bumpVersion();
       return;
     }
@@ -276,11 +274,16 @@ export class RoomEngine {
       avatar: input.avatar,
       onlineStatus: "online"
     });
+    if (this.phase === "ended") {
+      this.ownerRestartRequired = true;
+      this.promoteOwnerAsRestartControllerIfNeeded();
+    }
     this.bumpVersion();
   }
 
   removePlayer(playerId: string, options: RemovePlayerOptions = {}): void {
     if (this.waitingPlayers.delete(playerId)) {
+      this.promoteOwnerAsRestartControllerIfNeeded();
       this.bumpVersion();
       return;
     }
@@ -341,6 +344,7 @@ export class RoomEngine {
     }
 
     this.repairTurnAfterPlayerChange();
+    this.promoteOwnerAsRestartControllerIfNeeded();
     this.bumpVersion();
   }
 
@@ -443,6 +447,9 @@ export class RoomEngine {
     if (!waiting) {
       throw new GameError(ErrorCode.BAD_REQUEST, "等待玩家不存在");
     }
+    if (waiting.onlineStatus !== "online") {
+      throw new GameError(ErrorCode.BAD_REQUEST, "等待玩家已离线");
+    }
 
     const normalizedSeat = this.normalizeSeatIndex(seatIndex);
     const occupied = [...this.players.values()].some((p) => p.seatIndex === normalizedSeat);
@@ -453,6 +460,8 @@ export class RoomEngine {
     this.waitingPlayers.delete(waitingPlayerId);
     this.addPlayer({
       id: waiting.id,
+      accountId: waiting.accountId,
+      accountDisplayId: waiting.accountDisplayId,
       nickname: waiting.nickname,
       avatar: waiting.avatar
     });
@@ -462,6 +471,7 @@ export class RoomEngine {
       admitted.seatIndex = normalizedSeat;
     }
 
+    this.promoteOwnerAsRestartControllerIfNeeded();
     this.bumpVersion();
   }
 
@@ -515,6 +525,18 @@ export class RoomEngine {
 
     if (!this.nextRoundStarterId) {
       throw new GameError(ErrorCode.BAD_REQUEST, "下一局起始位未确定");
+    }
+
+    if (this.ownerRestartRequired) {
+      const actor = this.players.get(actorId);
+      if (!actor?.isOwner) {
+        throw new GameError(ErrorCode.FORBIDDEN, "有等待玩家时仅房主可开始下一局");
+      }
+      if (this.getOnlineWaitingPlayerCount() > 0) {
+        throw new GameError(ErrorCode.BAD_REQUEST, "请先安排等待玩家入座");
+      }
+      this.beginRound();
+      return;
     }
 
     if (actorId !== this.nextRoundStarterId) {
@@ -728,6 +750,10 @@ export class RoomEngine {
 
     this.phase = "ended";
     this.currentPlayerId = loserId;
+    if (this.getOnlineWaitingPlayerCount() > 0) {
+      this.ownerRestartRequired = true;
+      this.promoteOwnerAsRestartControllerIfNeeded();
+    }
 
     const openResult: OpenResultDTO = {
       round: this.round,
@@ -810,6 +836,7 @@ export class RoomEngine {
     this.configLocked = true;
     this.lastCall = undefined;
     this.wildcardOneLockedOff = false;
+    this.ownerRestartRequired = false;
 
     // Clear players who left during the last round after settlement.
     for (const player of [...this.players.values()]) {
@@ -917,7 +944,23 @@ export class RoomEngine {
     this.ensureRoomHasOwner();
     this.phase = "ready";
     this.nextRoundStarterId = undefined;
+    this.ownerRestartRequired = false;
     this.resetRoundState();
+  }
+
+  private getOnlineWaitingPlayerCount(): number {
+    return [...this.waitingPlayers.values()].filter((player) => player.onlineStatus === "online").length;
+  }
+
+  private promoteOwnerAsRestartControllerIfNeeded(): void {
+    if (this.phase !== "ended" || !this.ownerRestartRequired) {
+      return;
+    }
+
+    const owner = this.getOrderedPlayers().find((player) => player.isOwner && !player.pendingRemoval);
+    if (owner) {
+      this.currentPlayerId = owner.id;
+    }
   }
 
   private repairTurnAfterPlayerChange(): void {
@@ -1106,6 +1149,12 @@ export class RoomEngine {
       throw new GameError(ErrorCode.INVALID_CONFIG, `minOpeningCount 不能超过 ${maxAllowed}`);
     }
 
+    const requestedThemeVersion = String(input.themeVersion || "").trim();
+    const themeManifest = getRoomThemeManifest(
+      input.themeId,
+      requestedThemeVersion && requestedThemeVersion !== "bundled" ? requestedThemeVersion : ""
+    );
+
     return {
       direction,
       wildcardOneEnabled: Boolean(input.wildcardOneEnabled),
@@ -1113,7 +1162,8 @@ export class RoomEngine {
       dicePerPlayer,
       minOpeningCount,
       testMode: Boolean(input.testMode),
-      themeId: normalizeRoomThemeId(input.themeId)
+      themeId: normalizeRoomThemeId(themeManifest.id),
+      themeVersion: themeManifest.version
     };
   }
 

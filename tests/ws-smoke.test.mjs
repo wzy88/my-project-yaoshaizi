@@ -291,11 +291,13 @@ wsTest("ws smoke: themed room create broadcasts the selected theme and can start
   });
   const ackCreate = await qA.waitForAck(actionCreate);
   assert.equal(ackCreate.ok, true);
+  assert.equal(ackCreate.themeManifest.id, "ruby-red");
   const roomId = ackCreate.roomId;
   const playerA = ackCreate.playerId;
 
   const firstState = await qA.waitForEvent("room:state", (state) => state && state.roomId === roomId, 4000);
   assert.equal(firstState.config.themeId, "ruby-red");
+  assert.equal(firstState.themeManifest.id, "ruby-red");
 
   const { ws: wsB, open: openB } = connectWs(wsUrl);
   await openB;

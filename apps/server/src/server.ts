@@ -6,6 +6,7 @@ import { WebSocketServer } from "ws";
 import { CALL_TIMEOUT_MS, PORT_RETRY_LIMIT, ROLL_TIMEOUT_MS, SERVER_HOST, SERVER_PORT, WS_PATH } from "./config.js";
 import { AccountStore } from "./engine/account-store.js";
 import { RoomService } from "./engine/room-service.js";
+import { getRoomThemeManifest, listRoomThemeManifests } from "./engine/room-theme-catalog.js";
 import { resolveWechatIdentity } from "./services/wechat-session-resolver.js";
 import { validateNicknameInput } from "./utils/nickname-validator.js";
 
@@ -166,6 +167,35 @@ async function handleHttpRequest(
       return;
     }
 
+    if (method === "GET" && pathname === "/api/room-theme-manifests") {
+      sendJson(res, 200, {
+        ok: true,
+        data: {
+          items: listRoomThemeManifests()
+        }
+      });
+      return;
+    }
+
+    if (pathname === "/api/room-theme-manifest" && (method === "GET" || method === "POST")) {
+      const body = method === "POST" ? await readJsonBody(req) : {};
+      const themeId = method === "POST"
+        ? String(body.themeId || "").trim()
+        : String(parsed.searchParams.get("themeId") || "").trim();
+      const themeVersion = method === "POST"
+        ? String(body.themeVersion || "").trim()
+        : String(parsed.searchParams.get("themeVersion") || "").trim();
+      const manifest = getRoomThemeManifest(themeId, themeVersion);
+      sendJson(res, 200, {
+        ok: true,
+        data: {
+          manifest,
+          requestedThemeId: themeId
+        }
+      });
+      return;
+    }
+
     if (method === "POST" && pathname === "/api/auth/wechat-login") {
       const body = await readJsonBody(req);
       const nicknameInput = String(body.nickname || "").trim();
@@ -266,7 +296,7 @@ async function handleHttpRequest(
       res.writeHead(200, {
         "content-type": "text/plain; charset=utf-8"
       });
-      res.end(`dice-server is running\nhealth: /health\nws: ${WS_PATH}\nauth: /api/auth/wechat-login\n`);
+      res.end(`dice-server is running\nhealth: /health\nws: ${WS_PATH}\nthemes: /api/room-theme-manifests\nauth: /api/auth/wechat-login\n`);
       return;
     }
 

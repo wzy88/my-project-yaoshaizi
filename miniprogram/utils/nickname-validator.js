@@ -1,5 +1,5 @@
 const NICKNAME_MIN_LENGTH = 1;
-const NICKNAME_MAX_LENGTH = 5;
+const NICKNAME_MAX_LENGTH = 12;
 
 const BLOCKED_TERMS = [
   "客服",
@@ -60,7 +60,7 @@ function validateNickname(raw) {
     return {
       ok: false,
       value,
-      message: `昵称需为${NICKNAME_MIN_LENGTH}-${NICKNAME_MAX_LENGTH}个字`
+      message: `昵称需为${NICKNAME_MIN_LENGTH}-${NICKNAME_MAX_LENGTH}个字符`
     };
   }
 

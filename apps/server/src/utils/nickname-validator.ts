@@ -1,7 +1,7 @@
 import { GameError, ErrorCode } from "@dice/shared";
 
 export const NICKNAME_MIN_LENGTH = 1;
-export const NICKNAME_MAX_LENGTH = 5;
+export const NICKNAME_MAX_LENGTH = 12;
 
 const BLOCKED_TERMS = [
   "客服",
@@ -62,7 +62,7 @@ export function validateNicknameInput(raw: unknown): { ok: true; value: string }
     return {
       ok: false,
       value,
-      message: `昵称需为${NICKNAME_MIN_LENGTH}-${NICKNAME_MAX_LENGTH}个字`
+      message: `昵称需为${NICKNAME_MIN_LENGTH}-${NICKNAME_MAX_LENGTH}个字符`
     };
   }
 

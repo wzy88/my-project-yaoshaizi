@@ -6,7 +6,41 @@ export type NetworkHealth = "good" | "lag" | "disconnected";
 export type RoomDirection = "cw" | "ccw";
 export type OpenMode = "single" | "multi";
 export type AccountProvider = "wechat";
-export type RoomThemeId = "jade-green" | "ruby-red" | "imperial-red";
+export type RoomThemeId = "jade-green" | "ruby-red" | "imperial-red" | "glacier-blue";
+export type RoomThemeDelivery = "bundled" | "remote";
+
+export interface RoomThemeAssetManifestDTO {
+  menuIconSrc?: string;
+  primaryIconSrc?: string;
+  primaryButtonSrc?: string;
+  openButtonSrc?: string;
+  secondaryIconSrc?: string;
+  pageBackgroundSrc?: string;
+  bubbleSkinSrc?: string;
+  cupSkinSrc?: string;
+  selfCupTextureSrc?: string;
+  tableclothSrc?: string;
+  primaryButtonClass?: string;
+  secondaryButtonClass?: string;
+  dice?: Record<string, string>;
+}
+
+export interface RoomThemeLoadingDTO {
+  title: string;
+  steps: string[];
+}
+
+export interface RoomThemeManifestDTO {
+  id: RoomThemeId;
+  version: string;
+  label: string;
+  className: string;
+  delivery: RoomThemeDelivery;
+  assets: RoomThemeAssetManifestDTO;
+  criticalAssets: string[];
+  tokens: Record<string, string>;
+  loading: RoomThemeLoadingDTO;
+}
 
 export interface RoomConfigDTO {
   direction: RoomDirection;
@@ -16,6 +50,7 @@ export interface RoomConfigDTO {
   minOpeningCount: number;
   testMode: boolean;
   themeId?: RoomThemeId;
+  themeVersion?: string;
 }
 
 export interface DiceCall {
@@ -56,6 +91,7 @@ export interface RoomStateDTO {
   round: number;
   currentPlayerId?: string;
   config: RoomConfigDTO;
+  themeManifest?: RoomThemeManifestDTO;
   players: PlayerState[];
   waitingPlayers: WaitingPlayerState[];
   lastCall?: DiceCall;
@@ -269,6 +305,8 @@ export interface ServerEventMap {
     playerId?: string;
     resumeToken?: string;
     themeId?: RoomThemeId;
+    themeVersion?: string;
+    themeManifest?: RoomThemeManifestDTO;
   };
   "dice:privateResult": {
     round: number;

@@ -13,6 +13,24 @@
     <view class="room-screen__star room-screen__star--8"></view>
   </view>
 
+  <view wx:if="{{roomThemeLoading}}" class="room-theme-loader">
+    <view class="room-theme-loader__die">
+      <view class="room-theme-loader__die-face room-theme-loader__die-face--front">
+        <view class="room-theme-loader__pip"></view>
+        <view class="room-theme-loader__pip"></view>
+        <view class="room-theme-loader__pip"></view>
+      </view>
+      <view class="room-theme-loader__die-face room-theme-loader__die-face--back"></view>
+    </view>
+    <view class="room-theme-loader__copy">
+      <text class="room-theme-loader__title">{{roomThemeLoadingTitle}}</text>
+      <text class="room-theme-loader__step">{{roomThemeLoadingStep}}</text>
+    </view>
+    <view class="room-theme-loader__bar">
+      <view class="room-theme-loader__bar-fill" style="width: {{roomThemeLoadingProgress}}%;"></view>
+    </view>
+  </view>
+
   <view class="room-shell" style="{{roomShellStyle}}">
     <view class="room-topbar">
       <view class="room-topbar__corner" style="{{roomTopbarCornerStyle}}">
@@ -375,9 +393,17 @@
                           <image class="settlement-die" src="{{dieItem.asset}}" mode="aspectFit"></image>
                         </view>
                       </block>
+                      <text wx:if="{{row.diceBonusText}}" class="settlement-dice-bonus">{{row.diceBonusText}}</text>
                     </view>
-                    <view class="settlement-row__meta" wx:if="{{row.featureTagText || row.countSummaryText}}">
-                      <text wx:if="{{row.featureTagText}}" class="settlement-feature-tag">{{row.featureTagText}}</text>
+                    <view class="settlement-row__meta" wx:if="{{(row.featureTags && row.featureTags.length) || row.featureTagText || row.countSummaryText}}">
+                      <block wx:if="{{row.featureTags && row.featureTags.length}}">
+                        <block wx:for="{{row.featureTags}}" wx:key="*this" wx:for-item="featureTag">
+                          <text class="settlement-feature-tag">{{featureTag}}</text>
+                        </block>
+                      </block>
+                      <block wx:elif="{{row.featureTagText}}">
+                        <text class="settlement-feature-tag">{{row.featureTagText}}</text>
+                      </block>
                       <text wx:if="{{row.countSummaryText}}" class="settlement-count-note">{{row.countSummaryText}}</text>
                     </view>
                   </view>
@@ -433,11 +459,19 @@
                         <image class="settlement-die" src="{{item.asset}}" mode="aspectFit"></image>
                       </view>
                     </block>
+                    <text wx:if="{{item.diceBonusText}}" class="settlement-dice-bonus">{{item.diceBonusText}}</text>
                   </block>
                   <text wx:else class="settlement-dice settlement-dice--empty">—</text>
                 </view>
-                <view class="settlement-row__meta" wx:if="{{item.featureTagText || item.countSummaryText}}">
-                  <text wx:if="{{item.featureTagText}}" class="settlement-feature-tag">{{item.featureTagText}}</text>
+                <view class="settlement-row__meta" wx:if="{{(item.featureTags && item.featureTags.length) || item.featureTagText || item.countSummaryText}}">
+                  <block wx:if="{{item.featureTags && item.featureTags.length}}">
+                    <block wx:for="{{item.featureTags}}" wx:key="*this" wx:for-item="featureTag">
+                      <text class="settlement-feature-tag">{{featureTag}}</text>
+                    </block>
+                  </block>
+                  <block wx:elif="{{item.featureTagText}}">
+                    <text class="settlement-feature-tag">{{item.featureTagText}}</text>
+                  </block>
                   <text wx:if="{{item.countSummaryText}}" class="settlement-count-note">{{item.countSummaryText}}</text>
                 </view>
               </view>
@@ -613,7 +647,7 @@
           <input
             class="join-input"
             value="{{nickname}}"
-            maxlength="5"
+            maxlength="12"
             placeholder="例如 阿伟"
             bindinput="onNicknameChange"
             bindblur="onNicknameCommit"

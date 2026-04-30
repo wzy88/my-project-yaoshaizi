@@ -1,0 +1,59 @@
+<svg preserveAspectRatio="none" width="720" height="1440" viewBox="0 0 720 1440" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="palaceWall" x1="360" y1="0" x2="360" y2="1440" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3B070A"/>
+      <stop offset="0.18" stop-color="#671115"/>
+      <stop offset="0.48" stop-color="#941B20"/>
+      <stop offset="0.78" stop-color="#681115"/>
+      <stop offset="1" stop-color="#260306"/>
+    </linearGradient>
+    <linearGradient id="goldBeam" x1="0" y1="0" x2="720" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7A4817"/>
+      <stop offset="0.14" stop-color="#D09A3A"/>
+      <stop offset="0.5" stop-color="#FFE39A"/>
+      <stop offset="0.86" stop-color="#D09A3A"/>
+      <stop offset="1" stop-color="#7A4817"/>
+    </linearGradient>
+    <radialGradient id="centerGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(360 545) rotate(90) scale(610 270)">
+      <stop offset="0" stop-color="#E34D3E" stop-opacity="0.44"/>
+      <stop offset="0.48" stop-color="#BC282D" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#5A0C10" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="lanternGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(360 96) rotate(90) scale(250 360)">
+      <stop offset="0" stop-color="#FFD67A" stop-opacity="0.2"/>
+      <stop offset="0.5" stop-color="#D85032" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#5A0C10" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="edgeShade" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(360 720) rotate(90) scale(840 430)">
+      <stop offset="0.46" stop-color="#160204" stop-opacity="0"/>
+      <stop offset="1" stop-color="#110103" stop-opacity="0.66"/>
+    </radialGradient>
+    <pattern id="lattice" width="92" height="92" patternUnits="userSpaceOnUse">
+      <path d="M0 0H92V92H0Z" stroke="#FFD986" stroke-opacity="0.025" stroke-width="1"/>
+      <path d="M0 46H92M46 0V92M0 92L92 0" stroke="#FFD986" stroke-opacity="0.018" stroke-width="1"/>
+    </pattern>
+    <filter id="grain" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.016 0.046" numOctaves="3" seed="65" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0.55 0 0 0 0 0.07 0 0 0 0 0.06 0 0 0 0.12 0" result="tint"/>
+      <feBlend in="SourceGraphic" in2="tint" mode="soft-light"/>
+    </filter>
+  </defs>
+  <rect width="720" height="1440" fill="url(#palaceWall)"/>
+  <g filter="url(#grain)">
+    <rect width="720" height="1440" fill="url(#palaceWall)"/>
+    <rect width="720" height="1440" fill="url(#centerGlow)"/>
+    <rect width="720" height="1440" fill="url(#lanternGlow)"/>
+    <rect x="94" y="114" width="532" height="780" rx="34" fill="url(#lattice)" opacity="0.46"/>
+    <rect x="0" y="0" width="720" height="86" fill="url(#goldBeam)" opacity="0.22"/>
+    <rect x="0" y="82" width="720" height="8" fill="url(#goldBeam)" opacity="0.44"/>
+    <rect x="0" y="112" width="720" height="2" fill="#FFE4A0" opacity="0.2"/>
+    <rect x="20" y="0" width="48" height="1440" rx="24" fill="#5A0B0E" opacity="0.5"/>
+    <rect x="652" y="0" width="48" height="1440" rx="24" fill="#5A0B0E" opacity="0.5"/>
+    <rect x="34" y="0" width="20" height="1440" fill="#A82425" opacity="0.26"/>
+    <rect x="666" y="0" width="20" height="1440" fill="#A82425" opacity="0.26"/>
+    <path d="M0 186C92 132 180 132 264 184C330 225 392 225 456 184C540 132 628 132 720 186" stroke="#F3C773" stroke-opacity="0.07" stroke-width="2.4" fill="none"/>
+    <path d="M26 1210C92 1166 164 1158 242 1188C164 1214 100 1262 50 1332C116 1294 188 1288 266 1318" stroke="#F3C773" stroke-opacity="0.06" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="M694 1210C628 1166 556 1158 478 1188C556 1214 620 1262 670 1332C604 1294 532 1288 454 1318" stroke="#F3C773" stroke-opacity="0.06" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+  </g>
+  <rect width="720" height="1440" fill="url(#edgeShade)"/>
+</svg>

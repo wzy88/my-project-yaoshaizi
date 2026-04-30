@@ -31,8 +31,11 @@ test("room page hides room visuals until the initial theme is resolved", () => {
   const js = fs.readFileSync(roomJsPath, "utf8");
 
   assert.match(wxml, /roomThemeReady \? 'is-theme-ready' : 'is-theme-pending'/);
+  assert.match(wxml, /class="room-theme-loader"/);
+  assert.match(wxss, /@keyframes room-theme-loader-spin/);
   assert.match(wxss, /\.page\.room-screen\.is-theme-pending \.room-shell,[\s\S]*opacity:\s*0/);
   assert.match(js, /resolveInitialRoomThemeForLoad\(options, cached\)/);
+  assert.match(js, /loadRoomThemeManifest/);
   assert.match(js, /roomThemeReady:\s*true,[\s\S]*buildRoomThemePresentation\(initialRoomThemeId\)/);
 });
 
@@ -80,8 +83,9 @@ test("room shell supports experimental room theme classes without changing the d
   assert.match(wxml, /room-phase-\{\{phase\}\} \{\{roomThemeClass\}\}/);
   assert.match(script, /roomThemeId:\s*DEFAULT_ROOM_THEME_ID/);
   assert.match(script, /roomThemeClass:\s*buildRoomThemeClass\(DEFAULT_ROOM_THEME_ID\)/);
-  assert.match(script, /themeId:\s*normalizeRoomThemeId\(this\.data\.createRoomThemeId\)/);
-  assert.match(script, /const incomingThemeId = roomConfig && roomConfig\.themeId/);
+  assert.match(script, /const themeId = normalizeRoomThemeId\(this\.data\.createRoomThemeId\)/);
+  assert.match(script, /const incomingThemeManifest = payload\.themeManifest/);
+  assert.match(script, /: \(roomConfig && roomConfig\.themeId\)/);
   assert.match(script, /const provisionalThemeId = parseOptionalRoomThemeId\(this\.data\.joinRoomThemeId\)\s*\|\|\s*parseOptionalRoomThemeId\(this\.data\.createRoomThemeId\)/);
   assert.match(script, /resolveRoomThemeId\(roomId,\s*incomingThemeId,\s*provisionalThemeId\)/);
   assert.match(script, /ROOM_THEME_CACHE_KEY/);
@@ -93,6 +97,11 @@ test("room shell supports experimental room theme classes without changing the d
   assert.match(wxss, /\.page\.room-theme-imperial-red \.room-fab\.room-fab--imperial-slice\.room-fab--pressing,[\s\S]*box-shadow:\s*none/);
   assert.match(wxss, /\.page\.room-theme-ruby-red \.room-stage__table-frame\s*\{/);
   assert.match(wxss, /\.page\.room-theme-ruby-red \.seat__bubble\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-glacier-blue \.room-stage__table-frame\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-glacier-blue \.room-stage__observer-card\s*\{/);
+  assert.match(wxss, /@keyframes glacier-blue-bubble-sheen/);
+  assert.match(wxss, /\.page\.room-theme-glacier-blue \.seat__bubble\.latest::before,[\s\S]*animation:\s*glacier-blue-bubble-sheen/);
+  assert.match(wxss, /\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice\.room-fab--pressing,[\s\S]*box-shadow:\s*none/);
   assert.doesNotMatch(wxss, /\.page\.room-theme-sapphire-blue /);
   assert.doesNotMatch(wxss, /\.page\.room-theme-mist-ivory /);
   assert.match(script, /getSelfDieAsset/);
@@ -207,11 +216,11 @@ test("room player names stay on one line and the self identity sits below the cu
   assert.match(wxss, /\.room-self__name\s*\{[\s\S]*white-space:\s*nowrap/);
 });
 
-test("room entry and settlement names enforce the five-character single-line rule", () => {
+test("room entry and settlement names allow twelve-character nicknames while settlement names stay single-line", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
 
-  assert.match(wxml, /class="join-input"[\s\S]*maxlength="5"/);
+  assert.match(wxml, /class="join-input"[\s\S]*maxlength="12"/);
   assert.match(wxml, /class="settlement-name \{\{item\.nameLengthClass\}\}">\{\{item\.name\}\}<\/text>/);
   assert.match(wxss, /\.settlement-name\s*\{[\s\S]*max-width:\s*132rpx[\s\S]*white-space:\s*nowrap/);
   assert.match(wxss, /\.settlement-name\.is-long\s*\{[\s\S]*font-size:\s*21rpx/);

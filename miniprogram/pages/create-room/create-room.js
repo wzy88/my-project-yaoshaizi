@@ -1,11 +1,13 @@
 const app = getApp();
 const { NICKNAME_KEY } = require("../../utils/constants");
+const { LOBBY_FLOAT_DICE_ASSETS, LOBBY_CREATE_DIE_ASSET } = require("../../utils/dice-assets");
 const {
   DEFAULT_ROOM_THEME_ID,
   ROOM_THEME_IDS,
   normalizeRoomThemeId,
   getRoomThemeLabel
 } = require("../../utils/room-themes");
+const { loadRoomThemeManifest } = require("../../utils/room-theme-loader");
 
 function safeDecodeComponent(raw) {
   const value = String(raw || "");
@@ -22,13 +24,7 @@ function buildThemeOptions() {
   return ROOM_THEME_IDS.map((id) => ({
     id,
     label: getRoomThemeLabel(id),
-    badge: id === "jade-green" ? "默认" : "限免",
-    caption: id === "jade-green"
-      ? "青玉微雾"
-      : (id === "ruby-red" ? "玄金夜色" : "绛金宫阙"),
-    desc: id === "jade-green"
-      ? "偏青玉与雾感金边，清透安静。"
-      : (id === "ruby-red" ? "偏墨金与暗纹火光，沉稳华丽。" : "偏绛红与暖金主调，浓郁典雅。")
+    badge: id === "jade-green" ? "默认" : "限免"
   }));
 }
 
@@ -36,6 +32,8 @@ Page({
   data: {
     nickname: "",
     devtoolsMode: false,
+    floatDiceAssets: LOBBY_FLOAT_DICE_ASSETS,
+    createButtonDieAsset: LOBBY_CREATE_DIE_ASSET,
     playerCount: 8,
     wildcardOneEnabled: true,
     roomThemeOptions: buildThemeOptions(),
@@ -55,6 +53,7 @@ Page({
       themePreviewId
     }, () => {
       this.syncThemePreviewLabel();
+      this.prefetchTheme(themePreviewId);
     });
   },
 
@@ -78,7 +77,15 @@ Page({
     }
     this.setData({ themePreviewId: themeId }, () => {
       this.syncThemePreviewLabel();
+      this.prefetchTheme(themeId);
     });
+  },
+
+  prefetchTheme(themeId) {
+    void loadRoomThemeManifest(normalizeRoomThemeId(themeId), {
+      preferRemote: true,
+      downloadAssets: true
+    }).catch(() => {});
   },
 
   createAndEnter() {

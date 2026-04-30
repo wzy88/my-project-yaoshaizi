@@ -1,0 +1,5 @@
+{
+  "name": "@babel/runtime",
+  "version": "7.0.0-miniapp-shim",
+  "private": true
+}

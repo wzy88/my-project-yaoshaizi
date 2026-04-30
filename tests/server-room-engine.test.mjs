@@ -60,9 +60,10 @@ test("room engine: theme config is normalized with a safe default", () => {
     dicePerPlayer: 5,
     minOpeningCount: 2,
     testMode: true,
-    themeId: "imperial-red"
+    themeId: "glacier-blue"
   });
-  assert.equal(themedEngine.getState().config.themeId, "imperial-red");
+  assert.equal(themedEngine.getState().config.themeId, "glacier-blue");
+  assert.match(themedEngine.getState().config.themeVersion, /^\d{4}\.\d{2}\.\d{2}\.\d+$/);
 
   const fallbackThemeEngine = new RoomEngine("T20003", { id: "P1", nickname: "p1", avatar: "" }, {
     direction: "cw",
@@ -260,6 +261,91 @@ test("room engine: owner can adjust seats after settlement before the next round
   const state = engine.getState();
   assert.equal(state.players.find((player) => player.id === "P_OWNER").seatIndex, 8);
   assert.equal(state.players.find((player) => player.id === "P_C").seatIndex, 1);
+});
+
+test("room engine: admitting a waiting player preserves account identity", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.startGame("P_OWNER");
+  engine.addWaitingPlayer({
+    id: "W_ACCOUNT",
+    accountId: "account-1",
+    accountDisplayId: "display-1",
+    nickname: "waiting",
+    avatar: ""
+  });
+  engine.finishRolling("P_OWNER");
+  engine.makeCall("P_OWNER", 2, 2);
+  engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
+
+  engine.admitWaitingPlayer("P_OWNER", "W_ACCOUNT", 3);
+
+  const admitted = engine.getState().players.find((player) => player.id === "W_ACCOUNT");
+  assert.equal(admitted.accountId, "account-1");
+  assert.equal(admitted.accountDisplayId, "display-1");
+  assert.equal(admitted.seatIndex, 3);
+});
+
+test("room engine: offline waiting players cannot be admitted into seats", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.startGame("P_OWNER");
+  engine.addWaitingPlayer({ id: "W_OFFLINE", nickname: "waiting", avatar: "" });
+  engine.finishRolling("P_OWNER");
+  engine.makeCall("P_OWNER", 2, 2);
+  engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
+  engine.setPlayerOnlineStatus("W_OFFLINE", "offline");
+
+  assert.throws(
+    () => engine.admitWaitingPlayer("P_OWNER", "W_OFFLINE", 3),
+    (err) => err && err.code === ErrorCode.BAD_REQUEST
+  );
+  assert.equal(engine.getState().waitingPlayers.find((player) => player.id === "W_OFFLINE").onlineStatus, "offline");
+});
+
+test("room engine: waiting players hand next-round start control to the owner without changing the loser starter", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.startGame("P_OWNER");
+  engine.addWaitingPlayer({ id: "W_READY", nickname: "waiting", avatar: "" });
+
+  engine.setNextDice("P_OWNER", [2, 2, 3, 3, 3], "P_OWNER");
+  engine.setNextDice("P_OWNER", [1, 4, 5, 6, 6], "P_B");
+  engine.finishRolling("P_OWNER");
+  engine.makeCall("P_OWNER", 2, 2);
+  engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
+
+  assert.equal(engine.getState().phase, "ended");
+  assert.equal(engine.getState().currentPlayerId, "P_OWNER");
+  assert.throws(() => engine.restartRound("P_B"), (err) => err && err.code === ErrorCode.FORBIDDEN);
+  assert.throws(() => engine.restartRound("P_OWNER"), (err) => err && err.code === ErrorCode.BAD_REQUEST);
+
+  engine.admitWaitingPlayer("P_OWNER", "W_READY", 3);
+  assert.equal(engine.getState().currentPlayerId, "P_OWNER");
+
+  engine.restartRound("P_OWNER");
+  const nextState = engine.getState();
+  assert.equal(nextState.phase, "rolling");
+  assert.equal(nextState.currentPlayerId, "P_B");
+});
+
+test("room engine: offline waiting players do not block owner from starting the next round", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.startGame("P_OWNER");
+  engine.addWaitingPlayer({ id: "W_OFFLINE_START", nickname: "waiting", avatar: "" });
+
+  engine.setNextDice("P_OWNER", [2, 2, 3, 3, 3], "P_OWNER");
+  engine.setNextDice("P_OWNER", [1, 4, 5, 6, 6], "P_B");
+  engine.finishRolling("P_OWNER");
+  engine.makeCall("P_OWNER", 2, 2);
+  engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
+
+  engine.setPlayerOnlineStatus("W_OFFLINE_START", "offline");
+
+  assert.throws(() => engine.restartRound("P_B"), (err) => err && err.code === ErrorCode.FORBIDDEN);
+  engine.restartRound("P_OWNER");
+
+  const nextState = engine.getState();
+  assert.equal(nextState.phase, "rolling");
+  assert.equal(nextState.currentPlayerId, "P_B");
+  assert.equal(nextState.waitingPlayers.find((player) => player.id === "W_OFFLINE_START").onlineStatus, "offline");
 });
 
 test("room engine: total participants cannot exceed eight even when waiting players exist", () => {

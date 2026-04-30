@@ -290,9 +290,9 @@ test("room page: roll uses the bundled audio asset while the other sfx keep the 
     const lose = files.get("/tmp/dice-sfx/dice_sfx_lose.wav");
     const win = files.get("/tmp/dice-sfx/dice_sfx_win.wav");
 
-    assert.equal(page.sfxPaths.roll, "/assets/audio/dice-roll.mp3");
-    assert.equal(page.sfxPaths.loseAlert, "/assets/audio/lose-alert.mp3");
-    assert.equal(page.sfxPaths.turnAlert, "/assets/audio/turn-alert.mp3");
+    assert.equal(page.sfxPaths.roll, "/pages/room/assets/audio/dice-roll.mp3");
+    assert.equal(page.sfxPaths.loseAlert, "/pages/room/assets/audio/lose-alert.mp3");
+    assert.equal(page.sfxPaths.turnAlert, "/pages/room/assets/audio/turn-alert.mp3");
     assert.equal(files.has("/tmp/dice-sfx/dice_sfx_roll.wav"), false);
     assert.equal(Boolean(ok && open && lose && win), true);
     assert.equal(ok.byteLength >= 2400 && ok.byteLength <= 3000, true);
@@ -325,19 +325,19 @@ test("room page: turn alert sfx plays fully until another sfx takes over", async
       }
     };
     page.sfxPaths = {
-      turnAlert: "/assets/audio/turn-alert.mp3",
+      turnAlert: "/pages/room/assets/audio/turn-alert.mp3",
       call: "/tmp/dice_sfx_call.wav"
     };
     page.playSfx("turnAlert");
-    assert.deepEqual(playCalls, ["/assets/audio/turn-alert.mp3"]);
+    assert.deepEqual(playCalls, ["/pages/room/assets/audio/turn-alert.mp3"]);
 
     await new Promise((resolve) => setTimeout(resolve, 16));
     assert.deepEqual(stopCalls, [""]);
 
     page.playSfx("call");
     await new Promise((resolve) => setTimeout(resolve, 16));
-    assert.deepEqual(playCalls, ["/assets/audio/turn-alert.mp3", "/tmp/dice_sfx_call.wav"]);
-    assert.deepEqual(stopCalls, ["", "/assets/audio/turn-alert.mp3"]);
+    assert.deepEqual(playCalls, ["/pages/room/assets/audio/turn-alert.mp3", "/tmp/dice_sfx_call.wav"]);
+    assert.deepEqual(stopCalls, ["", "/pages/room/assets/audio/turn-alert.mp3"]);
   } finally {
     cleanup();
   }
@@ -574,14 +574,14 @@ test("room page: accepting legal blocks an invalid nickname before entering", ()
 
   try {
     page.onLoad({ mode: "join", roomId: "654321" });
-    page.setData({ nickname: "玩家1234", legalAgreementChecked: true });
+    page.setData({ nickname: "玩家12345678901", legalAgreementChecked: true });
 
     page.acceptLegal();
 
     assert.equal(page.data.legalAccepted, false);
     assert.equal(page.data.showLegalModal, true);
     assert.equal(storageState[LEGAL_ACCEPT_KEY], undefined);
-    assert.equal(toasts.includes("昵称需为1-5个字"), true);
+    assert.equal(toasts.includes("昵称需为1-12个字符"), true);
   } finally {
     cleanup();
   }
@@ -3340,6 +3340,47 @@ test("room page: seating panel swaps two occupied seats", () => {
   }
 });
 
+test("room page: stale seating panel refuses to submit after the room leaves setup phases", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sent = [];
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.data.playerId = "owner-a";
+    page.setData({
+      phase: "ended",
+      selfIsOwner: true,
+      playersRaw: [
+        { id: "owner-a", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "active", seatIndex: 1, diceCupStatus: "open", rollLocked: true },
+        { id: "guest-b", nickname: "二号位玩家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "open", rollLocked: true }
+      ]
+    });
+
+    page.openSeatingPanel({ id: "guest-b", nickname: "二号位玩家", seatIndex: 2 });
+    page.setData({ phase: "calling" });
+    page.onTapSeatRow({
+      currentTarget: {
+        dataset: {
+          seat: 5
+        }
+      }
+    });
+
+    assert.deepEqual(sent, []);
+    assert.equal(page.data.seatingVisible, false);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: owner ready topbar menu exposes seating setup before settings and leave", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -3783,6 +3824,31 @@ test("room page: returning from background can rebuild stable dice from pending 
   }
 });
 
+test("room page: hiding clears settlement countdown before the subpackage frame is gone", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.settlementCountdownTimer = setInterval(() => {}, 1000);
+
+    page.onHide();
+
+    assert.equal(page.pageHidden, true);
+    assert.equal(page.settlementCountdownTimer, null);
+
+    page.onShow();
+
+    assert.equal(page.pageHidden, false);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: direct private dice restore reveals stable dice immediately when no roll animation is active", async () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -3955,7 +4021,9 @@ test("room page: all players see the settlement dialog and only the loser can co
     assert.equal(page.data.settlementCanContinue, true);
     assert.equal(page.data.settlementRows.length, 2);
     const loserRow = page.data.settlementRows.find((row) => row.playerId === "loser");
-    assert.equal(loserRow.featureTagText, "豹");
+    assert.deepEqual(loserRow.featureTags, ["豹4"]);
+    assert.equal(loserRow.featureTagText, "豹4");
+    assert.equal(loserRow.diceBonusText, "+1");
     assert.equal(loserRow.diceItems.filter((item) => item.highlighted).length, 5);
     assert.equal(loserRow.diceItems.find((item) => item.value === 1).wildcard, true);
 
@@ -3978,8 +4046,12 @@ test("room page: all players see the settlement dialog and only the loser can co
     page.showSettlementPanel(naturalLeopardOpenResult, naturalLeopardRoundSummary);
     const naturalWinnerRow = page.data.settlementRows.find((row) => row.playerId === "winner");
     const naturalLoserRow = page.data.settlementRows.find((row) => row.playerId === "loser");
+    assert.deepEqual(naturalWinnerRow.featureTags, ["豹2"]);
+    assert.deepEqual(naturalLoserRow.featureTags, ["豹5"]);
     assert.equal(naturalWinnerRow.featureTagText, "豹2");
     assert.equal(naturalLoserRow.featureTagText, "豹5");
+    assert.equal(naturalWinnerRow.diceBonusText, "");
+    assert.equal(naturalLoserRow.diceBonusText, "");
   } finally {
     cleanup();
   }
@@ -4579,6 +4651,140 @@ test("room page: non-turn players can jump-open while the latest caller sees no 
     assert.equal(page.data.canOpenAction, true);
     assert.equal(page.data.secondaryActionKind, "open");
     assert.equal(page.data.secondaryActionText, "跳开");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: ended state with waiting players routes restart control to owner admission", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    let admitOpened = 0;
+    page.openWaitingAdmitFlow = () => {
+      admitOpened += 1;
+    };
+    page.setData({ playerId: "P1" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "778899",
+        phase: "ended",
+        round: 2,
+        currentPlayerId: "P2",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        },
+        players: [
+          { id: "P1", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "idle", seatIndex: 1, diceCupStatus: "open", rollLocked: true },
+          { id: "P2", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "active", seatIndex: 2, diceCupStatus: "open", rollLocked: true }
+        ],
+        waitingPlayers: [
+          { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online" }
+        ],
+        networkHealth: "good",
+        version: 3,
+        serverTs: Date.now()
+      }
+    }));
+
+    assert.equal(page.data.primaryActionText, "安排入座");
+    assert.equal(page.data.canPrimaryAction, true);
+    page.onPrimaryAction();
+    assert.equal(admitOpened, 1);
+
+    page.setData({ playerId: "P2" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "778899",
+        phase: "ended",
+        round: 2,
+        currentPlayerId: "P2",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        },
+        players: [
+          { id: "P1", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "idle", seatIndex: 1, diceCupStatus: "open", rollLocked: true },
+          { id: "P2", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "active", seatIndex: 2, diceCupStatus: "open", rollLocked: true }
+        ],
+        waitingPlayers: [
+          { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online" }
+        ],
+        networkHealth: "good",
+        version: 4,
+        serverTs: Date.now()
+      }
+    }));
+
+    assert.equal(page.data.primaryActionText, "等待房主安排");
+    assert.equal(page.data.canPrimaryAction, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: offline waiting players do not block the owner start control", () => {
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({ playerId: "P1" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "778899",
+        phase: "ended",
+        round: 2,
+        currentPlayerId: "P1",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        },
+        players: [
+          { id: "P1", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "active", seatIndex: 1, diceCupStatus: "open", rollLocked: true },
+          { id: "P2", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "open", rollLocked: true }
+        ],
+        waitingPlayers: [
+          { id: "W1", nickname: "离线等待者", avatar: "", onlineStatus: "offline" }
+        ],
+        networkHealth: "good",
+        version: 5,
+        serverTs: Date.now()
+      }
+    }));
+
+    assert.equal(page.data.waitingPlayerCount, 0);
+    assert.equal(page.data.primaryActionText, "开始");
+    assert.equal(page.data.canPrimaryAction, true);
+
+    page.openWaitingAdmitFlow();
+    assert.equal(toasts.includes("暂无在线等待玩家"), true);
   } finally {
     cleanup();
   }

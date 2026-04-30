@@ -13,6 +13,8 @@ module.exports = {
   DEFAULT_CLOUD_SERVICE,
   SESSION_KEY: "diceSession",
   ROOM_THEME_CACHE_KEY: "diceRoomThemeCacheV1",
+  ROOM_THEME_MANIFEST_CACHE_KEY: "diceRoomThemeManifestCacheV1",
+  ROOM_THEME_FILE_CACHE_KEY: "diceRoomThemeFileCacheV1",
   NICKNAME_KEY: "diceNicknameV1",
   AVATAR_URL_KEY: "diceAvatarUrlV1",
   PROFILE_SEED_KEY: "diceProfileSeedV1",

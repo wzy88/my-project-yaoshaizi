@@ -24,6 +24,12 @@ const {
   buildRoomThemeClass
 } = require("../../utils/room-themes");
 const { getRoomThemeAssets } = require("../../utils/room-theme-assets");
+const {
+  buildLocalRoomThemeManifest,
+  normalizeRoomThemeManifest,
+  registerRoomThemeManifest,
+  loadRoomThemeManifest
+} = require("../../utils/room-theme-loader");
 const { getStoredAccountSession, clearAccountSession } = require("../../utils/account-api");
 const { getStoredWechatProfile } = require("../../utils/wechat-auth");
 const { refreshWechatSessionSilently } = require("../../utils/wechat-login-flow");
@@ -45,12 +51,12 @@ const {
 } = require("../../utils/cloud-container");
 const { isDevtoolsPlatform, getNavigationSafeArea } = require("../../utils/system-info");
 const ROOM_AUDIO_ASSETS = {
-  roll: "/assets/audio/dice-roll.mp3",
-  settlement: "/assets/audio/settlement.mp3",
-  primary: "/assets/audio/primary-action.mp3",
-  roundStart: "/assets/audio/round-start.mp3",
-  loseAlert: "/assets/audio/lose-alert.mp3",
-  turnAlert: "/assets/audio/turn-alert.mp3"
+  roll: "/pages/room/assets/audio/dice-roll.mp3",
+  settlement: "/pages/room/assets/audio/settlement.mp3",
+  primary: "/pages/room/assets/audio/primary-action.mp3",
+  roundStart: "/pages/room/assets/audio/round-start.mp3",
+  loseAlert: "/pages/room/assets/audio/lose-alert.mp3",
+  turnAlert: "/pages/room/assets/audio/turn-alert.mp3"
 };
 const ROOM_AUDIO_DURATIONS_MS = {
   turnAlert: 1540
@@ -182,6 +188,30 @@ function getSettlementLeopardFace(diceList) {
   }
   const face = normalized[0];
   return normalized.every((value) => value === face) ? face : 0;
+}
+
+function buildSettlementFeaturePresentation({ dice, countDetail, declaredPoint }) {
+  const tags = [];
+  const isStraight = isSettlementStraight(dice);
+  const naturalLeopardFace = getSettlementLeopardFace(dice);
+  const point = Number(declaredPoint) || 0;
+  const leopardBonus = Boolean(countDetail && countDetail.leopardBonus);
+  const leopardFace = leopardBonus && point > 0 ? point : naturalLeopardFace;
+
+  if (isStraight) {
+    tags.push("顺");
+  }
+  if (leopardFace > 0) {
+    tags.push(`豹${leopardFace}`);
+  } else if (leopardBonus) {
+    tags.push("豹");
+  }
+
+  return {
+    featureTags: tags,
+    featureTagText: tags.join(" / "),
+    diceBonusText: leopardBonus || (!countDetail && naturalLeopardFace > 0 && naturalLeopardFace === point) ? "+1" : ""
+  };
 }
 
 function estimateSettlementPointTotal(allDice, point, oneAsWildcard) {
@@ -460,11 +490,9 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
       .map((num) => Number(num))
       .filter((num) => Number.isInteger(num) && num >= 1 && num <= 6);
     const countDetail = countDetailMap.get(id) || null;
-    const isStraight = isSettlementStraight(dice);
-    const leopardFace = getSettlementLeopardFace(dice);
+    const featurePresentation = buildSettlementFeaturePresentation({ dice, countDetail, declaredPoint });
     let kind = "neutral";
     let tagText = "";
-    let featureTagText = "";
     let countSummaryText = "";
 
     if (id === winnerId) {
@@ -474,15 +502,7 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
       kind = "loser";
       tagText = "负";
     }
-    if (isStraight) {
-      featureTagText = "顺";
-    }
-    if (leopardFace > 0) {
-      featureTagText = featureTagText ? `${featureTagText} / 豹${leopardFace}` : `豹${leopardFace}`;
-    } else if (countDetail && countDetail.leopardBonus) {
-      featureTagText = featureTagText ? `${featureTagText} / 豹` : "豹";
-    }
-    if (countDetail && !isStraight && Number(countDetail.contribution) > 0) {
+    if (countDetail && !countDetail.straight && Number(countDetail.contribution) > 0) {
       countSummaryText = `计数 ${Number(countDetail.contribution)}`;
     }
 
@@ -493,7 +513,9 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
       avatarUrl: getSeatAvatarPresentation(player ? player.avatar : "", Math.max(0, getSeatIndex(id) - 1)).src,
       avatarText: String(name || "玩").slice(0, 1),
       diceItems: buildSettlementDiceItems(dice, roomThemeId, countDetail, declaredPoint, fallbackWildcardOnes),
-      featureTagText,
+      featureTags: featurePresentation.featureTags,
+      featureTagText: featurePresentation.featureTagText,
+      diceBonusText: featurePresentation.diceBonusText,
       countSummaryText,
       kind,
       tagText,
@@ -1541,6 +1563,12 @@ Page({
     createTestMode: false,
     createRoomThemeId: DEFAULT_ROOM_THEME_ID,
     roomThemeReady: false,
+    roomThemeLoading: false,
+    roomThemeLoadingTitle: "正在布置房间",
+    roomThemeLoadingStep: "同步主题配置",
+    roomThemeLoadingProgress: 0,
+    roomThemeLoadError: "",
+    roomThemeManifest: buildLocalRoomThemeManifest(DEFAULT_ROOM_THEME_ID),
     roomThemeId: DEFAULT_ROOM_THEME_ID,
     roomThemeClass: buildRoomThemeClass(DEFAULT_ROOM_THEME_ID),
     roomThemeAssets: getRoomThemeAssets(DEFAULT_ROOM_THEME_ID),
@@ -1686,6 +1714,8 @@ Page({
 
   onLoad(options = {}) {
 	    this.manualClose = false;
+    this.pageHidden = false;
+    this.pageUnloaded = false;
 	    this.skipAutoReconnectOnce = false;
 	    this.reconnectTimer = null;
 	    this.pendingRoomAction = null;
@@ -1701,10 +1731,12 @@ Page({
     }
     const cached = wx.getStorageSync(SESSION_KEY);
     const initialRoomThemeId = this.resolveInitialRoomThemeForLoad(options, cached);
+    const initialRoomThemeManifest = registerRoomThemeManifest(buildLocalRoomThemeManifest(initialRoomThemeId));
 	    this.devtoolsMode = isDevtoolsPlatform();
 	    this.setData({
       devtoolsMode: this.devtoolsMode,
       roomThemeReady: true,
+      roomThemeManifest: initialRoomThemeManifest,
       ...buildRoomThemePresentation(initialRoomThemeId),
       ...buildRoomSafeAreaStyles()
     });
@@ -2070,6 +2102,7 @@ Page({
   },
 
   onShow() {
+    this.pageHidden = false;
     this.debugClientEvent("lifecycle:onShow", {
       roomId: this.data.roomId,
       playerId: this.data.playerId,
@@ -2124,6 +2157,7 @@ Page({
   },
 
   onHide() {
+    this.pageHidden = true;
     this.debugClientEvent("lifecycle:onHide", {
       roomId: this.data.roomId,
       playerId: this.data.playerId,
@@ -2131,6 +2165,7 @@ Page({
     });
     this.stopShakeListener();
     this.clearTurnCountdown();
+    this.clearSettlementCountdown();
     if (this.data.myDiceRolling || this.data.myDiceRevealing) {
       this.selfRollInterruptedOnHide = true;
       this.clearMyDiceTimers();
@@ -2265,6 +2300,13 @@ Page({
     }
 
     const tick = () => {
+      if (this.pageUnloaded) {
+        if (this.turnCountdownTimer) {
+          clearInterval(this.turnCountdownTimer);
+          this.turnCountdownTimer = null;
+        }
+        return;
+      }
       const remainMs = this.turnDeadlineTs - Date.now();
       const sec = Math.max(0, Math.ceil(remainMs / 1000));
       if (sec !== this.data.turnCountdownSec || this.data.turnCountdownLabel !== "剩余") {
@@ -2284,6 +2326,8 @@ Page({
   },
 
   onUnload() {
+    this.pageUnloaded = true;
+    this.pageHidden = true;
     this.debugClientEvent("lifecycle:onUnload", {
       roomId: this.data.roomId,
       playerId: this.data.playerId,
@@ -2609,6 +2653,77 @@ Page({
     return true;
   },
 
+  getThemeLoadingStep(manifest, index = 0) {
+    const normalized = normalizeRoomThemeManifest(manifest || this.data.roomThemeManifest || buildLocalRoomThemeManifest(this.data.roomThemeId));
+    const steps = normalized.loading && Array.isArray(normalized.loading.steps) ? normalized.loading.steps : [];
+    return steps[Math.max(0, Math.min(steps.length - 1, index))] || "同步主题配置";
+  },
+
+  startRoomThemeLoading(themeId, manifest = null) {
+    const normalized = normalizeRoomThemeManifest(manifest || buildLocalRoomThemeManifest(themeId));
+    this.roomThemeLoadSeq = (this.roomThemeLoadSeq || 0) + 1;
+    this.setData({
+      roomThemeReady: false,
+      roomThemeLoading: true,
+      roomThemeLoadingTitle: normalized.loading.title,
+      roomThemeLoadingStep: this.getThemeLoadingStep(normalized, 0),
+      roomThemeLoadingProgress: 18,
+      roomThemeLoadError: "",
+      roomThemeManifest: normalized,
+      ...buildRoomThemePresentation(normalized.id)
+    });
+    return this.roomThemeLoadSeq;
+  },
+
+  finishRoomThemeLoading(manifest, token, errorText = "") {
+    if (token && this.roomThemeLoadSeq && token !== this.roomThemeLoadSeq) {
+      return normalizeRoomThemeManifest(manifest || this.data.roomThemeManifest);
+    }
+
+    const normalized = this.rememberRoomThemeManifest(manifest || this.data.roomThemeManifest);
+    this.setData({
+      roomThemeReady: true,
+      roomThemeLoading: false,
+      roomThemeLoadingTitle: normalized.loading.title,
+      roomThemeLoadingStep: errorText ? "已使用基础样式进入" : this.getThemeLoadingStep(normalized, 3),
+      roomThemeLoadingProgress: 100,
+      roomThemeLoadError: String(errorText || ""),
+      roomThemeManifest: normalized,
+      ...buildRoomThemePresentation(normalized.id)
+    });
+    return normalized;
+  },
+
+  rememberRoomThemeManifest(manifest) {
+    const normalized = registerRoomThemeManifest(normalizeRoomThemeManifest(manifest || buildLocalRoomThemeManifest(DEFAULT_ROOM_THEME_ID)));
+    return normalized;
+  },
+
+  async prepareRoomThemeForEntry(themeId, options = {}) {
+    const id = normalizeRoomThemeId(themeId);
+    const seedManifest = normalizeRoomThemeManifest(options.serverManifest || this.data.roomThemeManifest || buildLocalRoomThemeManifest(id), id);
+    const token = this.startRoomThemeLoading(id, seedManifest);
+
+    try {
+      const manifest = await loadRoomThemeManifest(id, {
+        serverManifest: options.serverManifest || null,
+        themeVersion: options.themeVersion || seedManifest.version,
+        preferRemote: options.preferRemote !== false,
+        downloadAssets: options.downloadAssets !== false
+      });
+      if (!token || token === this.roomThemeLoadSeq) {
+        this.setData({
+          roomThemeLoadingStep: this.getThemeLoadingStep(manifest, 2),
+          roomThemeLoadingProgress: 82
+        });
+      }
+      return this.finishRoomThemeLoading(manifest, token);
+    } catch (error) {
+      const fallback = this.rememberRoomThemeManifest(buildLocalRoomThemeManifest(id));
+      return this.finishRoomThemeLoading(fallback, token, "主题加载失败，已切换基础样式");
+    }
+  },
+
   queuePendingRoomAction(action) {
     if (!action || !action.kind) {
       return false;
@@ -2646,12 +2761,7 @@ Page({
     this.clearPendingRoomAction();
 
     if (action.kind === "create") {
-      this.sendEvent("room:create", {
-        nickname: this.data.nickname || "玩家",
-        avatar: this.data.avatarUrl || "",
-        config: action.config,
-        ...buildAccountAuthPayload()
-      });
+      void this.sendCreateActionAfterThemeLoad(action);
       return true;
     }
 
@@ -2660,16 +2770,74 @@ Page({
       if (!roomId) {
         return false;
       }
-      this.sendEvent("room:join", {
-        roomId,
-        nickname: this.data.nickname || "玩家",
-        avatar: this.data.avatarUrl || "",
-        ...buildAccountAuthPayload()
-      });
+      void this.sendJoinActionAfterThemeLoad({ ...action, roomId });
       return true;
     }
 
     return false;
+  },
+
+  async sendCreateActionAfterThemeLoad(action) {
+    const config = action && action.config ? action.config : this.buildCreateConfigOrToast();
+    const manifest = await this.prepareRoomThemeForEntry(config.themeId || this.data.createRoomThemeId, {
+      preferRemote: true,
+      themeVersion: config.themeVersion
+    });
+    if (!this.data.connected || !this.socketTask) {
+      this.queuePendingRoomAction({
+        kind: "create",
+        config: {
+          ...config,
+          themeId: manifest.id,
+          themeVersion: manifest.version
+        }
+      });
+      return;
+    }
+
+    this.sendEvent("room:create", {
+      nickname: this.data.nickname || "玩家",
+      avatar: this.data.avatarUrl || "",
+      config: {
+        ...config,
+        themeId: manifest.id,
+        themeVersion: manifest.version
+      },
+      ...buildAccountAuthPayload()
+    });
+  },
+
+  async sendJoinActionAfterThemeLoad(action) {
+    const roomId = normalizeRoomId(action && action.roomId);
+    if (!roomId) {
+      return;
+    }
+
+    const provisionalThemeId = parseOptionalRoomThemeId(this.data.joinRoomThemeId)
+      || parseOptionalRoomThemeId(this.getCachedRoomTheme(roomId))
+      || parseOptionalRoomThemeId(this.data.roomThemeId);
+    if (provisionalThemeId) {
+      await this.prepareRoomThemeForEntry(provisionalThemeId, {
+        preferRemote: true
+      });
+    } else {
+      this.startRoomThemeLoading(DEFAULT_ROOM_THEME_ID, buildLocalRoomThemeManifest(DEFAULT_ROOM_THEME_ID));
+    }
+
+    if (!this.data.connected || !this.socketTask) {
+      this.queuePendingRoomAction({
+        kind: "join",
+        roomId
+      });
+      return;
+    }
+
+    this.sendEvent("room:join", {
+      roomId,
+      nickname: this.data.nickname || "玩家",
+      avatar: this.data.avatarUrl || "",
+      ...buildAccountAuthPayload()
+    });
   },
 
   buildCreateConfigOrToast() {
@@ -2691,6 +2859,9 @@ Page({
       throw new Error("create config invalid: minOpeningCount");
     }
 
+    const themeId = normalizeRoomThemeId(this.data.createRoomThemeId);
+    const currentManifest = normalizeRoomThemeManifest(this.data.roomThemeManifest || buildLocalRoomThemeManifest(themeId), themeId);
+
     return {
       direction,
       wildcardOneEnabled: Boolean(this.data.createWildcardOneEnabled),
@@ -2698,7 +2869,8 @@ Page({
       dicePerPlayer,
       minOpeningCount,
       testMode: Boolean(this.data.createTestMode),
-      themeId: normalizeRoomThemeId(this.data.createRoomThemeId)
+      themeId,
+      themeVersion: currentManifest.id === themeId ? currentManifest.version : ""
     };
   },
 
@@ -3070,12 +3242,7 @@ Page({
       runtimeConnectionSource: this.data.runtimeConnectionSource,
       connectionSummaryText: this.data.connectionSummaryText
     });
-    this.sendEvent("room:create", {
-      nickname: this.data.nickname || "玩家",
-      avatar: this.data.avatarUrl || "",
-      config,
-      ...buildAccountAuthPayload()
-    });
+    void this.sendCreateActionAfterThemeLoad({ kind: "create", config });
   },
 
   joinRoom() {
@@ -3116,12 +3283,7 @@ Page({
       roomId,
       playerId: this.data.playerId
     });
-    this.sendEvent("room:join", {
-      roomId,
-      nickname: this.data.nickname || "玩家",
-      avatar: this.data.avatarUrl || "",
-      ...buildAccountAuthPayload()
-    });
+    void this.sendJoinActionAfterThemeLoad({ kind: "join", roomId });
   },
 
   rejoinRoom() {
@@ -3483,6 +3645,10 @@ Page({
     }
 
     this.settlementCountdownTimer = setInterval(() => {
+      if (this.pageHidden || this.pageUnloaded) {
+        this.clearSettlementCountdown();
+        return;
+      }
       remain -= 1;
       if (remain <= 0) {
         this.clearSettlementCountdown();
@@ -3576,6 +3742,15 @@ Page({
   },
 
   restartRound() {
+    if ((this.data.waitingPlayersRaw || []).some((player) => player.onlineStatus !== "offline")) {
+      if (this.data.selfIsOwner) {
+        this.openWaitingAdmitFlow();
+      } else {
+        wx.showToast({ title: "等待房主安排入座", icon: "none" });
+      }
+      return;
+    }
+
     this.haptic("light");
     this.playPrimaryAwareSfx("");
     this.clearMyDiceTimers();
@@ -3884,6 +4059,12 @@ Page({
   },
 
   onTapSeatRow(event) {
+    if (!((this.data.phase === "ready" || this.data.phase === "ended") && this.data.selfIsOwner)) {
+      wx.showToast({ title: "当前不可排位", icon: "none" });
+      this.closeSeatingPanel();
+      return;
+    }
+
     const seatIndex = Number(event.currentTarget.dataset.seat);
     if (!Number.isInteger(seatIndex) || seatIndex < 1 || seatIndex > 8) {
       return;
@@ -4407,7 +4588,7 @@ Page({
 
     const config = this.data.roomConfig;
     const testMode = Boolean(config && config.testMode);
-    const hasWaitingPlayers = (this.data.waitingPlayersRaw || []).length > 0;
+    const hasWaitingPlayers = (this.data.waitingPlayersRaw || []).some((player) => player.onlineStatus !== "offline");
     if (this.data.selfIsOwner && hasWaitingPlayers) {
       sections.push({
         label: "房主工具",
@@ -4482,7 +4663,7 @@ Page({
     const items = [];
     const actions = [];
 
-    if ((this.data.waitingPlayersRaw || []).length > 0) {
+    if ((this.data.waitingPlayersRaw || []).some((player) => player.onlineStatus !== "offline")) {
       items.push("等待者入座");
       actions.push(() => this.openWaitingAdmitFlow());
     }
@@ -4551,9 +4732,9 @@ Page({
   },
 
   openWaitingAdmitFlow() {
-    const waiting = this.data.waitingPlayersRaw || [];
+    const waiting = (this.data.waitingPlayersRaw || []).filter((player) => player.onlineStatus !== "offline");
     if (!waiting.length) {
-      wx.showToast({ title: "暂无等待玩家", icon: "none" });
+      wx.showToast({ title: "暂无在线等待玩家", icon: "none" });
       return;
     }
 
@@ -4658,11 +4839,17 @@ Page({
     if (!this.data.legalAccepted) {
       wx.showToast({ title: "请先同意隐私协议", icon: "none" });
       this.setData({ showLegalModal: true });
+      if ((event === "room:create" || event === "room:join") && this.data.roomThemeLoading) {
+        this.finishRoomThemeLoading(this.data.roomThemeManifest || buildLocalRoomThemeManifest(this.data.roomThemeId), 0, "等待同意隐私协议");
+      }
       return;
     }
 
     if (!this.socketTask || !this.data.connected) {
       wx.showToast({ title: "未连接", icon: "none" });
+      if ((event === "room:create" || event === "room:join") && this.data.roomThemeLoading) {
+        this.finishRoomThemeLoading(this.data.roomThemeManifest || buildLocalRoomThemeManifest(this.data.roomThemeId), 0, "网络未连接");
+      }
       return;
     }
 
@@ -4682,6 +4869,9 @@ Page({
       success: () => {},
       fail: () => {
         delete this.actionEventMap[actionId];
+        if ((event === "room:create" || event === "room:join") && this.data.roomThemeLoading) {
+          this.finishRoomThemeLoading(this.data.roomThemeManifest || buildLocalRoomThemeManifest(this.data.roomThemeId), 0, "发送失败");
+        }
         wx.showToast({ title: "发送失败", icon: "none" });
       }
     });
@@ -4705,10 +4895,21 @@ Page({
         const waitingPlayersRaw = payload.waitingPlayers || [];
         this.clearStoredSessionIfSelfMissing(roomId, playersRaw, waitingPlayersRaw);
         const roomConfig = payload.config || null;
-        const incomingThemeId = roomConfig && roomConfig.themeId;
+        const incomingThemeManifest = payload.themeManifest
+          ? this.rememberRoomThemeManifest(payload.themeManifest)
+          : null;
+        const incomingThemeId = incomingThemeManifest
+          ? incomingThemeManifest.id
+          : (roomConfig && roomConfig.themeId);
         const provisionalThemeId = parseOptionalRoomThemeId(this.data.joinRoomThemeId)
           || parseOptionalRoomThemeId(this.data.createRoomThemeId);
         const roomThemeId = this.resolveRoomThemeId(roomId, incomingThemeId, provisionalThemeId);
+        const currentThemeManifest = this.data.roomThemeManifest
+          && normalizeRoomThemeId(this.data.roomThemeManifest.id) === roomThemeId
+          ? this.data.roomThemeManifest
+          : buildLocalRoomThemeManifest(roomThemeId);
+        const activeThemeManifest = incomingThemeManifest
+          || this.rememberRoomThemeManifest(currentThemeManifest);
         const previousRoomThemeId = normalizeRoomThemeId(this.data.roomThemeId || DEFAULT_ROOM_THEME_ID);
         const shouldLogThemeSync = !this.hasReceivedRoomState
           || !incomingThemeId
@@ -4740,7 +4941,9 @@ Page({
           self && self.avatar ? self.avatar : this.data.avatarUrl,
           Math.max(0, Number(self && self.seatIndex || 1) - 1)
         );
-        const waitingPlayerCount = Array.isArray(waitingPlayersRaw) ? waitingPlayersRaw.length : 0;
+        const waitingPlayerCount = Array.isArray(waitingPlayersRaw)
+          ? waitingPlayersRaw.filter((player) => player.onlineStatus !== "offline").length
+          : 0;
         const selfIsWaiting = waitingPlayersRaw.some((player) => player.id === this.data.playerId)
           && !playersRaw.some((player) => player.id === this.data.playerId);
         const dicePerPlayer = roomConfig && typeof roomConfig.dicePerPlayer === "number"
@@ -4952,7 +5155,15 @@ Page({
           primaryActionText = "开牌中";
           canPrimaryAction = false;
         } else if (phase === "ended") {
-          if (payload.currentPlayerId === this.data.playerId || ownerCanRestartEnded) {
+          if (waitingPlayerCount > 0) {
+            if (selfIsOwner) {
+              primaryActionText = "安排入座";
+              canPrimaryAction = true;
+            } else {
+              primaryActionText = "等待房主安排";
+              canPrimaryAction = false;
+            }
+          } else if (payload.currentPlayerId === this.data.playerId || ownerCanRestartEnded) {
             primaryActionText = "开始";
             canPrimaryAction = true;
           } else {
@@ -5001,6 +5212,11 @@ Page({
           primaryActionText,
           canPrimaryAction,
           roomConfig,
+          roomThemeReady: true,
+          roomThemeLoading: false,
+          roomThemeLoadingProgress: 100,
+          roomThemeLoadingStep: this.getThemeLoadingStep(activeThemeManifest, 3),
+          roomThemeManifest: activeThemeManifest,
           ...buildRoomThemePresentation(roomThemeId),
           playersRaw,
           playersDecorated,
@@ -5150,7 +5366,11 @@ Page({
 
         if (payload.roomId || payload.playerId || payload.resumeToken) {
           const nextRoomId = payload.roomId || this.data.roomId;
-          const nextThemeId = parseOptionalRoomThemeId(payload.themeId)
+          const ackThemeManifest = payload.themeManifest
+            ? this.rememberRoomThemeManifest(payload.themeManifest)
+            : null;
+          const nextThemeId = (ackThemeManifest && ackThemeManifest.id)
+            || parseOptionalRoomThemeId(payload.themeId)
             || (actionEvent === "room:create"
               ? parseOptionalRoomThemeId(this.data.createRoomThemeId)
               : (
@@ -5160,6 +5380,14 @@ Page({
                   ? parseOptionalRoomThemeId(this.data.roomThemeId)
                   : "")
               ));
+          const activeThemeManifest = ackThemeManifest
+            || (nextThemeId
+              ? this.rememberRoomThemeManifest(
+                this.data.roomThemeManifest && normalizeRoomThemeId(this.data.roomThemeManifest.id) === nextThemeId
+                  ? this.data.roomThemeManifest
+                  : buildLocalRoomThemeManifest(nextThemeId)
+              )
+              : null);
           const nextThemePresentation = nextThemeId
             ? buildRoomThemePresentation(nextThemeId)
             : (
@@ -5172,6 +5400,14 @@ Page({
             resumeToken: payload.resumeToken || this.data.resumeToken,
             joinRoomId: nextRoomId,
             joinRoomThemeId: actionEvent === "room:create" ? "" : (nextThemeId || this.data.joinRoomThemeId),
+            roomThemeReady: true,
+            roomThemeLoading: false,
+            roomThemeLoadingProgress: 100,
+            ...(activeThemeManifest ? {
+              roomThemeManifest: activeThemeManifest,
+              roomThemeLoadingTitle: activeThemeManifest.loading.title,
+              roomThemeLoadingStep: this.getThemeLoadingStep(activeThemeManifest, 3)
+            } : {}),
             ...nextThemePresentation
           };
 
@@ -5183,11 +5419,16 @@ Page({
           }
           this.persistSession({
             ...nextData,
-            themeId: nextThemeId
+            themeId: nextThemeId,
+            themeVersion: activeThemeManifest ? activeThemeManifest.version : payload.themeVersion
           });
         }
 
         if (!payload.ok) {
+          if (this.data.roomThemeLoading) {
+            this.finishRoomThemeLoading(this.data.roomThemeManifest || buildLocalRoomThemeManifest(this.data.roomThemeId), 0, "房间进入失败");
+          }
+
           if (
             actionEvent === "room:rejoin" &&
             (payload.code === "ROOM_NOT_FOUND" || payload.code === "PLAYER_NOT_IN_ROOM" || payload.code === "FORBIDDEN")
@@ -6080,6 +6321,7 @@ Page({
     const playerId = sessionLike.playerId || this.data.playerId;
     const resumeToken = sessionLike.resumeToken || this.data.resumeToken;
     const themeId = parseOptionalRoomThemeId(sessionLike.themeId || this.data.roomThemeId);
+    const themeVersion = String(sessionLike.themeVersion || (this.data.roomThemeManifest && this.data.roomThemeManifest.version) || "").trim();
 
     if (!roomId || !playerId || !resumeToken) {
       return;
@@ -6092,7 +6334,8 @@ Page({
       roomId,
       playerId,
       resumeToken,
-      themeId
+      themeId,
+      themeVersion
     });
   },
 

@@ -1,13 +1,32 @@
 <view class="page create-page {{devtoolsMode ? 'is-perf-lite' : ''}}">
   <view class="mask-bg"></view>
+  <view class="bg-beam bg-beam--cyan"></view>
+  <view class="bg-beam bg-beam--pink"></view>
+  <image class="float-die float-die--a" src="{{floatDiceAssets[0]}}" mode="aspectFit"></image>
+  <image class="float-die float-die--b" src="{{floatDiceAssets[1]}}" mode="aspectFit"></image>
   <view class="create-sheet">
+    <view class="create-sheet__handle"></view>
     <view class="create-sheet__glow create-sheet__glow--a"></view>
     <view class="create-sheet__glow create-sheet__glow--b"></view>
     <view class="create-sheet__head">
       <view class="create-sheet__heading">
         <text class="create-sheet__eyebrow">ROOM SETUP</text>
         <text class="create-sheet__title">创建房间</text>
-        <text class="create-sheet__desc">固定 8 个座位，空位保留空杯，有人进来再显示头像。</text>
+        <text class="create-sheet__desc">先定主题和通配规则，创建后直接进入房间。</text>
+      </view>
+      <view class="create-sheet__summary">
+        <view class="create-sheet__summary-item">
+          <text class="create-sheet__summary-value">8</text>
+          <text class="create-sheet__summary-label">固定座位</text>
+        </view>
+        <view class="create-sheet__summary-item">
+          <text class="create-sheet__summary-value">5</text>
+          <text class="create-sheet__summary-label">每人骰子</text>
+        </view>
+        <view class="create-sheet__summary-item">
+          <text class="create-sheet__summary-value">{{wildcardOneEnabled ? '开' : '关'}}</text>
+          <text class="create-sheet__summary-label">通配 1</text>
+        </view>
       </view>
     </view>
 
@@ -57,13 +76,8 @@
         </view>
 
         <view class="create-note-card">
-          <text class="create-note-card__title">开局说明</text>
-          <text class="create-note-card__desc">默认每人 5 颗骰子。创建后会直接进入房间，空位会保留杯位但不显示头像。</text>
-        </view>
-
-        <view class="create-note-card create-note-card--experiment">
-          <text class="create-note-card__title">测试主题</text>
-          <text class="create-note-card__desc">本次创建会带入 {{themePreviewLabel}} 主题，用于真机验证牌桌、气泡、杯子和按钮效果。</text>
+          <text class="create-note-card__title">本次配置</text>
+          <text class="create-note-card__desc">固定 8 个座位，每人 5 颗骰子，当前使用 {{themePreviewLabel}} 主题。空位会保留杯位，但不会显示头像。</text>
         </view>
       </view>
     </scroll-view>

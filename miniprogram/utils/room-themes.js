@@ -3,11 +3,13 @@ const DEFAULT_ROOM_THEME_ID = "jade-green";
 const ROOM_THEME_IDS = [
   DEFAULT_ROOM_THEME_ID,
   "ruby-red",
-  "imperial-red"
+  "imperial-red",
+  "glacier-blue"
 ];
 
 const ROOM_THEME_LABELS = {
   "jade-green": "青岚",
+  "glacier-blue": "霁雪",
   "imperial-red": "绛华",
   "ruby-red": "玄曜"
 };

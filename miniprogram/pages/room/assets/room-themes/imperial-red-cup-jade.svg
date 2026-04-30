@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 216">
+  <defs>
+    <filter id="cupGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="9" flood-color="#d9c57b" flood-opacity=".22"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#f2d27f" flood-opacity=".24"/>
+    </filter>
+    <filter id="jadeNoise" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".03 .055" numOctaves="3" seed="19"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.04 0 0 0 0 0.22 0 0 0 0 0.14 0 0 0 .22 0"/>
+      <feBlend mode="multiply" in2="SourceGraphic"/>
+    </filter>
+    <linearGradient id="goldOuter" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff4bd"/>
+      <stop offset=".28" stop-color="#dfb455"/>
+      <stop offset=".54" stop-color="#9d641f"/>
+      <stop offset=".76" stop-color="#efd07a"/>
+      <stop offset="1" stop-color="#754015"/>
+    </linearGradient>
+    <linearGradient id="jade" x1=".08" y1=".04" x2=".94" y2="1">
+      <stop offset="0" stop-color="#b7d6a4"/>
+      <stop offset=".22" stop-color="#5c9a66"/>
+      <stop offset=".58" stop-color="#2b6f47"/>
+      <stop offset="1" stop-color="#164533"/>
+    </linearGradient>
+    <radialGradient id="jadeLight" cx=".28" cy=".18" r=".78">
+      <stop offset="0" stop-color="#e4f3bd" stop-opacity=".56"/>
+      <stop offset=".3" stop-color="#6f9f63" stop-opacity=".2"/>
+      <stop offset="1" stop-color="#2f6f4c" stop-opacity=".34"/>
+    </radialGradient>
+  </defs>
+  <g filter="url(#cupGlow)">
+    <path d="M44 22h92c6 0 10 4 10 10v132c0 9-7 16-16 16H50c-9 0-16-7-16-16V32c0-6 4-10 10-10z" fill="url(#jade)" filter="url(#jadeNoise)"/>
+    <path d="M44 22h92c6 0 10 4 10 10v132c0 9-7 16-16 16H50c-9 0-16-7-16-16V32c0-6 4-10 10-10z" fill="url(#jadeLight)"/>
+    <path d="M44 22h92c6 0 10 4 10 10v132c0 9-7 16-16 16H50c-9 0-16-7-16-16V32c0-6 4-10 10-10z" fill="none" stroke="url(#goldOuter)" stroke-width=".55" opacity=".72"/>
+    <path d="M51 39c26 13 52-12 78 2M51 134c24-22 53 3 77-20" fill="none" stroke="#d9ecb2" stroke-width="1.15" stroke-linecap="round" opacity=".11"/>
+    <path d="M51 36h78c-24 10-50 12-76 7z" fill="#f8ffe1" opacity=".15"/>
+    <path d="M53 41v101" fill="none" stroke="#f2ffd1" stroke-width="2.2" stroke-linecap="round" opacity=".13"/>
+    <path d="M45 23h90" fill="none" stroke="#fff2ad" stroke-width=".45" stroke-linecap="round" opacity=".5"/>
+    <path d="M52 168h76" fill="none" stroke="#6d3511" stroke-width=".45" stroke-linecap="round" opacity=".14"/>
+  </g>
+</svg>

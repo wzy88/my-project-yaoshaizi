@@ -13,7 +13,9 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   const script = fs.readFileSync(createRoomScriptPath, "utf8");
 
   assert.match(script, /const app = getApp\(\);/);
+  assert.match(script, /LOBBY_FLOAT_DICE_ASSETS/);
   assert.match(script, /require\("\.\.\/\.\.\/utils\/room-themes"\)/);
+  assert.match(script, /require\("\.\.\/\.\.\/utils\/room-theme-loader"\)/);
   assert.match(script, /playerCount:\s*8/);
   assert.match(script, /devtoolsMode:\s*false/);
   assert.match(script, /app\.globalData && app\.globalData\.isDevtoolsMode/);
@@ -22,6 +24,7 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(script, /themePreviewId:\s*DEFAULT_ROOM_THEME_ID/);
   assert.match(script, /const themePreviewId = normalizeRoomThemeId\(options && options\.themeId\)/);
   assert.match(script, /onSelectTheme\(event\)/);
+  assert.match(script, /prefetchTheme\(themeId\)/);
   assert.doesNotMatch(script, /playerCountOptions/);
   assert.doesNotMatch(script, /allowSpectator/);
   assert.doesNotMatch(script, /lockRoom/);
@@ -29,8 +32,14 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxml, /<text class="block-title">房间形式<\/text>/);
   assert.match(wxml, /create-page \{\{devtoolsMode \? 'is-perf-lite' : ''\}\}/);
   assert.match(wxml, /class="create-sheet"/);
+  assert.match(wxml, /class="create-sheet__handle"/);
+  assert.match(wxml, /class="bg-beam bg-beam--cyan"/);
+  assert.match(wxml, /class="float-die float-die--a"/);
   assert.match(wxml, /class="create-sheet__eyebrow">ROOM SETUP<\/text>/);
   assert.match(wxml, /class="create-sheet__title">创建房间<\/text>/);
+  assert.match(wxml, /class="create-sheet__summary"/);
+  assert.match(wxml, /class="create-sheet__summary-label">固定座位<\/text>/);
+  assert.match(wxml, /class="create-sheet__summary-label">每人骰子<\/text>/);
   assert.match(wxml, /<scroll-view class="create-sheet__scroll" scroll-y="true"/);
   assert.match(wxml, /class="create-sheet__footer"/);
   assert.match(wxml, /class="room-form-card"/);
@@ -43,9 +52,13 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxml, /class="theme-card__check \{\{themePreviewId === item\.id \? 'is-active' : ''\}\}">\{\{item\.badge\}\}<\/view>/);
   assert.match(wxml, /class="theme-card__preview"/);
   assert.match(wxml, /class="theme-card__title">\{\{item\.label\}\}<\/text>/);
+  assert.doesNotMatch(wxml, /theme-card__caption/);
+  assert.doesNotMatch(wxml, /theme-card__desc/);
+  assert.doesNotMatch(script, /caption:/);
+  assert.doesNotMatch(script, /desc:/);
   assert.match(wxml, /class="toggle-card__signal \{\{wildcardOneEnabled \? 'is-on' : 'is-off'\}\}"/);
   assert.match(wxml, /class="create-note-card"/);
-  assert.match(wxml, /class="create-note-card create-note-card--experiment"/);
+  assert.doesNotMatch(wxml, /create-note-card--experiment/);
   assert.match(wxml, /class="create-actions"/);
   assert.doesNotMatch(wxml, /允许旁观/);
   assert.doesNotMatch(wxml, /锁定房间/);
@@ -61,16 +74,20 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
 
   assert.match(wxss, /\.create-sheet\s*\{/);
   assert.match(wxss, /\.create-sheet\s*\{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
-  assert.match(wxss, /\.create-sheet\s*\{[\s\S]*height:\s*min\(1320rpx,\s*calc\(100vh - env\(safe-area-inset-top\) - env\(safe-area-inset-bottom\) - 84rpx\)\)/);
+  assert.match(wxss, /\.create-sheet\s*\{[\s\S]*height:\s*min\(1260rpx,\s*calc\(100vh - env\(safe-area-inset-top\) - 76rpx\)\)/);
+  assert.match(wxss, /\.create-sheet\s*\{[\s\S]*border-radius:\s*42rpx 42rpx 0 0/);
   assert.match(wxss, /\.create-sheet__scroll\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0/);
   assert.match(wxss, /\.create-sheet__footer\s*\{[\s\S]*flex:\s*0 0 auto/);
+  assert.match(wxss, /\.create-sheet__summary\s*\{[\s\S]*display:\s*flex/);
+  assert.match(wxss, /\.create-sheet__summary-item\s*\{/);
   assert.match(wxss, /\.create-page\s*\{[\s\S]*display:\s*flex[\s\S]*align-items:\s*flex-end[\s\S]*justify-content:\s*center/);
+  assert.match(wxss, /@keyframes create-sheet-in/);
   assert.match(wxss, /\.create-sheet__glow--a\s*\{/);
   assert.match(wxss, /\.toggle-card__signal\.is-on\s*\{/);
   assert.match(wxss, /\.theme-picker\s*\{/);
   assert.match(wxss, /\.theme-picker\s*\{[\s\S]*display:\s*flex[\s\S]*align-items:\s*stretch/);
   assert.match(wxss, /\.theme-card\s*\{/);
-  assert.match(wxss, /\.theme-card\s*\{[\s\S]*flex:\s*1 1 0[\s\S]*height:\s*198rpx[\s\S]*flex-direction:\s*column/);
+  assert.match(wxss, /\.theme-card\s*\{[\s\S]*flex:\s*1 1 0[\s\S]*height:\s*238rpx[\s\S]*flex-direction:\s*column/);
   assert.match(wxss, /\.theme-card\s*\{[\s\S]*justify-content:\s*flex-end/);
   assert.match(wxss, /\.theme-card\.is-active\s*\{[\s\S]*transform:\s*translateY\(-4rpx\) scale\(1\.015\)/);
   assert.match(wxss, /\.theme-card__check\s*\{/);
@@ -80,8 +97,9 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxss, /\.theme-card--jade-green \.theme-card__preview\s*\{/);
   assert.match(wxss, /\.theme-card--ruby-red \.theme-card__preview\s*\{/);
   assert.match(wxss, /\.theme-card--imperial-red \.theme-card__preview\s*\{/);
+  assert.match(wxss, /\.theme-card--glacier-blue \.theme-card__preview\s*\{/);
   assert.match(wxss, /\.create-note-card\s*\{/);
-  assert.match(wxss, /\.create-note-card--experiment\s*\{/);
+  assert.doesNotMatch(wxss, /\.create-note-card--experiment\s*\{/);
   assert.match(wxss, /\.create-btn\s*\{/);
   assert.match(wxss, /\.room-form-card\s*\{/);
   assert.match(wxss, /\.room-form-card__title\s*\{/);

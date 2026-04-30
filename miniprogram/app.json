@@ -5,9 +5,16 @@
     "pages/me/me",
     "pages/rules/rules",
     "pages/create-room/create-room",
-    "pages/room/room",
     "pages/legal/privacy/privacy",
     "pages/legal/terms/terms"
+  ],
+  "subPackages": [
+    {
+      "root": "pages/room",
+      "pages": [
+        "room"
+      ]
+    }
   ],
   "window": {
     "navigationBarTitleText": "摇骰子聚会助手",

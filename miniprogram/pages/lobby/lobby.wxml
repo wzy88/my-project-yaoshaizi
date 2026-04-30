@@ -1,6 +1,7 @@
 <view class="page lobby-page {{devtoolsMode ? 'is-perf-lite' : ''}}">
   <view class="bg-layer bg-main"></view>
   <view class="bg-layer bg-pattern"></view>
+  <image class="lobby-bg-art" src="{{homeTableBgAsset}}" mode="aspectFill"></image>
   <view class="bg-glow bg-glow--top"></view>
   <view class="bg-glow bg-glow--bottom"></view>
   <view class="bg-beam bg-beam--cyan"></view>
@@ -11,11 +12,27 @@
 
   <view class="lobby-shell">
     <view class="hero-zone">
-      <image class="home-logo" src="{{homeLogoAsset}}" mode="aspectFill"></image>
+      <view class="home-logo-mask">
+        <image class="home-logo" src="{{homeLogoAsset}}" mode="aspectFill"></image>
+      </view>
+      <view class="hero-profile-card" bindtap="goProfile">
+        <view class="hero-profile-card__avatar">
+          <image wx:if="{{avatarUrl}}" class="hero-profile-card__avatar-img" src="{{avatarUrl}}" mode="aspectFill"></image>
+          <text wx:else class="hero-profile-card__avatar-text">{{nickname ? nickname.slice(0, 1) : '玩'}}</text>
+        </view>
+        <view class="hero-profile-card__copy">
+          <text class="hero-profile-card__title">编号 {{profileDisplayNo}}</text>
+          <text class="hero-profile-card__sub">查看个人主页</text>
+        </view>
+        <text class="hero-profile-card__arrow">›</text>
+      </view>
       <view class="hero">
         <text class="hero-title">满上，</text>
         <text class="hero-title">来一局</text>
-        <text class="hero-sub">摇骰吹牛 · 满上开局</text>
+        <view class="hero-subline">
+          <text class="hero-sub">摇骰吹牛，</text>
+          <text class="hero-sub hero-sub--hot">满上开局！</text>
+        </view>
       </view>
     </view>
 
@@ -31,6 +48,7 @@
             </button>
           </view>
           <view class="create-room-card__cup">
+            <image class="create-room-card__art" src="{{homeCreateArtAsset}}" mode="aspectFill"></image>
             <view class="create-room-card__cup-body">
               <view class="create-room-card__cup-ring create-room-card__cup-ring--top"></view>
               <view class="create-room-card__cup-mark"></view>
@@ -44,18 +62,24 @@
         </view>
 
         <view class="glass-card join-card">
-          <input
-            class="join-input"
-            value="{{joinRoomId}}"
-            bindinput="onJoinRoomIdChange"
-            placeholder="输入房间号加入"
-            maxlength="6"
-            type="number"
-            placeholder-class="join-placeholder"
-          />
-          <button class="join-btn" bindtap="goJoinRoom">
-            <text class="join-btn__text">加入房间</text>
-          </button>
+          <view class="join-card__copy">
+            <text class="join-card__title">加入房间</text>
+            <text class="join-card__sub">输入房间号，快速加入</text>
+          </view>
+          <view class="join-card__row">
+            <input
+              class="join-input"
+              value="{{joinRoomId}}"
+              bindinput="onJoinRoomIdChange"
+              placeholder="输入房间号"
+              maxlength="6"
+              type="number"
+              placeholder-class="join-placeholder"
+            />
+            <button class="join-btn" bindtap="goJoinRoom">
+              <text class="join-btn__text">加入房间</text>
+            </button>
+          </view>
         </view>
 
         <view class="recent-section">
@@ -92,8 +116,9 @@
       <view class="login-gate__glow login-gate__glow--b"></view>
       <view class="login-gate__handle"></view>
       <view class="login-gate__header">
+        <text class="login-gate__eyebrow">ACCOUNT GATE</text>
         <text class="login-gate__title">{{loginGateTitle}}</text>
-        <text wx:if="{{loginGateDesc}}" class="login-gate__desc">{{loginGateDesc}}</text>
+        <text class="login-gate__desc">{{loginGateDesc || '登录后会自动继续刚才的操作，不会打断组局流程。'}}</text>
       </view>
       <view class="login-gate__button-stack">
         <button class="login-gate__btn {{loginAgreementChecked ? '' : 'is-disabled'}}" loading="{{loginBusy}}" disabled="{{loginBusy || !loginAgreementChecked}}" bindtap="onWechatLogin">

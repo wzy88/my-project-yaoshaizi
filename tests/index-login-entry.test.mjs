@@ -371,6 +371,24 @@ test("index page: removed bundled woman avatar is reassigned to one of the remai
   }
 });
 
+test("index page: old png default avatar stays in the bundled avatar pool", () => {
+  const { page, storageState, cleanup } = instantiateIndexPage({
+    storage: {
+      [NICKNAME_KEY]: "玩家472",
+      [AVATAR_URL_KEY]: "/assets/figma-room-v2/avatar-butterfly.png"
+    }
+  });
+
+  try {
+    page.onLoad({});
+
+    assert.equal(DEFAULT_PROFILE_AVATAR_ASSETS.includes(String(storageState[AVATAR_URL_KEY] || "")), true);
+    assert.equal(String(storageState[AVATAR_URL_KEY] || "").endsWith(".png"), true);
+  } finally {
+    cleanup();
+  }
+});
+
 test("index page: falls back cleanly when backend-request helper exports are stale", () => {
   const realBackendRequest = require(backendRequestModulePath);
   const { page, cleanup } = instantiateIndexPage({

@@ -22,6 +22,7 @@ const {
   clearWechatProfile
 } = require("../../utils/wechat-auth");
 const { performWechatOneTapLogin, refreshWechatSessionSilently } = require("../../utils/wechat-login-flow");
+const { LOBBY_FLOAT_DICE_ASSETS } = require("../../utils/dice-assets");
 
 function buildTimeText() {
   const date = new Date();
@@ -89,6 +90,7 @@ function buildAccountData(session) {
 Page({
   data: {
     timeText: "10:21",
+    floatDiceAssets: LOBBY_FLOAT_DICE_ASSETS,
     devtoolsMode: false,
     nickname: "",
     avatarUrl: "",

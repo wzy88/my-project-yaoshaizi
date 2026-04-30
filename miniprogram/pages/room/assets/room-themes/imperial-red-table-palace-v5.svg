@@ -1,0 +1,56 @@
+<svg preserveAspectRatio="none" width="720" height="1480" viewBox="0 0 720 1480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="lacquer" x1="360" y1="0" x2="360" y2="1480" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#D33C36"/>
+      <stop offset="0.34" stop-color="#B82329"/>
+      <stop offset="0.7" stop-color="#8F161D"/>
+      <stop offset="1" stop-color="#5B0C12"/>
+    </linearGradient>
+    <radialGradient id="innerGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(360 602) rotate(90) scale(650 310)">
+      <stop offset="0" stop-color="#F26045" stop-opacity="0.38"/>
+      <stop offset="0.44" stop-color="#CD3433" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#771116" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="edgeDepth" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(360 740) rotate(90) scale(800 370)">
+      <stop offset="0.56" stop-color="#390508" stop-opacity="0"/>
+      <stop offset="1" stop-color="#2C0306" stop-opacity="0.34"/>
+    </radialGradient>
+    <linearGradient id="goldLine" x1="0" y1="0" x2="720" y2="1480" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8F561D"/>
+      <stop offset="0.2" stop-color="#D7A74C"/>
+      <stop offset="0.5" stop-color="#FFE9A5"/>
+      <stop offset="0.8" stop-color="#C99031"/>
+      <stop offset="1" stop-color="#7B4315"/>
+    </linearGradient>
+    <pattern id="silkLines" width="88" height="88" patternUnits="userSpaceOnUse">
+      <path d="M0 22H88M0 66H88" stroke="#FFD98C" stroke-opacity="0.026" stroke-width="1"/>
+      <path d="M22 0V88M66 0V88" stroke="#FFD98C" stroke-opacity="0.018" stroke-width="1"/>
+      <path d="M-22 88L88 -22M0 110L110 0" stroke="#FFD98C" stroke-opacity="0.016" stroke-width="1"/>
+    </pattern>
+    <filter id="lacquerNoise" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.018 0.06" numOctaves="3" seed="73" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0.62 0 0 0 0 0.08 0 0 0 0 0.06 0 0 0 0.13 0" result="tint"/>
+      <feBlend in="SourceGraphic" in2="tint" mode="soft-light"/>
+    </filter>
+  </defs>
+  <rect width="720" height="1480" rx="86" fill="url(#lacquer)"/>
+  <g filter="url(#lacquerNoise)">
+    <rect width="720" height="1480" rx="86" fill="url(#lacquer)"/>
+    <rect width="720" height="1480" rx="86" fill="url(#innerGlow)"/>
+    <rect width="720" height="1480" rx="86" fill="url(#silkLines)" opacity="0.72"/>
+    <path d="M64 92C116 58 184 48 256 68C196 92 148 132 112 188C158 158 212 150 274 164" stroke="#F7D486" stroke-opacity="0.075" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <path d="M656 92C604 58 536 48 464 68C524 92 572 132 608 188C562 158 508 150 446 164" stroke="#F7D486" stroke-opacity="0.075" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <path d="M54 1284C118 1244 190 1234 270 1260C198 1286 142 1332 100 1398C158 1362 220 1354 286 1374" stroke="#F7D486" stroke-opacity="0.07" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <path d="M666 1284C602 1244 530 1234 450 1260C522 1286 578 1332 620 1398C562 1362 500 1354 434 1374" stroke="#F7D486" stroke-opacity="0.07" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    <path d="M94 1342C180 1298 274 1290 360 1328C446 1290 540 1298 626 1342" stroke="#F7D486" stroke-opacity="0.052" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M120 1378C206 1342 288 1340 360 1370C432 1340 514 1342 600 1378" stroke="#F7D486" stroke-opacity="0.046" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+  <rect width="720" height="1480" rx="86" fill="url(#edgeDepth)"/>
+  <rect x="10" y="10" width="700" height="1460" rx="78" stroke="url(#goldLine)" stroke-width="5" opacity="0.95"/>
+  <rect x="22" y="22" width="676" height="1436" rx="66" stroke="#FFE7A1" stroke-opacity="0.22" stroke-width="1.5"/>
+  <rect x="42" y="42" width="636" height="1396" rx="52" stroke="#F3C773" stroke-opacity="0.24" stroke-width="1.2"/>
+  <path d="M38 66C58 50 76 46 96 54C76 65 64 82 58 106C78 92 98 88 118 96" stroke="#FFE19A" stroke-opacity="0.52" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M682 66C662 50 644 46 624 54C644 65 656 82 662 106C642 92 622 88 602 96" stroke="#FFE19A" stroke-opacity="0.52" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M38 1414C58 1430 76 1434 96 1426C76 1415 64 1398 58 1374C78 1388 98 1392 118 1384" stroke="#FFE19A" stroke-opacity="0.48" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M682 1414C662 1430 644 1434 624 1426C644 1415 656 1398 662 1374C642 1388 622 1392 602 1384" stroke="#FFE19A" stroke-opacity="0.48" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>

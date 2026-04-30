@@ -132,6 +132,17 @@ function buildLoginGateCopy(redirectUrl = "/pages/lobby/lobby") {
   };
 }
 
+function buildProfileDisplayNo(profile) {
+  const raw = String(
+    profile && (profile.accountDisplayId || profile.displayId || profile.accountId) || ""
+  ).trim();
+  const digits = raw.replace(/\D/g, "");
+  if (digits) {
+    return digits.slice(-3).padStart(3, "0");
+  }
+  return raw ? raw.slice(-3) : "--";
+}
+
 function syncLobbyTabBar(page) {
   const tabBar = page.getTabBar && page.getTabBar();
   if (!tabBar || !tabBar.setData) {
@@ -147,12 +158,15 @@ function syncLobbyTabBar(page) {
 Page({
   data: {
     timeText: "10:21",
-    homeLogoAsset: "/assets/home-logo.jpg",
+    homeLogoAsset: "/assets/home-logo-premium.jpg",
+    homeTableBgAsset: "/assets/home-table-bg-premium.jpg",
+    homeCreateArtAsset: "/assets/home-create-art-premium.jpg",
     floatDiceAssets: LOBBY_FLOAT_DICE_ASSETS,
     createButtonDieAsset: LOBBY_CREATE_DIE_ASSET,
     devtoolsMode: false,
     nickname: "",
     avatarUrl: "",
+    profileDisplayNo: "--",
     joinRoomId: "",
     loggedIn: false,
     showLoginGate: false,
@@ -213,6 +227,7 @@ Page({
       timeText: buildTimeText(),
       nickname: profile.nickname || "玩家001",
       avatarUrl: String(profile.avatarUrl || "").trim(),
+      profileDisplayNo: buildProfileDisplayNo(profile),
       loggedIn: profile.loggedIn,
       showLoginGate: typeof extra.showLoginGate === "boolean" ? extra.showLoginGate : false,
       loginAgreementChecked: typeof extra.loginAgreementChecked === "boolean" ? extra.loginAgreementChecked : false,
@@ -279,9 +294,7 @@ Page({
       return;
     }
 
-    wx.navigateTo({
-      url: targetUrl
-    });
+    wx.navigateTo({ url: targetUrl });
   },
 
   async goJoinRoom() {
@@ -338,6 +351,10 @@ Page({
     wx.showToast({ title: "会话已清空", icon: "none" });
   },
 
+  goProfile() {
+    wx.switchTab({ url: "/pages/me/me" });
+  },
+
   openPrivacyPage() {
     wx.navigateTo({ url: "/pages/legal/privacy/privacy" });
   },
@@ -381,6 +398,7 @@ Page({
       this.setData({
         nickname: profile.nickname || this.data.nickname,
         avatarUrl: profile.avatarUrl || this.data.avatarUrl,
+        profileDisplayNo: buildProfileDisplayNo(getStoredWechatProfile()),
         loggedIn: true,
         showLoginGate: false,
         loginAgreementChecked: false,

@@ -18,11 +18,11 @@ function loadSharedDiceAssets() {
 }
 
 function resolveMiniprogramAssetPath(asset) {
-  return path.join(projectRoot, "miniprogram", String(asset || "").replace(/^\/assets\//, "assets/"));
+  return path.join(projectRoot, "miniprogram", String(asset || "").replace(/^\//, ""));
 }
 
 function countVisiblePips(svgSource) {
-  return [...String(svgSource || "").matchAll(/fill="(?:var\(--fill-0,\s*)?#(?:1A1A2E|CC2020|55766D|1C1A20|1F2E58|C92A2A|C99729|423730|C8A04A|893F2E|D4333D|3658A4|252936)\)?"|fill="#(?:55766D|1C1A20|1F2E58|C92A2A|C99729|423730|C8A04A|893F2E|D4333D|3658A4|252936)"/g)].length;
+  return [...String(svgSource || "").matchAll(/fill="(?:var\(--fill-0,\s*)?#(?:1A1A2E|CC2020|55766D|1C1A20|1F2E58|C92A2A|C99729|B92B24|423730|C8A04A|893F2E|D4333D|3658A4|252936)\)?"|fill="#(?:55766D|1C1A20|1F2E58|C92A2A|C99729|B92B24|423730|C8A04A|893F2E|D4333D|3658A4|252936)"/g)].length;
 }
 
 test("shared dice assets: all stage dice map to complete dice bodies", () => {
@@ -50,9 +50,10 @@ test("shared dice assets: all stage dice map to complete dice bodies", () => {
 test("shared dice assets: themed self dice resolve to the premium room assets", () => {
   const diceAssets = loadSharedDiceAssets();
   const themedExpectations = [
-    ["jade-green", "/assets/figma-room-v2/die-face-figma-3.svg", /fill="var\(--fill-0, #F5F3EE\)"/],
-    ["ruby-red", "/assets/room-themes/ruby-red-die-face-3.svg", /fill="#F7F3EA"/],
-    ["imperial-red", "/assets/room-themes/imperial-red-die-face-3.svg", /fill="#FFF6E3"/]
+    ["jade-green", "/pages/room/assets/room-themes/jade-green-die-face-3.svg", /stop-color="#EBCB8A"/],
+    ["ruby-red", "/pages/room/assets/room-themes/ruby-red-die-face-3.svg", /stop-color="#F8D978"/],
+    ["imperial-red", "/pages/room/assets/room-themes/imperial-red-die-face-3.svg", /fill="#F7F0D8"/],
+    ["glacier-blue", "/pages/room/assets/room-themes/glacier-blue-die-face-3.svg", /stop-color="#F7FCFF"/]
   ];
 
   for (const [themeId, expectedAsset, bodyColorPattern] of themedExpectations) {
@@ -62,10 +63,30 @@ test("shared dice assets: themed self dice resolve to the premium room assets", 
     assert.equal(asset, expectedAsset);
     assert.match(svg, bodyColorPattern);
     assert.equal(countVisiblePips(svg), 3, `${themeId} should render 3 visible pip(s)`);
-    if (themeId === "imperial-red") {
-      assert.match(svg, /fill="#C92A2A"/);
-      assert.match(svg, /fill="#1F2E58"/);
+    if (themeId === "jade-green") {
+      assert.match(svg, /stroke="#9D6A38"/);
+      assert.match(svg, /fill="#55766D"/);
+      assert.doesNotMatch(svg, /fill="#B92B24"/);
       assert.doesNotMatch(svg, /fill="#C99729"/);
+      assert.doesNotMatch(svg, /fill="#252936"/);
+    }
+    if (themeId === "imperial-red") {
+      assert.match(svg, /stop-color="#FFF8E6"/);
+      assert.match(svg, /fill="#B92B24"/);
+      assert.match(svg, /fill="#F0A083"/);
+      assert.doesNotMatch(svg, /fill="#2F754F"/);
+      assert.doesNotMatch(svg, /fill="#D7E8BC"/);
+      assert.doesNotMatch(svg, /fill="#E3B64A"/);
+      assert.doesNotMatch(svg, /flood-color="#000000"/);
+      assert.doesNotMatch(svg, /fill="#C99729"/);
+    }
+    if (themeId === "glacier-blue") {
+      assert.match(svg, /stop-color="#DDF8FF"/);
+      assert.match(svg, /fill="#3658A4"/);
+      assert.match(svg, /fill="#D8F7FF"/);
+      assert.doesNotMatch(svg, /fill="#B92B24"/);
+      assert.doesNotMatch(svg, /fill="#C99729"/);
+      assert.doesNotMatch(svg, /fill="#252936"/);
     }
   }
 

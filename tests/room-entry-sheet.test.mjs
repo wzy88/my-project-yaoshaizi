@@ -18,5 +18,5 @@ test("room entry sheet exposes a drawer-style nickname-and-consent confirm flow"
   assert.match(source, /暂不进入/);
   assert.match(source, /bindinput="onNicknameChange"/);
   assert.match(source, /bindtap="refreshEntryNickname"/);
-  assert.match(source, /maxlength="5"/);
+  assert.match(source, /maxlength="12"/);
 });
