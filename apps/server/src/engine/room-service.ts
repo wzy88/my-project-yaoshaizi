@@ -45,6 +45,10 @@ type PlayerRemovalReason = "explicit_leave" | "switch_room" | "grace_timeout";
 
 type AnyClientMessage = { [E in ClientEventName]: ClientMessage<E> }[ClientEventName];
 
+function buildCallTurnKey(state: ReturnType<RoomEngine["getState"]>): string {
+  return `${state.round}:${state.phase}:${state.currentPlayerId || "-"}:${state.lastCall ? state.lastCall.ts : 0}`;
+}
+
 interface BoundAccountIdentity {
   accountId: string;
   accountDisplayId: string;
@@ -1392,7 +1396,7 @@ export class RoomService {
     }
 
     const state = room.getState();
-    const turnKey = `${state.phase}:${state.currentPlayerId || "-"}:${state.lastCall ? state.lastCall.ts : 0}`;
+    const turnKey = buildCallTurnKey(state);
 
     if (this.turnTimerKeys.get(roomId) === turnKey) {
       return;
@@ -1415,7 +1419,7 @@ export class RoomService {
       const deadlineTs = Date.now() + CALL_TIMEOUT_MS;
       this.turnDeadlineTsByRoom.set(roomId, deadlineTs);
       const timer = setTimeout(() => {
-        void this.handleCallTimeout(roomId, turnKey, state.currentPlayerId!);
+        void this.handleCallTimeout(roomId, turnKey, state.currentPlayerId!, deadlineTs);
       }, CALL_TIMEOUT_MS);
       this.turnTimers.set(roomId, timer);
       return;
@@ -1454,14 +1458,27 @@ export class RoomService {
     }
   }
 
-  private async handleCallTimeout(roomId: string, expectedTurnKey: string, playerId: string): Promise<void> {
+  private async handleCallTimeout(
+    roomId: string,
+    expectedTurnKey: string,
+    playerId: string,
+    expectedDeadlineTs = 0
+  ): Promise<void> {
     const room = this.rooms.get(roomId);
     if (!room) {
       return;
     }
 
+    const activeDeadlineTs = this.turnDeadlineTsByRoom.get(roomId) || 0;
+    if (
+      expectedDeadlineTs > 0
+      && (activeDeadlineTs !== expectedDeadlineTs || Date.now() < expectedDeadlineTs)
+    ) {
+      return;
+    }
+
     const state = room.getState();
-    const currentTurnKey = `${state.phase}:${state.currentPlayerId || "-"}:${state.lastCall ? state.lastCall.ts : 0}`;
+    const currentTurnKey = buildCallTurnKey(state);
     if (currentTurnKey !== expectedTurnKey || state.phase !== "calling" || state.currentPlayerId !== playerId) {
       return;
     }

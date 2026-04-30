@@ -1570,6 +1570,8 @@ Page({
     createMinOpeningCount: "5",
     createTestMode: false,
     createRoomThemeId: DEFAULT_ROOM_THEME_ID,
+    hasCreatedRoomLocally: false,
+    hasReceivedAuthoritativeRoomTheme: false,
     roomThemeReady: false,
     roomThemeLoading: false,
     roomThemeLoadingTitle: "正在布置房间",
@@ -1738,12 +1740,20 @@ Page({
       wx.removeStorageSync(SESSION_KEY);
     }
     const cached = wx.getStorageSync(SESSION_KEY);
+    const mode = String(options.mode || "");
+    const shouldWaitForAuthoritativeRoomTheme = mode === "join";
     const initialRoomThemeId = this.resolveInitialRoomThemeForLoad(options, cached);
     const initialRoomThemeManifest = registerRoomThemeManifest(buildLocalRoomThemeManifest(initialRoomThemeId));
 	    this.devtoolsMode = isDevtoolsPlatform();
 	    this.setData({
       devtoolsMode: this.devtoolsMode,
-      roomThemeReady: true,
+      roomThemeReady: !shouldWaitForAuthoritativeRoomTheme,
+      roomThemeLoading: shouldWaitForAuthoritativeRoomTheme,
+      ...(shouldWaitForAuthoritativeRoomTheme ? {
+        roomThemeLoadingTitle: "正在进入房间",
+        roomThemeLoadingStep: "等待房间主题同步",
+        roomThemeLoadingProgress: 18
+      } : {}),
       roomThemeManifest: initialRoomThemeManifest,
       ...buildRoomThemePresentation(initialRoomThemeId),
       ...buildRoomSafeAreaStyles()
@@ -2046,7 +2056,6 @@ Page({
       && String(legalConsent.version || "") === LEGAL_VERSION
     );
 
-    const mode = String(options.mode || "");
     const shouldShowEntryLegalModal = !legalAccepted && mode === "join";
 
     this.setData({
@@ -2071,6 +2080,7 @@ Page({
         createMinOpeningCount: minOpeningCount,
         createTestMode: testMode,
         createRoomThemeId: themeId,
+        hasCreatedRoomLocally: true,
         ...buildRoomThemePresentation(themeId)
       });
 
@@ -2090,9 +2100,6 @@ Page({
         joinRoomThemeId: themeId,
         ...(themeId ? buildRoomThemePresentation(themeId) : {})
       });
-      if (roomId && themeId) {
-        this.cacheRoomTheme(roomId, themeId);
-      }
       if (roomId) {
         this.queuePendingRoomAction({ kind: "join", roomId });
       }
@@ -2826,16 +2833,14 @@ Page({
       return;
     }
 
-    const provisionalThemeId = parseOptionalRoomThemeId(this.data.joinRoomThemeId)
-      || parseOptionalRoomThemeId(this.getCachedRoomTheme(roomId))
-      || parseOptionalRoomThemeId(this.data.roomThemeId);
-    if (provisionalThemeId) {
-      await this.prepareRoomThemeForEntry(provisionalThemeId, {
-        preferRemote: true
-      });
-    } else {
-      this.startRoomThemeLoading(DEFAULT_ROOM_THEME_ID, buildLocalRoomThemeManifest(DEFAULT_ROOM_THEME_ID));
-    }
+    this.setData({
+      roomThemeReady: false,
+      roomThemeLoading: true,
+      roomThemeLoadingTitle: "正在进入房间",
+      roomThemeLoadingStep: `同步房间 ${roomId} 的主题`,
+      roomThemeLoadingProgress: Math.max(28, Number(this.data.roomThemeLoadingProgress || 0)),
+      roomThemeLoadError: ""
+    });
 
     if (!this.data.connected || !this.socketTask) {
       this.queuePendingRoomAction({
@@ -4445,31 +4450,17 @@ Page({
       return explicitThemeId;
     }
 
-    const provisionalTheme = parseOptionalRoomThemeId(provisionalThemeId);
-    const joinRoomId = normalizeRoomId(this.data.joinRoomId);
     const currentRoomId = normalizeRoomId(this.data.roomId);
-    if (normalizedRoomId && provisionalTheme && (normalizedRoomId === joinRoomId || normalizedRoomId === currentRoomId)) {
-      this.cacheRoomTheme(normalizedRoomId, provisionalTheme);
-      return provisionalTheme;
-    }
-
-    const cachedThemeId = this.getCachedRoomTheme(normalizedRoomId);
-    if (cachedThemeId) {
-      return cachedThemeId;
-    }
-
-    const sameRoomThemeId = normalizedRoomId && normalizedRoomId === normalizeRoomId(this.data.roomId)
+    const sameRoomThemeId = normalizedRoomId && normalizedRoomId === currentRoomId
       ? parseOptionalRoomThemeId(this.data.roomThemeId)
       : "";
-    if (sameRoomThemeId) {
+    if (sameRoomThemeId && this.data.hasReceivedAuthoritativeRoomTheme) {
       return sameRoomThemeId;
     }
 
-    const createThemeId = normalizedRoomId && normalizedRoomId === normalizeRoomId(this.data.roomId)
-      ? parseOptionalRoomThemeId(this.data.createRoomThemeId)
-      : "";
-    if (createThemeId) {
-      return createThemeId;
+    const cachedThemeId = this.getCachedRoomTheme(normalizedRoomId);
+    if (this.data.hasReceivedAuthoritativeRoomTheme && cachedThemeId) {
+      return cachedThemeId;
     }
 
     return DEFAULT_ROOM_THEME_ID;
@@ -5105,7 +5096,14 @@ Page({
         const nextCallCount = String(nextCallCountNum);
         const nextCallPoint = String(nextCallPointNum);
         const callForcedOpen = Boolean(isMyCallingTurn && suggestedCall.forcedOpen);
-        const callCountOptions = this.buildCallCountOptions(nextCallCountNum, maxCallCount, nextCallPointNum, callForcedOpen);
+        const callCountOptions = this.buildCallCountOptions(
+          nextCallCountNum,
+          maxCallCount,
+          nextCallPointNum,
+          callForcedOpen,
+          lastCallObj,
+          minOpeningCount
+        );
         const callPanelVisible = isMyCallingTurn ? Boolean(this.data.callPanelVisible) : false;
         const callPanelExpanded = isMyCallingTurn ? Boolean(this.data.callPanelExpanded) : false;
         const canOpenAction = lastCallIsOpenableTarget;
@@ -5225,6 +5223,7 @@ Page({
           primaryActionText,
           canPrimaryAction,
           roomConfig,
+          hasReceivedAuthoritativeRoomTheme: Boolean(incomingThemeId) || this.data.hasReceivedAuthoritativeRoomTheme,
           roomThemeReady: true,
           roomThemeLoading: false,
           roomThemeLoadingProgress: 100,
@@ -5384,15 +5383,7 @@ Page({
             : null;
           const nextThemeId = (ackThemeManifest && ackThemeManifest.id)
             || parseOptionalRoomThemeId(payload.themeId)
-            || (actionEvent === "room:create"
-              ? parseOptionalRoomThemeId(this.data.createRoomThemeId)
-              : (
-                this.getCachedRoomTheme(nextRoomId)
-                || parseOptionalRoomThemeId(this.data.joinRoomThemeId)
-                || (normalizeRoomId(nextRoomId) === normalizeRoomId(this.data.roomId)
-                  ? parseOptionalRoomThemeId(this.data.roomThemeId)
-                  : "")
-              ));
+            || "";
           const activeThemeManifest = ackThemeManifest
             || (nextThemeId
               ? this.rememberRoomThemeManifest(
@@ -5413,9 +5404,11 @@ Page({
             resumeToken: payload.resumeToken || this.data.resumeToken,
             joinRoomId: nextRoomId,
             joinRoomThemeId: actionEvent === "room:create" ? "" : (nextThemeId || this.data.joinRoomThemeId),
-            roomThemeReady: true,
-            roomThemeLoading: false,
-            roomThemeLoadingProgress: 100,
+            hasCreatedRoomLocally: actionEvent === "room:create" ? true : this.data.hasCreatedRoomLocally,
+            hasReceivedAuthoritativeRoomTheme: Boolean(nextThemeId) || this.data.hasReceivedAuthoritativeRoomTheme,
+            roomThemeReady: actionEvent === "room:join" || actionEvent === "room:rejoin" ? Boolean(nextThemeId) : true,
+            roomThemeLoading: actionEvent === "room:join" || actionEvent === "room:rejoin" ? !nextThemeId : false,
+            roomThemeLoadingProgress: nextThemeId ? 100 : Math.max(48, Number(this.data.roomThemeLoadingProgress || 0)),
             ...(activeThemeManifest ? {
               roomThemeManifest: activeThemeManifest,
               roomThemeLoadingTitle: activeThemeManifest.loading.title,
@@ -5960,15 +5953,25 @@ Page({
     return Math.max(min, Math.min(max, num));
   },
 
-  buildCallCountOptions(currentValue, maxValue = this.getMaxCallCount(), pointValue = this.data.callPoint, forcedOpenOverride = this.data.callForcedOpen) {
+  buildCallCountOptions(
+    currentValue,
+    maxValue = this.getMaxCallCount(),
+    pointValue = this.data.callPoint,
+    forcedOpenOverride = this.data.callForcedOpen,
+    lastCallOverride = this.data.lastCallObj,
+    minOpeningCountOverride = null
+  ) {
     const max = Math.max(1, Number(maxValue) || 1);
-    const configMin = this.data.roomConfig && Number.isInteger(this.data.roomConfig.minOpeningCount)
-      ? this.data.roomConfig.minOpeningCount
-      : 1;
+    let configMin = 1;
+    if (Number.isInteger(minOpeningCountOverride)) {
+      configMin = minOpeningCountOverride;
+    } else if (this.data.roomConfig && Number.isInteger(this.data.roomConfig.minOpeningCount)) {
+      configMin = this.data.roomConfig.minOpeningCount;
+    }
     return buildCallCountOptionItems(currentValue, max, configMin).map((item) => ({
       ...item,
       disabled: Boolean(forcedOpenOverride)
-        || !canCallCountClient(this.data.lastCallObj, Number(item.value), configMin)
+        || !canCallCountClient(lastCallOverride, Number(item.value), configMin)
     }));
   },
 
@@ -6147,6 +6150,8 @@ Page({
       primaryActionText: "开始",
       canPrimaryAction: false,
       roomConfig: null,
+      hasCreatedRoomLocally: false,
+      hasReceivedAuthoritativeRoomTheme: false,
       ...buildRoomThemePresentation(DEFAULT_ROOM_THEME_ID),
       playersRaw: [],
       playersDecorated: [],

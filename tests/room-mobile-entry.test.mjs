@@ -9,6 +9,7 @@ const {
   LEGAL_ACCEPT_KEY,
   LEGAL_VERSION,
   SESSION_KEY,
+  ROOM_THEME_CACHE_KEY,
   NICKNAME_KEY,
   AVATAR_URL_KEY,
   PROFILE_NICKNAME_CUSTOMIZED_KEY,
@@ -1033,7 +1034,7 @@ test("room page: join entry for the same room restores the cached session automa
   }
 });
 
-test("room page: create flow keeps the selected theme when room state arrives without themeId", () => {
+test("room page: create flow does not mask missing server theme with the selected theme", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -1048,7 +1049,8 @@ test("room page: create flow keeps the selected theme when room state arrives wi
       joinRoomId: "778899",
       playerId: "P1",
       createRoomThemeId: "ruby-red",
-      roomThemeId: "ruby-red"
+      roomThemeId: "ruby-red",
+      hasCreatedRoomLocally: true
     });
     page.handleServerPacket(JSON.stringify({
       event: "room:state",
@@ -1068,8 +1070,8 @@ test("room page: create flow keeps the selected theme when room state arrives wi
       }
     }));
 
-    assert.equal(page.data.roomThemeId, "ruby-red");
-    assert.equal(page.data.roomThemeClass, "room-theme-ruby-red");
+    assert.equal(page.data.roomThemeId, "jade-green");
+    assert.equal(page.data.roomThemeClass, "room-theme-jade-green");
   } finally {
     cleanup();
   }
@@ -1127,7 +1129,7 @@ test("room page: mode create keeps the selected theme through room state sync", 
   }
 });
 
-test("room page: mode join keeps the queried room theme when server state omits themeId", () => {
+test("room page: mode join ignores queried room theme when server state omits themeId", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -1163,8 +1165,56 @@ test("room page: mode join keeps the queried room theme when server state omits 
       }
     }));
 
+    assert.equal(page.data.roomThemeId, "jade-green");
+    assert.equal(page.data.roomThemeClass, "room-theme-jade-green");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: mode join applies the server room theme even when query and cache disagree", () => {
+  const { page, storageState, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [ROOM_THEME_CACHE_KEY]: {
+        "778899": "jade-green"
+      }
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({
+      mode: "join",
+      roomId: "778899",
+      themeId: "jade-green"
+    });
+    page.setData({ playerId: "P2" });
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...buildRoomStatePayload({
+          currentPlayerId: "P1",
+          lastCall: null
+        }),
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false,
+          themeId: "ruby-red"
+        }
+      }
+    }));
+
     assert.equal(page.data.roomThemeId, "ruby-red");
     assert.equal(page.data.roomThemeClass, "room-theme-ruby-red");
+    assert.equal(storageState[ROOM_THEME_CACHE_KEY]["778899"], "ruby-red");
   } finally {
     cleanup();
   }
@@ -2055,6 +2105,48 @@ test("room page: call count options expand to the full dice total for large room
     assert.equal(page.data.callCountOptions.length, 40);
     assert.equal(page.data.callCountOptions[0].value, "1");
     assert.equal(page.data.callCountOptions.at(-1).value, "40");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: incoming last call immediately locks stale count choices", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({});
+    page.setData({
+      playerId: "P1",
+      lastCallObj: null,
+      callCount: "2",
+      callPoint: "3"
+    });
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: buildRoomStatePayload({
+        currentPlayerId: "P1",
+        lastCall: {
+          count: 4,
+          point: 5,
+          by: "P2",
+          ts: 1710000000100
+        }
+      })
+    }));
+
+    assert.equal(page.data.callCount, "4");
+    assert.equal(page.data.callPoint, "6");
+    assert.equal(page.data.callCountOptions.find((item) => item.value === "3").disabled, true);
+    assert.equal(page.data.callCountOptions.find((item) => item.value === "4").disabled, false);
+    assert.equal(page.data.callPointOptionItems.find((item) => item.value === "5").disabled, true);
   } finally {
     cleanup();
   }

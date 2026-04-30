@@ -8451,6 +8451,7 @@ button.room-topbar__shortcut::after {
   left: 24rpx;
   right: auto;
   top: 36rpx;
+  bottom: auto;
   width: 160rpx;
   height: 84rpx;
   padding: 0 18rpx;
@@ -8466,6 +8467,7 @@ button.room-topbar__shortcut::after {
   left: auto;
   right: 24rpx;
   top: 36rpx;
+  bottom: auto;
   width: 160rpx;
   height: 84rpx;
   padding: 0 18rpx;
@@ -11687,6 +11689,7 @@ button.room-topbar__shortcut::after {
 .page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice,
 .page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice {
   top: 36rpx;
+  bottom: auto;
   width: 160rpx;
   height: 84rpx;
   border-radius: 999rpx;
@@ -11721,6 +11724,27 @@ button.room-topbar__shortcut::after {
   position: relative;
   z-index: 1;
   opacity: 1;
+}
+
+/* theme QA locks: imperial call button uses a taller exported slice */
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice {
+  right: 10rpx;
+  top: 22rpx;
+  bottom: auto;
+  width: 210rpx;
+  height: 112rpx;
+  border-radius: 58rpx;
+  padding: 0;
+}
+
+/* theme QA locks: preserve the imperial slice aspect ratio after shared geometry locks */
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__skin {
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
 }
 
 /* theme QA locks: lit cups are seat-colored in every room theme */
@@ -11770,14 +11794,104 @@ button.room-topbar__shortcut::after {
     0 0 16rpx var(--seat-cup-tone);
 }
 
-.seat-stage-cup.is-seat-tone-1 { --seat-cup-tone: rgba(246, 203, 74, 0.56); --seat-cup-tone-strong: rgba(246, 203, 74, 0.9); --seat-cup-tone-soft: rgba(246, 203, 74, 0.2); }
-.seat-stage-cup.is-seat-tone-2 { --seat-cup-tone: rgba(90, 206, 255, 0.54); --seat-cup-tone-strong: rgba(90, 206, 255, 0.88); --seat-cup-tone-soft: rgba(90, 206, 255, 0.2); }
-.seat-stage-cup.is-seat-tone-3 { --seat-cup-tone: rgba(255, 116, 185, 0.5); --seat-cup-tone-strong: rgba(255, 116, 185, 0.84); --seat-cup-tone-soft: rgba(255, 116, 185, 0.18); }
-.seat-stage-cup.is-seat-tone-4 { --seat-cup-tone: rgba(116, 236, 154, 0.52); --seat-cup-tone-strong: rgba(116, 236, 154, 0.86); --seat-cup-tone-soft: rgba(116, 236, 154, 0.2); }
-.seat-stage-cup.is-seat-tone-5 { --seat-cup-tone: rgba(255, 144, 88, 0.52); --seat-cup-tone-strong: rgba(255, 144, 88, 0.86); --seat-cup-tone-soft: rgba(255, 144, 88, 0.2); }
-.seat-stage-cup.is-seat-tone-6 { --seat-cup-tone: rgba(180, 143, 255, 0.5); --seat-cup-tone-strong: rgba(180, 143, 255, 0.84); --seat-cup-tone-soft: rgba(180, 143, 255, 0.18); }
-.seat-stage-cup.is-seat-tone-7 { --seat-cup-tone: rgba(109, 232, 221, 0.52); --seat-cup-tone-strong: rgba(109, 232, 221, 0.86); --seat-cup-tone-soft: rgba(109, 232, 221, 0.2); }
-.seat-stage-cup.is-seat-tone-8 { --seat-cup-tone: rgba(239, 248, 255, 0.54); --seat-cup-tone-strong: rgba(239, 248, 255, 0.88); --seat-cup-tone-soft: rgba(239, 248, 255, 0.2); }
+.seat-stage-cup.is-seat-tone-1 { --seat-cup-tone: rgba(246, 203, 74, 0.56); --seat-cup-tone-strong: rgba(246, 203, 74, 0.9); --seat-cup-tone-soft: rgba(246, 203, 74, 0.2); --seat-cup-hue: 0deg; }
+.seat-stage-cup.is-seat-tone-2 { --seat-cup-tone: rgba(90, 206, 255, 0.54); --seat-cup-tone-strong: rgba(90, 206, 255, 0.88); --seat-cup-tone-soft: rgba(90, 206, 255, 0.2); --seat-cup-hue: 172deg; }
+.seat-stage-cup.is-seat-tone-3 { --seat-cup-tone: rgba(255, 116, 185, 0.5); --seat-cup-tone-strong: rgba(255, 116, 185, 0.84); --seat-cup-tone-soft: rgba(255, 116, 185, 0.18); --seat-cup-hue: 304deg; }
+.seat-stage-cup.is-seat-tone-4 { --seat-cup-tone: rgba(116, 236, 154, 0.52); --seat-cup-tone-strong: rgba(116, 236, 154, 0.86); --seat-cup-tone-soft: rgba(116, 236, 154, 0.2); --seat-cup-hue: 104deg; }
+.seat-stage-cup.is-seat-tone-5 { --seat-cup-tone: rgba(255, 144, 88, 0.52); --seat-cup-tone-strong: rgba(255, 144, 88, 0.86); --seat-cup-tone-soft: rgba(255, 144, 88, 0.2); --seat-cup-hue: 28deg; }
+.seat-stage-cup.is-seat-tone-6 { --seat-cup-tone: rgba(180, 143, 255, 0.5); --seat-cup-tone-strong: rgba(180, 143, 255, 0.84); --seat-cup-tone-soft: rgba(180, 143, 255, 0.18); --seat-cup-hue: 246deg; }
+.seat-stage-cup.is-seat-tone-7 { --seat-cup-tone: rgba(109, 232, 221, 0.52); --seat-cup-tone-strong: rgba(109, 232, 221, 0.86); --seat-cup-tone-soft: rgba(109, 232, 221, 0.2); --seat-cup-hue: 146deg; }
+.seat-stage-cup.is-seat-tone-8 { --seat-cup-tone: rgba(239, 248, 255, 0.54); --seat-cup-tone-strong: rgba(239, 248, 255, 0.88); --seat-cup-tone-soft: rgba(239, 248, 255, 0.2); --seat-cup-hue: 198deg; }
+
+/* theme QA locks: non-black themes must keep per-seat lit-cup colors above theme cup skins */
+.page.room-theme-jade-green .seat-stage-cup.is-lit,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit {
+  filter:
+    brightness(1.16)
+    contrast(1.1)
+    saturate(1.24)
+    drop-shadow(0 10rpx 20rpx rgba(0, 0, 0, 0.22))
+    drop-shadow(0 0 22rpx var(--seat-cup-tone))
+    drop-shadow(0 0 10rpx var(--seat-cup-tone-strong));
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit::after,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit::after,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit::after {
+  z-index: 0;
+  width: 128rpx;
+  height: 148rpx;
+  opacity: 0.95;
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit .figma-cup,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit .figma-cup,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit .figma-cup {
+  z-index: 1;
+  filter:
+    hue-rotate(var(--seat-cup-hue))
+    brightness(1.12)
+    contrast(1.08)
+    saturate(1.18)
+    drop-shadow(0 0 12rpx var(--seat-cup-tone));
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit .figma-cup__skin,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit .figma-cup__skin,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit .figma-cup__skin {
+  filter:
+    hue-rotate(var(--seat-cup-hue))
+    brightness(1.14)
+    contrast(1.08)
+    saturate(1.22)
+    drop-shadow(0 0 12rpx var(--seat-cup-tone));
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit .figma-cup__rim,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit .figma-cup__rim,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit .figma-cup__rim {
+  box-shadow:
+    0 2rpx 7rpx rgba(0, 0, 0, 0.2),
+    0 0 14rpx var(--seat-cup-tone-strong);
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit .figma-cup__body,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit .figma-cup__body,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit .figma-cup__body {
+  border-color: var(--seat-cup-tone-strong);
+  box-shadow:
+    inset 2rpx 0 12rpx rgba(255, 255, 255, 0.36),
+    inset -2rpx 0 10rpx rgba(0, 0, 0, 0.22),
+    0 0 18rpx var(--seat-cup-tone);
+}
+
+/* theme QA locks: call bubbles and tail dots must render above table seats/cups */
+.seat__bubble,
+.room-self__bubble {
+  overflow: visible;
+  z-index: 36;
+}
+
+.seat__bubble::before,
+.room-self__bubble::before {
+  z-index: 1;
+}
+
+.seat__bubble-count,
+.seat__bubble-unit,
+.seat__bubble-die,
+.room-self__bubble-count,
+.room-self__bubble-die {
+  position: relative;
+  z-index: 3;
+}
+
+.seat__bubble::after,
+.room-self__bubble::after {
+  z-index: 4;
+  pointer-events: none;
+}
 
 /* theme QA locks: bubble tail dots keep one shared position and size */
 .page.room-theme-jade-green .seat__bubble::after,

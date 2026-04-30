@@ -38,7 +38,8 @@ test("room page hides room visuals until the initial theme is resolved", () => {
   assert.match(wxss, /\.page\.room-screen\.is-theme-pending \.room-shell,[\s\S]*opacity:\s*0/);
   assert.match(js, /resolveInitialRoomThemeForLoad\(options, cached\)/);
   assert.match(js, /loadRoomThemeManifest/);
-  assert.match(js, /roomThemeReady:\s*true,[\s\S]*buildRoomThemePresentation\(initialRoomThemeId\)/);
+  assert.match(js, /const shouldWaitForAuthoritativeRoomTheme = mode === "join"/);
+  assert.match(js, /roomThemeReady:\s*!shouldWaitForAuthoritativeRoomTheme,[\s\S]*buildRoomThemePresentation\(initialRoomThemeId\)/);
   assert.match(js, /roomThemeLoadingTitle:\s*"正在进入房间"[\s\S]*roomThemeLoadingStep:\s*text[\s\S]*roomThemeLoadingProgress:\s*28/);
 });
 
@@ -91,6 +92,8 @@ test("room shell supports experimental room theme classes without changing the d
   assert.match(script, /: \(roomConfig && roomConfig\.themeId\)/);
   assert.match(script, /const provisionalThemeId = parseOptionalRoomThemeId\(this\.data\.joinRoomThemeId\)\s*\|\|\s*parseOptionalRoomThemeId\(this\.data\.createRoomThemeId\)/);
   assert.match(script, /resolveRoomThemeId\(roomId,\s*incomingThemeId,\s*provisionalThemeId\)/);
+  assert.match(script, /hasReceivedAuthoritativeRoomTheme:\s*false/);
+  assert.match(script, /hasReceivedAuthoritativeRoomTheme:\s*Boolean\(incomingThemeId\) \|\| this\.data\.hasReceivedAuthoritativeRoomTheme/);
   assert.match(script, /ROOM_THEME_CACHE_KEY/);
   assert.match(script, /buildRoomShareEntryUrl\(roomId,\s*themeId\)/);
   assert.match(wxss, /\.page\.room-theme-imperial-red \.room-stage__table-frame\s*\{/);
@@ -109,6 +112,23 @@ test("room shell supports experimental room theme classes without changing the d
   assert.doesNotMatch(wxss, /\.page\.room-theme-mist-ivory /);
   assert.match(script, /getSelfDieAsset/);
   assert.match(script, /buildDiceFaceItems\(this\.data\.privateDice,\s*roomThemeId\)/);
+});
+
+test("room join waits for the server theme instead of caching entry hints as final theme", () => {
+  const script = fs.readFileSync(roomJsPath, "utf8");
+  const joinBlock = script.match(/} else if \(mode === "join"\) \{[\s\S]*?\n    \}/);
+  assert.ok(joinBlock, "join onLoad block should exist");
+  assert.doesNotMatch(joinBlock[0], /this\.cacheRoomTheme\(roomId,\s*themeId\)/);
+
+  const sendJoinBlock = script.match(/async sendJoinActionAfterThemeLoad\(action\) \{[\s\S]*?\n  \},/);
+  assert.ok(sendJoinBlock, "sendJoinActionAfterThemeLoad should exist");
+  assert.doesNotMatch(sendJoinBlock[0], /prepareRoomThemeForEntry/);
+  assert.match(sendJoinBlock[0], /同步房间 \$\{roomId\} 的主题/);
+
+  const ackThemeBlock = script.match(/const nextThemeId = \(ackThemeManifest && ackThemeManifest\.id\)[\s\S]*?;\n/);
+  assert.ok(ackThemeBlock, "ack theme selection block should exist");
+  assert.doesNotMatch(ackThemeBlock[0], /getCachedRoomTheme/);
+  assert.doesNotMatch(ackThemeBlock[0], /joinRoomThemeId/);
 });
 
 test("room shell renders an in-room custom settings sheet instead of a native-looking menu", () => {
@@ -222,17 +242,26 @@ test("room theme details keep seat color, bubble tail, and button geometry consi
   }
 
   assert.match(qaSection, /\.seat-stage-cup\.is-lit\s*\{[\s\S]*drop-shadow\(0 0 18rpx var\(--seat-cup-tone\)\)/);
+  assert.match(qaSection, /\.seat-stage-cup\.is-seat-tone-2\s*\{[\s\S]*--seat-cup-hue:\s*172deg/);
+  assert.match(qaSection, /\.seat-stage-cup\.is-seat-tone-6\s*\{[\s\S]*--seat-cup-hue:\s*246deg/);
+  assert.match(qaSection, /non-black themes must keep per-seat lit-cup colors above theme cup skins[\s\S]*\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit,[\s\S]*\.page\.room-theme-imperial-red \.seat-stage-cup\.is-lit,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit\s*\{[\s\S]*drop-shadow\(0 0 22rpx var\(--seat-cup-tone\)\)/);
+  assert.match(qaSection, /\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit \.figma-cup,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit \.figma-cup\s*\{[\s\S]*hue-rotate\(var\(--seat-cup-hue\)\)/);
+  assert.match(qaSection, /\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit \.figma-cup__skin,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit \.figma-cup__skin\s*\{[\s\S]*drop-shadow\(0 0 12rpx var\(--seat-cup-tone\)\)/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__bubble::after,[\s\S]*rgba\(221, 250, 255, 0\.98\)/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__bubble\.latest::after,[\s\S]*rgba\(242, 128, 96, 0\.98\)/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__name,[\s\S]*color:\s*#123b5e/);
 
+  assert.match(qaSection, /call bubbles and tail dots must render above table seats\/cups[\s\S]*\.seat__bubble,[\s\S]*\.room-self__bubble\s*\{[\s\S]*overflow:\s*visible[\s\S]*z-index:\s*36/);
+  assert.match(qaSection, /\.seat__bubble::after,[\s\S]*\.room-self__bubble::after\s*\{[\s\S]*z-index:\s*4[\s\S]*pointer-events:\s*none/);
   assert.match(qaSection, /bubble tail dots keep one shared position and size[\s\S]*width:\s*16rpx[\s\S]*height:\s*16rpx/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__bubble--slot-lower-right::after\s*\{[\s\S]*right:\s*-8rpx[\s\S]*top:\s*50%[\s\S]*transform:\s*translateY\(-50%\)/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-self__bubble::after\s*\{[\s\S]*left:\s*-10rpx[\s\S]*top:\s*28rpx[\s\S]*transform:\s*rotate\(-45deg\)/);
 
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*bottom:\s*auto[\s\S]*width:\s*194rpx[\s\S]*height:\s*84rpx[\s\S]*border-radius:\s*999rpx/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice \.room-fab__skin\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*transform:\s*none/);
-  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*width:\s*160rpx[\s\S]*height:\s*84rpx/);
+  assert.match(qaSection, /imperial call button uses a taller exported slice[\s\S]*\.page\.room-theme-imperial-red \.room-fab\.room-fab--imperial-slice\s*\{[\s\S]*top:\s*22rpx[\s\S]*width:\s*210rpx[\s\S]*height:\s*112rpx/);
+  assert.match(qaSection, /preserve the imperial slice aspect ratio[\s\S]*\.page\.room-theme-imperial-red \.room-fab\.room-fab--imperial-slice \.room-fab__skin\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*transform:\s*none/);
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*bottom:\s*auto[\s\S]*width:\s*160rpx[\s\S]*height:\s*84rpx/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice \.room-fab-secondary__skin\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*transform:\s*none/);
   assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab-secondary\.room-fab-secondary--ruby-slice,[\s\S]*height:\s*84rpx/);
 });
