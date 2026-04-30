@@ -1779,9 +1779,10 @@ Page({
     this.pendingPrivateDice = [];
     this.selfRollRevealCount = 0;
     this.selfRollAudioGatePassed = false;
-	    this.turnCountdownTimer = null;
-	    this.turnCountdownKey = "";
-	    this.turnDeadlineTs = 0;
+    this.turnCountdownTimer = null;
+    this.turnCountdownKey = "";
+    this.turnDeadlineTs = 0;
+    this.turnDeadlineSourceTs = 0;
     this.suppressCallAttention = false;
 	    this.lastAutoRollRound = 0;
     this.hasReceivedRoomState = false;
@@ -2284,6 +2285,7 @@ Page({
     }
     this.turnCountdownKey = "";
     this.turnDeadlineTs = 0;
+    this.turnDeadlineSourceTs = 0;
     if (this.data.turnCountdownSec !== 0 || this.data.turnCountdownLabel) {
       this.setData({
         turnCountdownSec: 0,
@@ -2294,13 +2296,17 @@ Page({
 
   resetTurnCountdown(turnKey, deadlineTs = 0, serverTs = Date.now()) {
     const nextKey = String(turnKey || "");
-    if (!nextKey || nextKey === this.turnCountdownKey) {
+    const normalizedDeadline = Number(deadlineTs) || 0;
+    const normalizedServerTs = Number(serverTs) || Date.now();
+    const previousSourceDeadline = Number(this.turnDeadlineSourceTs) || 0;
+    const deadlineChanged = normalizedDeadline > 0
+      && Math.abs(normalizedDeadline - previousSourceDeadline) > 500;
+    if (!nextKey || (nextKey === this.turnCountdownKey && !deadlineChanged)) {
       return;
     }
 
     this.turnCountdownKey = nextKey;
-    const normalizedDeadline = Number(deadlineTs) || 0;
-    const normalizedServerTs = Number(serverTs) || Date.now();
+    this.turnDeadlineSourceTs = normalizedDeadline;
     const driftAdjustedDeadline = normalizedDeadline > 0
       ? Date.now() + Math.max(0, normalizedDeadline - normalizedServerTs)
       : Date.now() + 30000;

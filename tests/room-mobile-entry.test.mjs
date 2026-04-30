@@ -253,6 +253,29 @@ function buildRoomStatePayload({ currentPlayerId = "P1", lastCall = null } = {})
   };
 }
 
+test("room page: countdown resyncs when the same turn receives a refreshed server deadline", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    }
+  });
+  const originalNow = Date.now;
+  let now = 1_000_000;
+
+  try {
+    Date.now = () => now;
+    page.resetTurnCountdown("1:calling:P1:0", now + 18000, now);
+    assert.equal(page.data.turnCountdownSec, 18);
+
+    page.resetTurnCountdown("1:calling:P1:0", now + 30000, now);
+    assert.equal(page.data.turnCountdownSec, 30);
+  } finally {
+    Date.now = originalNow;
+    cleanup();
+  }
+});
+
 test("room page: roll uses the bundled audio asset while the other sfx keep the lighter generated profile", async () => {
   const files = new Map();
   const { page, cleanup } = instantiateRoomPage({

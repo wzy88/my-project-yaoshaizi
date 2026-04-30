@@ -5074,7 +5074,7 @@ button.room-topbar-menu-popover__item::after {
   top: 152rpx;
   left: 24rpx;
   right: 24rpx;
-  height: 1288rpx;
+  height: 1448rpx;
 }
 
 .room-stage__halo,
@@ -5676,6 +5676,10 @@ button.room-topbar-menu-popover__item::after {
   overflow: visible;
   z-index: 8;
   background: none;
+}
+
+.page.room-theme-ruby-red .room-shell__bottom-fade {
+  transform: translateY(-72rpx);
 }
 
 .room-self {
@@ -11776,6 +11780,132 @@ button.room-topbar__shortcut::after {
   text-shadow:
     0 1rpx 0 rgba(0, 0, 0, 0.78),
     0 0 8rpx rgba(235, 194, 106, 0.16);
+}
+
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice {
+  left: 32rpx;
+  top: 36rpx;
+  bottom: auto;
+  width: 176rpx;
+  height: 84rpx;
+  border-radius: 999rpx;
+  padding: 0 20rpx;
+  background:
+    radial-gradient(circle at 34% 12%, rgba(255, 244, 202, 0.32) 0%, rgba(255, 244, 202, 0) 38%),
+    linear-gradient(180deg, #332719 0%, #17130f 52%, #070607 100%);
+  border: 2rpx solid rgba(225, 178, 82, 0.82);
+  box-shadow:
+    0 12rpx 24rpx rgba(0, 0, 0, 0.38),
+    inset 0 2rpx 0 rgba(255, 236, 184, 0.18),
+    inset 0 -5rpx 0 rgba(0, 0, 0, 0.24);
+  filter: none;
+  overflow: hidden;
+}
+
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice .room-fab-secondary__skin {
+  display: none;
+}
+
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice .room-fab-secondary__text {
+  position: relative;
+  z-index: 1;
+  opacity: 1;
+  max-width: 92rpx;
+  color: #f2d28c;
+  text-shadow:
+    0 1rpx 0 rgba(0, 0, 0, 0.78),
+    0 0 8rpx rgba(235, 194, 106, 0.16);
+}
+
+/* theme QA locks: every room action button uses the black-room geometry baseline */
+.page.room-theme-jade-green .room-fab,
+.page.room-theme-ruby-red .room-fab,
+.page.room-theme-imperial-red .room-fab,
+.page.room-theme-glacier-blue .room-fab,
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice,
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-open-slice,
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice,
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice {
+  right: 18rpx;
+  top: 36rpx;
+  bottom: auto;
+  width: 176rpx;
+  height: 84rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  flex-direction: row;
+  gap: 8rpx;
+}
+
+.page.room-theme-jade-green .room-fab.room-fab--paired.room-fab--left,
+.page.room-theme-ruby-red .room-fab.room-fab--paired.room-fab--left,
+.page.room-theme-imperial-red .room-fab.room-fab--paired.room-fab--left,
+.page.room-theme-glacier-blue .room-fab.room-fab--paired.room-fab--left {
+  left: 24rpx;
+  right: auto;
+  top: 36rpx;
+  bottom: auto;
+  width: 176rpx;
+  height: 84rpx;
+}
+
+.page.room-theme-jade-green .room-fab-secondary--left,
+.page.room-theme-ruby-red .room-fab-secondary--left,
+.page.room-theme-imperial-red .room-fab-secondary--left,
+.page.room-theme-glacier-blue .room-fab-secondary--left,
+.page.room-theme-jade-green .room-fab-secondary.room-fab-secondary--jade-open,
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice,
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-open-slice,
+.page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice,
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice {
+  left: 32rpx;
+  right: auto;
+  top: 36rpx;
+  bottom: auto;
+  width: 176rpx;
+  height: 84rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+}
+
+.page.room-theme-jade-green .room-fab-secondary--right,
+.page.room-theme-ruby-red .room-fab-secondary--right,
+.page.room-theme-imperial-red .room-fab-secondary--right,
+.page.room-theme-glacier-blue .room-fab-secondary--right {
+  left: auto;
+  right: 24rpx;
+  top: 36rpx;
+  bottom: auto;
+  width: 176rpx;
+  height: 84rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+}
+
+.page.room-theme-jade-green .room-fab--pressing,
+.page.room-theme-ruby-red .room-fab--pressing,
+.page.room-theme-imperial-red .room-fab--pressing,
+.page.room-theme-glacier-blue .room-fab--pressing,
+.page.room-theme-jade-green .room-fab.is-disabled,
+.page.room-theme-ruby-red .room-fab.is-disabled,
+.page.room-theme-imperial-red .room-fab.is-disabled,
+.page.room-theme-glacier-blue .room-fab.is-disabled {
+  width: 176rpx;
+  height: 84rpx;
+  padding: 0 20rpx;
+}
+
+.page.room-theme-jade-green .room-fab-secondary--pressing,
+.page.room-theme-ruby-red .room-fab-secondary--pressing,
+.page.room-theme-imperial-red .room-fab-secondary--pressing,
+.page.room-theme-glacier-blue .room-fab-secondary--pressing,
+.page.room-theme-jade-green .room-fab-secondary.is-disabled,
+.page.room-theme-ruby-red .room-fab-secondary.is-disabled,
+.page.room-theme-imperial-red .room-fab-secondary.is-disabled,
+.page.room-theme-glacier-blue .room-fab-secondary.is-disabled {
+  width: 176rpx;
+  height: 84rpx;
+  padding: 0 20rpx;
 }
 
 /* theme QA locks: lit cups are seat-colored in every room theme */

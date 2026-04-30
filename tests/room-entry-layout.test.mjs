@@ -159,9 +159,10 @@ test("room shell lifts the playfield and removes the heavy bottom mask", () => {
   assert.match(source, /\.room-playfield\s*\{[\s\S]*translateY\(-48rpx\)/);
   assert.match(source, /\.room-playfield\s*\{[\s\S]*transform-origin:\s*top center/);
   assert.match(source, /\.room-stage__table\s*\{[\s\S]*top:\s*152rpx/);
-  assert.match(source, /\.room-stage__table\s*\{[\s\S]*height:\s*1288rpx/);
+  assert.match(source, /\.room-stage__table\s*\{[\s\S]*height:\s*1448rpx/);
   assert.match(source, /\.room-shell__bottom-fade\s*\{[\s\S]*background:\s*none/);
   assert.match(source, /\.room-shell__bottom-fade\s*\{[\s\S]*pointer-events:\s*none/);
+  assert.match(source, /\.page\.room-theme-ruby-red \.room-shell__bottom-fade\s*\{[\s\S]*transform:\s*translateY\(-72rpx\)/);
 });
 
 test("room shell keeps the room id on the same top line while nudging it slightly upward", () => {
@@ -261,6 +262,14 @@ test("room theme details keep seat color, bubble tail, and button geometry consi
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice \.room-fab__skin\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*transform:\s*none/);
   assert.match(qaSection, /black room call button uses native dark-gold chrome[\s\S]*\.page\.room-theme-ruby-red \.room-fab\.room-fab--ruby-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
   assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab\.room-fab--ruby-slice \.room-fab__skin\s*\{[\s\S]*display:\s*none/);
+  assert.match(qaSection, /every room action button uses the black-room geometry baseline[\s\S]*\.page\.room-theme-jade-green \.room-fab,[\s\S]*\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice\s*\{[\s\S]*right:\s*18rpx[\s\S]*top:\s*36rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
+  assert.match(qaSection, /\.page\.room-theme-jade-green \.room-fab\.room-fab--paired\.room-fab--left,[\s\S]*\.page\.room-theme-glacier-blue \.room-fab\.room-fab--paired\.room-fab--left\s*\{[\s\S]*left:\s*24rpx[\s\S]*right:\s*auto[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
+  assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab-secondary\.room-fab-secondary--ruby-slice\s*\{[\s\S]*left:\s*32rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
+  assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab-secondary\.room-fab-secondary--ruby-slice \.room-fab-secondary__skin\s*\{[\s\S]*display:\s*none/);
+  assert.match(qaSection, /\.page\.room-theme-jade-green \.room-fab-secondary--left,[\s\S]*\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice\s*\{[\s\S]*left:\s*32rpx[\s\S]*top:\s*36rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
+  assert.match(qaSection, /\.page\.room-theme-jade-green \.room-fab-secondary--right,[\s\S]*\.page\.room-theme-glacier-blue \.room-fab-secondary--right\s*\{[\s\S]*right:\s*24rpx[\s\S]*top:\s*36rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
+  assert.match(qaSection, /\.page\.room-theme-jade-green \.room-fab--pressing,[\s\S]*\.page\.room-theme-glacier-blue \.room-fab\.is-disabled\s*\{[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
+  assert.match(qaSection, /\.page\.room-theme-jade-green \.room-fab-secondary--pressing,[\s\S]*\.page\.room-theme-glacier-blue \.room-fab-secondary\.is-disabled\s*\{[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*bottom:\s*auto[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice \.room-fab-secondary__skin\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*transform:\s*none/);
   assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab-secondary\.room-fab-secondary--ruby-slice,[\s\S]*height:\s*84rpx/);
