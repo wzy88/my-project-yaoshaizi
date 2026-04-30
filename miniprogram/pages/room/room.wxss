@@ -11902,6 +11902,84 @@ button.room-topbar__shortcut::after {
   padding: 0 20rpx;
 }
 
+/* theme QA locks: red room buttons use the black-room geometry without shrunken SVG slice padding */
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice,
+.page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice {
+  background:
+    radial-gradient(circle at 34% 12%, rgba(255, 250, 214, 0.34) 0%, rgba(255, 250, 214, 0) 38%),
+    linear-gradient(180deg, #90c978 0%, #4f965b 52%, #256642 100%);
+  border: 2rpx solid rgba(244, 216, 139, 0.82);
+  box-shadow:
+    0 12rpx 24rpx rgba(72, 18, 14, 0.28),
+    inset 0 2rpx 0 rgba(255, 244, 209, 0.2),
+    inset 0 -5rpx 0 rgba(19, 67, 46, 0.28);
+  filter: none;
+  overflow: hidden;
+}
+
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__skin,
+.page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice .room-fab-secondary__skin {
+  display: none;
+}
+
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__icon-image {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__label,
+.page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice .room-fab-secondary__text {
+  color: #ffe9a6;
+  text-shadow:
+    0 1rpx 0 rgba(30, 80, 48, 0.42),
+    0 0 8rpx rgba(255, 244, 180, 0.18);
+}
+
+/* theme QA locks: white room buttons use the black-room geometry without shrunken SVG slice padding */
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice {
+  background:
+    radial-gradient(circle at 34% 12%, rgba(255, 255, 255, 0.64) 0%, rgba(255, 255, 255, 0) 38%),
+    linear-gradient(180deg, #e8ffff 0%, #73bddc 50%, #225f8b 100%);
+  border: 2rpx solid rgba(225, 252, 255, 0.9);
+  box-shadow:
+    0 12rpx 24rpx rgba(7, 38, 66, 0.28),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.48),
+    inset 0 -5rpx 0 rgba(17, 72, 110, 0.28);
+  filter: none;
+  overflow: hidden;
+}
+
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice {
+  background:
+    radial-gradient(circle at 34% 12%, rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0) 38%),
+    linear-gradient(180deg, #fff0e7 0%, #f29670 48%, #bc4c4c 100%);
+  border: 2rpx solid rgba(226, 252, 255, 0.82);
+  box-shadow:
+    0 12rpx 24rpx rgba(7, 38, 66, 0.26),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.42),
+    inset 0 -5rpx 0 rgba(125, 43, 56, 0.24);
+  filter: none;
+  overflow: hidden;
+}
+
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__skin,
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice .room-fab-secondary__skin {
+  display: none;
+}
+
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__icon-image {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__label,
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice .room-fab-secondary__text {
+  color: #f8ffff;
+  text-shadow:
+    0 1rpx 0 rgba(12, 54, 82, 0.5),
+    0 0 8rpx rgba(221, 255, 255, 0.28);
+}
+
 /* theme QA locks: lit cups are seat-colored in every room theme */
 .seat-stage-cup.is-lit {
   --seat-cup-tone: rgba(244, 205, 88, 0.5);
@@ -12044,9 +12122,17 @@ button.room-topbar__shortcut::after {
     linear-gradient(180deg, rgb(232, 232, 240) 0%, rgb(200, 208, 216) 10%, rgb(160, 168, 176) 30%, rgb(128, 136, 144) 60%, rgb(96, 104, 112) 100%);
 }
 
-/* theme QA locks: call bubbles and tail dots must render above table seats/cups */
+/* theme QA locks: every call bubble keeps its round tail dot on the top layer */
 .seat__bubble,
-.room-self__bubble {
+.room-self__bubble,
+.page.room-theme-jade-green .seat__bubble,
+.page.room-theme-jade-green .room-self__bubble,
+.page.room-theme-ruby-red .seat__bubble,
+.page.room-theme-ruby-red .room-self__bubble,
+.page.room-theme-imperial-red .seat__bubble,
+.page.room-theme-imperial-red .room-self__bubble,
+.page.room-theme-glacier-blue .seat__bubble,
+.page.room-theme-glacier-blue .room-self__bubble {
   overflow: visible;
   z-index: 36;
 }
@@ -12067,7 +12153,7 @@ button.room-topbar__shortcut::after {
 
 .seat__bubble::after,
 .room-self__bubble::after {
-  z-index: 4;
+  z-index: 9;
   pointer-events: none;
 }
 
@@ -12112,11 +12198,11 @@ button.room-topbar__shortcut::after {
 .page.room-theme-glacier-blue .seat__bubble--slot-upper-left::after,
 .page.room-theme-glacier-blue .seat__bubble--slot-mid-left::after,
 .page.room-theme-glacier-blue .seat__bubble--slot-lower-left::after {
-  left: 14rpx;
+  left: -8rpx;
   right: auto;
-  top: auto;
-  bottom: -8rpx;
-  transform: none;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
 }
 
 .page.room-theme-jade-green .seat__bubble--slot-upper-right::after,
@@ -12142,11 +12228,11 @@ button.room-topbar__shortcut::after {
 .page.room-theme-ruby-red .seat__bubble--slot-bottom::after,
 .page.room-theme-imperial-red .seat__bubble--slot-bottom::after,
 .page.room-theme-glacier-blue .seat__bubble--slot-bottom::after {
-  left: 14rpx;
+  left: 50%;
   right: auto;
-  top: -8rpx;
-  bottom: auto;
-  transform: none;
+  top: auto;
+  bottom: -8rpx;
+  transform: translateX(-50%);
 }
 
 .page.room-theme-jade-green .room-self__bubble::after,
@@ -12155,9 +12241,9 @@ button.room-topbar__shortcut::after {
 .page.room-theme-glacier-blue .room-self__bubble::after {
   left: -10rpx;
   right: auto;
-  top: 28rpx;
+  top: 50%;
   bottom: auto;
-  transform: rotate(-45deg);
+  transform: translateY(-50%);
 }
 
 /* theme QA locks: bubble tail dots inherit the active theme palette */

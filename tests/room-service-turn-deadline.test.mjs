@@ -89,3 +89,34 @@ test("room service: stale call timeout cannot auto-advance a refreshed turn", as
     service.cleanupRoomResources(roomId);
   }
 });
+
+test("room service: same calling turn rebroadcast refreshes a partial deadline back to 30 seconds", () => {
+  const roomId = "T90003";
+  const service = new RoomService();
+  const room = createCallingRoom(roomId);
+  const roomStatePayloads = [];
+
+  service.rooms.set(roomId, room);
+  service.broadcastRoom = (sentRoomId, event, payload) => {
+    if (sentRoomId === roomId && event === "room:state") {
+      roomStatePayloads.push(payload);
+    }
+  };
+
+  try {
+    service.broadcastRoomState(roomId);
+    assert.equal(roomStatePayloads.length, 1);
+
+    service.turnDeadlineTsByRoom.set(roomId, Date.now() + 18000);
+    service.broadcastRoomState(roomId);
+
+    const nextTurnState = roomStatePayloads.at(-1);
+    const remainingMs = nextTurnState.turnDeadlineTs - nextTurnState.serverTs;
+    assert.ok(
+      remainingMs >= CALL_TIMEOUT_MS - 500,
+      `expected rebroadcast to refresh to ${CALL_TIMEOUT_MS}ms, got ${remainingMs}ms`
+    );
+  } finally {
+    service.cleanupRoomResources(roomId);
+  }
+});

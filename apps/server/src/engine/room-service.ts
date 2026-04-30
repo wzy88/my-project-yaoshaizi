@@ -1421,6 +1421,13 @@ export class RoomService {
     const turnKey = buildCallTurnKey(state);
 
     if (this.turnTimerKeys.get(roomId) === turnKey) {
+      if (state.phase === "calling") {
+        const activeDeadlineTs = this.turnDeadlineTsByRoom.get(roomId) || 0;
+        const remainingMs = activeDeadlineTs - Date.now();
+        if (remainingMs < CALL_TIMEOUT_MS - 500) {
+          this.scheduleCallTurnTimer(roomId, turnKey, state.currentPlayerId!);
+        }
+      }
       return;
     }
 
@@ -1438,16 +1445,26 @@ export class RoomService {
     }
 
     if (state.phase === "calling") {
-      const deadlineTs = Date.now() + CALL_TIMEOUT_MS;
-      this.turnDeadlineTsByRoom.set(roomId, deadlineTs);
-      const timer = setTimeout(() => {
-        void this.handleCallTimeout(roomId, turnKey, state.currentPlayerId!, deadlineTs);
-      }, CALL_TIMEOUT_MS);
-      this.turnTimers.set(roomId, timer);
+      this.scheduleCallTurnTimer(roomId, turnKey, state.currentPlayerId!);
       return;
     }
 
     this.turnDeadlineTsByRoom.delete(roomId);
+  }
+
+  private scheduleCallTurnTimer(roomId: string, turnKey: string, playerId: string): void {
+    const existing = this.turnTimers.get(roomId);
+    if (existing) {
+      clearTimeout(existing);
+      this.turnTimers.delete(roomId);
+    }
+
+    const deadlineTs = Date.now() + CALL_TIMEOUT_MS;
+    this.turnDeadlineTsByRoom.set(roomId, deadlineTs);
+    const timer = setTimeout(() => {
+      void this.handleCallTimeout(roomId, turnKey, playerId, deadlineTs);
+    }, CALL_TIMEOUT_MS);
+    this.turnTimers.set(roomId, timer);
   }
 
   private handleRollTimeout(roomId: string, version: number, playerId: string): void {
