@@ -324,7 +324,15 @@ function hasSelfRollsRemaining(data) {
 
 function resolveSeatCupToneClass(player) {
   const status = player && player.diceCupStatus;
-  return status === "open" ? "is-jade" : "is-slot";
+  if (status !== "open") {
+    return "is-slot";
+  }
+
+  const seatIndex = Number(player && player.seatIndex) || 0;
+  const normalizedSeatIndex = seatIndex >= 1 && seatIndex <= 8 ? seatIndex : 0;
+  return ["is-lit", normalizedSeatIndex ? `is-seat-tone-${normalizedSeatIndex}` : ""]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function buildActionId() {
@@ -2741,7 +2749,12 @@ Page({
     const text = action.kind === "create"
       ? "连接成功后将自动创建房间"
       : `连接成功后将自动加入房间 ${action.roomId}`;
-    this.setData({ pendingActionText: text });
+    this.setData({
+      pendingActionText: text,
+      roomThemeLoadingTitle: "正在进入房间",
+      roomThemeLoadingStep: text,
+      roomThemeLoadingProgress: 28
+    });
     return true;
   },
 

@@ -17,15 +17,15 @@
   <g filter="url(#shadow)" transform="rotate(4 13 13)">
     <rect x="3.2" y="3.2" width="19.6" height="19.6" rx="5.2" fill="url(#dieTopLight)" stroke="#B7EAF6" stroke-width=".82"/>
     <path d="M6 6c2.4-1.2 6-1.7 10.4-1.1 2.5.3 4.2 1 5.2 2.2v3.1c-1-1.1-2.7-1.9-5.2-2.2C12 7.5 8.4 7.9 6 9.2V6Z" fill="url(#gloss)" opacity=".78"/>
-    <circle cx="8.2" cy="8.2" r="2.08" fill="#3658A4"/>
-    <ellipse cx="7.82" cy="7.64" rx=".92" ry=".72" fill="#D8F7FF" opacity=".72"/>
-    <circle cx="17.8" cy="8.2" r="2.08" fill="#3658A4"/>
-    <ellipse cx="17.42" cy="7.64" rx=".92" ry=".72" fill="#D8F7FF" opacity=".72"/>
-    <circle cx="13" cy="13" r="2.08" fill="#3658A4"/>
-    <ellipse cx="12.62" cy="12.44" rx=".92" ry=".72" fill="#D8F7FF" opacity=".72"/>
-    <circle cx="8.2" cy="17.8" r="2.08" fill="#3658A4"/>
-    <ellipse cx="7.82" cy="17.24" rx=".92" ry=".72" fill="#D8F7FF" opacity=".72"/>
-    <circle cx="17.8" cy="17.8" r="2.08" fill="#3658A4"/>
-    <ellipse cx="17.42" cy="17.24" rx=".92" ry=".72" fill="#D8F7FF" opacity=".72"/>
+    <circle cx="8.2" cy="8.2" r="2.08" fill="#102A5A"/>
+    <ellipse cx="7.82" cy="7.64" rx=".92" ry=".72" fill="#F8FFFF" opacity=".72"/>
+    <circle cx="17.8" cy="8.2" r="2.08" fill="#102A5A"/>
+    <ellipse cx="17.42" cy="7.64" rx=".92" ry=".72" fill="#F8FFFF" opacity=".72"/>
+    <circle cx="13" cy="13" r="2.08" fill="#102A5A"/>
+    <ellipse cx="12.62" cy="12.44" rx=".92" ry=".72" fill="#F8FFFF" opacity=".72"/>
+    <circle cx="8.2" cy="17.8" r="2.08" fill="#102A5A"/>
+    <ellipse cx="7.82" cy="17.24" rx=".92" ry=".72" fill="#F8FFFF" opacity=".72"/>
+    <circle cx="17.8" cy="17.8" r="2.08" fill="#102A5A"/>
+    <ellipse cx="17.42" cy="17.24" rx=".92" ry=".72" fill="#F8FFFF" opacity=".72"/>
   </g>
 </svg>

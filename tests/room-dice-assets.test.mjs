@@ -22,7 +22,7 @@ function resolveMiniprogramAssetPath(asset) {
 }
 
 function countVisiblePips(svgSource) {
-  return [...String(svgSource || "").matchAll(/fill="(?:var\(--fill-0,\s*)?#(?:1A1A2E|CC2020|55766D|1C1A20|1F2E58|C92A2A|C99729|B92B24|423730|C8A04A|893F2E|D4333D|3658A4|252936)\)?"|fill="#(?:55766D|1C1A20|1F2E58|C92A2A|C99729|B92B24|423730|C8A04A|893F2E|D4333D|3658A4|252936)"/g)].length;
+  return [...String(svgSource || "").matchAll(/fill="(?:var\(--fill-0,\s*)?#(?:1A1A2E|CC2020|55766D|143C35|1C1A20|0A0504|1F2E58|C92A2A|C99729|B92B24|7B0D0B|423730|C8A04A|893F2E|D4333D|3658A4|102A5A|252936)\)?"|fill="#(?:55766D|143C35|1C1A20|0A0504|1F2E58|C92A2A|C99729|B92B24|7B0D0B|423730|C8A04A|893F2E|D4333D|3658A4|102A5A|252936)"/g)].length;
 }
 
 test("shared dice assets: all stage dice map to complete dice bodies", () => {
@@ -65,15 +65,15 @@ test("shared dice assets: themed self dice resolve to the premium room assets", 
     assert.equal(countVisiblePips(svg), 3, `${themeId} should render 3 visible pip(s)`);
     if (themeId === "jade-green") {
       assert.match(svg, /stroke="#9D6A38"/);
-      assert.match(svg, /fill="#55766D"/);
+      assert.match(svg, /fill="#143C35"/);
       assert.doesNotMatch(svg, /fill="#B92B24"/);
       assert.doesNotMatch(svg, /fill="#C99729"/);
       assert.doesNotMatch(svg, /fill="#252936"/);
     }
     if (themeId === "imperial-red") {
       assert.match(svg, /stop-color="#FFF8E6"/);
-      assert.match(svg, /fill="#B92B24"/);
-      assert.match(svg, /fill="#F0A083"/);
+      assert.match(svg, /fill="#7B0D0B"/);
+      assert.match(svg, /fill="#FFD2A4"/);
       assert.doesNotMatch(svg, /fill="#2F754F"/);
       assert.doesNotMatch(svg, /fill="#D7E8BC"/);
       assert.doesNotMatch(svg, /fill="#E3B64A"/);
@@ -82,8 +82,8 @@ test("shared dice assets: themed self dice resolve to the premium room assets", 
     }
     if (themeId === "glacier-blue") {
       assert.match(svg, /stop-color="#DDF8FF"/);
-      assert.match(svg, /fill="#3658A4"/);
-      assert.match(svg, /fill="#D8F7FF"/);
+      assert.match(svg, /fill="#102A5A"/);
+      assert.match(svg, /fill="#F8FFFF"/);
       assert.doesNotMatch(svg, /fill="#B92B24"/);
       assert.doesNotMatch(svg, /fill="#C99729"/);
       assert.doesNotMatch(svg, /fill="#252936"/);

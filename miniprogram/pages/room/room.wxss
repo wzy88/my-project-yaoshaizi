@@ -11652,3 +11652,375 @@ button.room-topbar__shortcut::after {
   opacity: 0.44;
   filter: grayscale(0.12) saturate(0.74);
 }
+
+/* theme QA locks: color-only theme changes must not alter gameplay geometry */
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice,
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-open-slice,
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice,
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice {
+  right: 18rpx;
+  top: 36rpx;
+  bottom: auto;
+  width: 194rpx;
+  height: 84rpx;
+  border-radius: 999rpx;
+  padding: 0 24rpx 0 18rpx;
+  flex-direction: row;
+  gap: 10rpx;
+}
+
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__skin,
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-open-slice .room-fab__skin,
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__skin,
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__skin {
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  z-index: 0;
+}
+
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice,
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-open-slice,
+.page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice,
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice {
+  top: 36rpx;
+  width: 160rpx;
+  height: 84rpx;
+  border-radius: 999rpx;
+  padding: 0 18rpx;
+}
+
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice .room-fab-secondary__skin,
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-open-slice .room-fab-secondary__skin,
+.page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice .room-fab-secondary__skin,
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice .room-fab-secondary__skin {
+  inset: 0;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+  z-index: 0;
+}
+
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__icon-image,
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-open-slice .room-fab__icon-image,
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__icon-image,
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__icon-image,
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__label,
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-open-slice .room-fab__label,
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__label,
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__label,
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice .room-fab-secondary__text,
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-open-slice .room-fab-secondary__text,
+.page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice .room-fab-secondary__text,
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice .room-fab-secondary__text {
+  position: relative;
+  z-index: 1;
+  opacity: 1;
+}
+
+/* theme QA locks: lit cups are seat-colored in every room theme */
+.seat-stage-cup.is-lit {
+  --seat-cup-tone: rgba(244, 205, 88, 0.5);
+  --seat-cup-tone-strong: rgba(244, 205, 88, 0.86);
+  --seat-cup-tone-soft: rgba(244, 205, 88, 0.2);
+  filter:
+    brightness(1.08)
+    saturate(1.16)
+    drop-shadow(0 10rpx 20rpx rgba(0, 0, 0, 0.24))
+    drop-shadow(0 0 18rpx var(--seat-cup-tone));
+}
+
+.seat-stage-cup.is-lit::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 112rpx;
+  height: 132rpx;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, var(--seat-cup-tone) 0%, var(--seat-cup-tone-soft) 34%, rgba(255, 255, 255, 0) 66%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.seat-stage-cup.is-lit .figma-cup__skin {
+  filter:
+    brightness(1.08)
+    saturate(1.12)
+    drop-shadow(0 0 10rpx var(--seat-cup-tone));
+}
+
+.seat-stage-cup.is-lit .figma-cup__rim {
+  box-shadow:
+    0 2rpx 7rpx rgba(0, 0, 0, 0.2),
+    0 0 12rpx var(--seat-cup-tone);
+}
+
+.seat-stage-cup.is-lit .figma-cup__body {
+  box-shadow:
+    inset 2rpx 0 12rpx rgba(255, 255, 255, 0.34),
+    inset -2rpx 0 10rpx rgba(0, 0, 0, 0.22),
+    0 0 16rpx var(--seat-cup-tone);
+}
+
+.seat-stage-cup.is-seat-tone-1 { --seat-cup-tone: rgba(246, 203, 74, 0.56); --seat-cup-tone-strong: rgba(246, 203, 74, 0.9); --seat-cup-tone-soft: rgba(246, 203, 74, 0.2); }
+.seat-stage-cup.is-seat-tone-2 { --seat-cup-tone: rgba(90, 206, 255, 0.54); --seat-cup-tone-strong: rgba(90, 206, 255, 0.88); --seat-cup-tone-soft: rgba(90, 206, 255, 0.2); }
+.seat-stage-cup.is-seat-tone-3 { --seat-cup-tone: rgba(255, 116, 185, 0.5); --seat-cup-tone-strong: rgba(255, 116, 185, 0.84); --seat-cup-tone-soft: rgba(255, 116, 185, 0.18); }
+.seat-stage-cup.is-seat-tone-4 { --seat-cup-tone: rgba(116, 236, 154, 0.52); --seat-cup-tone-strong: rgba(116, 236, 154, 0.86); --seat-cup-tone-soft: rgba(116, 236, 154, 0.2); }
+.seat-stage-cup.is-seat-tone-5 { --seat-cup-tone: rgba(255, 144, 88, 0.52); --seat-cup-tone-strong: rgba(255, 144, 88, 0.86); --seat-cup-tone-soft: rgba(255, 144, 88, 0.2); }
+.seat-stage-cup.is-seat-tone-6 { --seat-cup-tone: rgba(180, 143, 255, 0.5); --seat-cup-tone-strong: rgba(180, 143, 255, 0.84); --seat-cup-tone-soft: rgba(180, 143, 255, 0.18); }
+.seat-stage-cup.is-seat-tone-7 { --seat-cup-tone: rgba(109, 232, 221, 0.52); --seat-cup-tone-strong: rgba(109, 232, 221, 0.86); --seat-cup-tone-soft: rgba(109, 232, 221, 0.2); }
+.seat-stage-cup.is-seat-tone-8 { --seat-cup-tone: rgba(239, 248, 255, 0.54); --seat-cup-tone-strong: rgba(239, 248, 255, 0.88); --seat-cup-tone-soft: rgba(239, 248, 255, 0.2); }
+
+/* theme QA locks: bubble tail dots keep one shared position and size */
+.page.room-theme-jade-green .seat__bubble::after,
+.page.room-theme-jade-green .room-self__bubble::after,
+.page.room-theme-ruby-red .seat__bubble::after,
+.page.room-theme-ruby-red .room-self__bubble::after,
+.page.room-theme-imperial-red .seat__bubble::after,
+.page.room-theme-imperial-red .room-self__bubble::after,
+.page.room-theme-glacier-blue .seat__bubble::after,
+.page.room-theme-glacier-blue .room-self__bubble::after {
+  display: block;
+  width: 16rpx;
+  height: 16rpx;
+  border-width: 2rpx;
+  border-style: solid;
+  border-radius: 50%;
+  box-shadow: inset 0 2rpx 3rpx rgba(255, 255, 255, 0.14);
+}
+
+.page.room-theme-jade-green .seat__bubble--slot-top::after,
+.page.room-theme-ruby-red .seat__bubble--slot-top::after,
+.page.room-theme-imperial-red .seat__bubble--slot-top::after,
+.page.room-theme-glacier-blue .seat__bubble--slot-top::after {
+  left: -8rpx;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+.page.room-theme-jade-green .seat__bubble--slot-upper-left::after,
+.page.room-theme-jade-green .seat__bubble--slot-mid-left::after,
+.page.room-theme-jade-green .seat__bubble--slot-lower-left::after,
+.page.room-theme-ruby-red .seat__bubble--slot-upper-left::after,
+.page.room-theme-ruby-red .seat__bubble--slot-mid-left::after,
+.page.room-theme-ruby-red .seat__bubble--slot-lower-left::after,
+.page.room-theme-imperial-red .seat__bubble--slot-upper-left::after,
+.page.room-theme-imperial-red .seat__bubble--slot-mid-left::after,
+.page.room-theme-imperial-red .seat__bubble--slot-lower-left::after,
+.page.room-theme-glacier-blue .seat__bubble--slot-upper-left::after,
+.page.room-theme-glacier-blue .seat__bubble--slot-mid-left::after,
+.page.room-theme-glacier-blue .seat__bubble--slot-lower-left::after {
+  left: 14rpx;
+  right: auto;
+  top: auto;
+  bottom: -8rpx;
+  transform: none;
+}
+
+.page.room-theme-jade-green .seat__bubble--slot-upper-right::after,
+.page.room-theme-jade-green .seat__bubble--slot-mid-right::after,
+.page.room-theme-jade-green .seat__bubble--slot-lower-right::after,
+.page.room-theme-ruby-red .seat__bubble--slot-upper-right::after,
+.page.room-theme-ruby-red .seat__bubble--slot-mid-right::after,
+.page.room-theme-ruby-red .seat__bubble--slot-lower-right::after,
+.page.room-theme-imperial-red .seat__bubble--slot-upper-right::after,
+.page.room-theme-imperial-red .seat__bubble--slot-mid-right::after,
+.page.room-theme-imperial-red .seat__bubble--slot-lower-right::after,
+.page.room-theme-glacier-blue .seat__bubble--slot-upper-right::after,
+.page.room-theme-glacier-blue .seat__bubble--slot-mid-right::after,
+.page.room-theme-glacier-blue .seat__bubble--slot-lower-right::after {
+  left: auto;
+  right: -8rpx;
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+.page.room-theme-jade-green .seat__bubble--slot-bottom::after,
+.page.room-theme-ruby-red .seat__bubble--slot-bottom::after,
+.page.room-theme-imperial-red .seat__bubble--slot-bottom::after,
+.page.room-theme-glacier-blue .seat__bubble--slot-bottom::after {
+  left: 14rpx;
+  right: auto;
+  top: -8rpx;
+  bottom: auto;
+  transform: none;
+}
+
+.page.room-theme-jade-green .room-self__bubble::after,
+.page.room-theme-ruby-red .room-self__bubble::after,
+.page.room-theme-imperial-red .room-self__bubble::after,
+.page.room-theme-glacier-blue .room-self__bubble::after {
+  left: -10rpx;
+  right: auto;
+  top: 28rpx;
+  bottom: auto;
+  transform: rotate(-45deg);
+}
+
+/* theme QA locks: bubble tail dots inherit the active theme palette */
+.page.room-theme-jade-green .seat__bubble::after,
+.page.room-theme-jade-green .room-self__bubble::after {
+  background: radial-gradient(circle at 35% 30%, rgba(52, 174, 119, 0.98) 0%, rgba(16, 96, 68, 0.98) 100%);
+  border-color: rgba(216, 190, 128, 0.48);
+}
+
+.page.room-theme-ruby-red .seat__bubble::after,
+.page.room-theme-ruby-red .room-self__bubble::after {
+  background: radial-gradient(circle at 35% 30%, rgba(94, 34, 31, 0.98) 0%, rgba(24, 16, 16, 0.98) 100%);
+  border-color: rgba(237, 201, 119, 0.58);
+}
+
+.page.room-theme-imperial-red .seat__bubble::after,
+.page.room-theme-imperial-red .room-self__bubble::after {
+  background: radial-gradient(circle at 35% 30%, rgba(198, 46, 42, 0.98) 0%, rgba(94, 20, 24, 0.98) 100%);
+  border-color: rgba(248, 221, 177, 0.58);
+}
+
+.page.room-theme-glacier-blue .seat__bubble::after,
+.page.room-theme-glacier-blue .room-self__bubble::after {
+  background: radial-gradient(circle at 35% 30%, rgba(221, 250, 255, 0.98) 0%, rgba(92, 174, 207, 0.98) 62%, rgba(30, 87, 124, 0.98) 100%);
+  border-color: rgba(239, 255, 255, 0.72);
+}
+
+.page.room-theme-glacier-blue .seat__bubble.latest::after,
+.page.room-theme-glacier-blue .room-self__bubble.latest::after {
+  background: radial-gradient(circle at 35% 30%, rgba(255, 235, 224, 0.98) 0%, rgba(242, 128, 96, 0.98) 62%, rgba(112, 54, 82, 0.98) 100%);
+  border-color: rgba(255, 220, 205, 0.78);
+}
+
+.page.room-theme-glacier-blue .seat__name,
+.page.room-theme-glacier-blue .room-self__name {
+  color: #123b5e;
+  font-weight: 800;
+  text-shadow:
+    0 1rpx 0 rgba(255, 255, 255, 0.72),
+    0 0 9rpx rgba(238, 255, 255, 0.56);
+}
+
+/* Final call-panel readability pass: selectable and locked choices must read differently. */
+.call-phase-panel__count:not(.is-disabled):not(.is-active),
+.call-phase-panel__point-option:not(.is-disabled):not(.is-active) {
+  border-color: rgba(235, 242, 250, 0.18);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.07),
+    0 10rpx 22rpx rgba(0, 0, 0, 0.28);
+}
+
+.call-phase-panel__count.is-disabled,
+.call-phase-panel__point-option.is-disabled,
+.call-phase-panel__point-box.is-disabled {
+  opacity: 1;
+  filter: none;
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0 2rpx, rgba(255, 255, 255, 0) 2rpx 10rpx),
+    linear-gradient(180deg, rgba(40, 45, 54, 0.62) 0%, rgba(18, 22, 30, 0.78) 100%);
+  border-color: rgba(118, 130, 146, 0.28);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.045),
+    inset 0 -8rpx 18rpx rgba(0, 0, 0, 0.2),
+    0 6rpx 14rpx rgba(0, 0, 0, 0.16);
+}
+
+.call-phase-panel__btn.is-disabled {
+  opacity: 1;
+  filter: grayscale(1) saturate(0.3) brightness(0.74);
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0 2rpx, rgba(255, 255, 255, 0) 2rpx 10rpx),
+    linear-gradient(180deg, rgba(56, 61, 68, 0.82) 0%, rgba(26, 29, 35, 0.92) 100%);
+  border-color: rgba(130, 142, 156, 0.32);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.055),
+    inset 0 -8rpx 18rpx rgba(0, 0, 0, 0.22),
+    0 6rpx 14rpx rgba(0, 0, 0, 0.16);
+}
+
+.call-phase-panel__count.is-disabled::after,
+.call-phase-panel__point-option.is-disabled::after,
+.call-phase-panel__point-box.is-disabled::after {
+  content: "";
+  position: absolute;
+  left: 16rpx;
+  right: 16rpx;
+  top: 50%;
+  height: 3rpx;
+  border-radius: 999rpx;
+  background: rgba(159, 172, 188, 0.42);
+  transform: rotate(-28deg);
+  pointer-events: none;
+}
+
+.call-phase-panel__point-option.is-disabled::after,
+.call-phase-panel__point-box.is-disabled::after {
+  left: 18rpx;
+  right: 18rpx;
+  transform: rotate(-20deg);
+}
+
+.call-phase-panel__count.is-disabled .call-phase-panel__count-text,
+.call-phase-panel__point-box.is-disabled .call-phase-panel__value-text,
+.call-phase-panel__btn.is-disabled .call-phase-panel__btn-text {
+  color: rgba(154, 166, 182, 0.62);
+  text-shadow: none;
+}
+
+.call-phase-panel__count.is-disabled .call-phase-panel__count-line {
+  opacity: 0;
+}
+
+.call-phase-panel__count.is-disabled .call-phase-panel__count-sheen,
+.call-phase-panel__point-option.is-disabled .call-phase-panel__point-option-sheen {
+  opacity: 0.24;
+}
+
+.call-phase-panel__point-option.is-disabled .call-phase-panel__point-option-die,
+.call-phase-panel__point-box.is-disabled .call-phase-panel__point-die {
+  opacity: 0.34;
+  filter: grayscale(1) saturate(0.35) contrast(0.62) brightness(0.62);
+}
+
+.page.room-theme-jade-green .call-phase-panel__count.is-disabled,
+.page.room-theme-jade-green .call-phase-panel__point-option.is-disabled,
+.page.room-theme-jade-green .call-phase-panel__point-box.is-disabled {
+  background:
+    repeating-linear-gradient(135deg, rgba(231, 216, 179, 0.04) 0 2rpx, rgba(231, 216, 179, 0) 2rpx 10rpx),
+    linear-gradient(180deg, rgba(31, 48, 42, 0.66) 0%, rgba(12, 27, 24, 0.82) 100%);
+  border-color: rgba(141, 154, 145, 0.32);
+}
+
+.page.room-theme-ruby-red .call-phase-panel__count.is-disabled,
+.page.room-theme-ruby-red .call-phase-panel__point-option.is-disabled,
+.page.room-theme-ruby-red .call-phase-panel__point-box.is-disabled {
+  background:
+    repeating-linear-gradient(135deg, rgba(237, 201, 119, 0.035) 0 2rpx, rgba(237, 201, 119, 0) 2rpx 10rpx),
+    linear-gradient(180deg, rgba(35, 29, 25, 0.72) 0%, rgba(8, 8, 10, 0.86) 100%);
+  border-color: rgba(126, 105, 78, 0.34);
+}
+
+.page.room-theme-imperial-red .call-phase-panel__count.is-disabled,
+.page.room-theme-imperial-red .call-phase-panel__point-option.is-disabled,
+.page.room-theme-imperial-red .call-phase-panel__point-box.is-disabled {
+  background:
+    repeating-linear-gradient(135deg, rgba(255, 228, 159, 0.04) 0 2rpx, rgba(255, 228, 159, 0) 2rpx 10rpx),
+    linear-gradient(180deg, rgba(65, 26, 28, 0.72) 0%, rgba(23, 10, 13, 0.86) 100%);
+  border-color: rgba(142, 98, 84, 0.34);
+}
+
+.page.room-theme-glacier-blue .call-phase-panel__count.is-disabled,
+.page.room-theme-glacier-blue .call-phase-panel__point-option.is-disabled,
+.page.room-theme-glacier-blue .call-phase-panel__point-box.is-disabled {
+  background:
+    repeating-linear-gradient(135deg, rgba(216, 250, 255, 0.052) 0 2rpx, rgba(216, 250, 255, 0) 2rpx 10rpx),
+    linear-gradient(180deg, rgba(32, 65, 88, 0.7) 0%, rgba(9, 27, 44, 0.86) 100%);
+  border-color: rgba(140, 180, 198, 0.38);
+}

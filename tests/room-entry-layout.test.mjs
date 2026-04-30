@@ -32,11 +32,14 @@ test("room page hides room visuals until the initial theme is resolved", () => {
 
   assert.match(wxml, /roomThemeReady \? 'is-theme-ready' : 'is-theme-pending'/);
   assert.match(wxml, /class="room-theme-loader"/);
+  assert.equal([...wxml.matchAll(/class="room-theme-loader"/g)].length, 1);
+  assert.match(wxml, /wx:if="\{\{!roomThemeReady \|\| roomThemeLoading \|\| \(legalAccepted && pendingActionText && connecting\)\}\}" class="room-theme-loader"/);
   assert.match(wxss, /@keyframes room-theme-loader-spin/);
   assert.match(wxss, /\.page\.room-screen\.is-theme-pending \.room-shell,[\s\S]*opacity:\s*0/);
   assert.match(js, /resolveInitialRoomThemeForLoad\(options, cached\)/);
   assert.match(js, /loadRoomThemeManifest/);
   assert.match(js, /roomThemeReady:\s*true,[\s\S]*buildRoomThemePresentation\(initialRoomThemeId\)/);
+  assert.match(js, /roomThemeLoadingTitle:\s*"正在进入房间"[\s\S]*roomThemeLoadingStep:\s*text[\s\S]*roomThemeLoadingProgress:\s*28/);
 });
 
 test("room shell keeps the room id centered while moving invite outside and rules onto the table", () => {
@@ -203,6 +206,55 @@ test("room bubbles now use one shared compact size across every seat direction",
   assert.match(wxss, /\.seat__bubble\s*\{[\s\S]*min-width:\s*100rpx[\s\S]*height:\s*56rpx[\s\S]*padding:\s*0 10rpx[\s\S]*border-radius:\s*19rpx/);
   assert.match(wxss, /\.room-self__bubble\s*\{[\s\S]*min-width:\s*100rpx[\s\S]*height:\s*56rpx[\s\S]*padding:\s*0 10rpx[\s\S]*border-radius:\s*19rpx/);
   assert.doesNotMatch(wxss, /\.seat__bubble--slot-upper-left,\s*\.seat__bubble--slot-mid-left,\s*\.seat__bubble--slot-lower-left,\s*\.seat__bubble--slot-upper-right,\s*\.seat__bubble--slot-mid-right,\s*\.seat__bubble--slot-lower-right\s*\{/);
+});
+
+test("room theme details keep seat color, bubble tail, and button geometry consistent", () => {
+  const js = fs.readFileSync(roomJsPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  const qaSectionStart = wxss.indexOf("/* theme QA locks: color-only theme changes must not alter gameplay geometry */");
+  const qaSection = qaSectionStart >= 0 ? wxss.slice(qaSectionStart) : "";
+
+  assert.doesNotMatch(js, /status === "open" \? "is-jade" : "is-slot"/);
+  assert.match(js, /return \["is-lit", normalizedSeatIndex \? `is-seat-tone-\$\{normalizedSeatIndex\}` : ""\]/);
+
+  for (let seatIndex = 1; seatIndex <= 8; seatIndex += 1) {
+    assert.match(wxss, new RegExp(`\\.seat-stage-cup\\.is-seat-tone-${seatIndex}\\s*\\{`));
+  }
+
+  assert.match(qaSection, /\.seat-stage-cup\.is-lit\s*\{[\s\S]*drop-shadow\(0 0 18rpx var\(--seat-cup-tone\)\)/);
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__bubble::after,[\s\S]*rgba\(221, 250, 255, 0\.98\)/);
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__bubble\.latest::after,[\s\S]*rgba\(242, 128, 96, 0\.98\)/);
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__name,[\s\S]*color:\s*#123b5e/);
+
+  assert.match(qaSection, /bubble tail dots keep one shared position and size[\s\S]*width:\s*16rpx[\s\S]*height:\s*16rpx/);
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__bubble--slot-lower-right::after\s*\{[\s\S]*right:\s*-8rpx[\s\S]*top:\s*50%[\s\S]*transform:\s*translateY\(-50%\)/);
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-self__bubble::after\s*\{[\s\S]*left:\s*-10rpx[\s\S]*top:\s*28rpx[\s\S]*transform:\s*rotate\(-45deg\)/);
+
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*bottom:\s*auto[\s\S]*width:\s*194rpx[\s\S]*height:\s*84rpx[\s\S]*border-radius:\s*999rpx/);
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice \.room-fab__skin\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*transform:\s*none/);
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*width:\s*160rpx[\s\S]*height:\s*84rpx/);
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice \.room-fab-secondary__skin\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*transform:\s*none/);
+  assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab-secondary\.room-fab-secondary--ruby-slice,[\s\S]*height:\s*84rpx/);
+});
+
+test("call panel disabled choices read as locked across themes", () => {
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  const readabilityStart = wxss.indexOf("/* Final call-panel readability pass: selectable and locked choices must read differently. */");
+  const readabilitySection = readabilityStart >= 0 ? wxss.slice(readabilityStart) : "";
+
+  assert.ok(readabilityStart > wxss.indexOf("opacity: 0.44"));
+  assert.match(readabilitySection, /\.call-phase-panel__count:not\(\.is-disabled\):not\(\.is-active\),[\s\S]*border-color:\s*rgba\(235, 242, 250, 0\.18\)/);
+  assert.match(readabilitySection, /\.call-phase-panel__count\.is-disabled,[\s\S]*\.call-phase-panel__point-box\.is-disabled\s*\{[\s\S]*opacity:\s*1;[\s\S]*repeating-linear-gradient\(135deg/);
+  assert.match(readabilitySection, /\.call-phase-panel__count\.is-disabled::after,[\s\S]*height:\s*3rpx;[\s\S]*transform:\s*rotate\(-28deg\)/);
+  assert.match(readabilitySection, /\.call-phase-panel__point-option\.is-disabled \.call-phase-panel__point-option-die,[\s\S]*filter:\s*grayscale\(1\) saturate\(0\.35\) contrast\(0\.62\) brightness\(0\.62\)/);
+  assert.match(readabilitySection, /\.call-phase-panel__btn\.is-disabled\s*\{[\s\S]*filter:\s*grayscale\(1\) saturate\(0\.3\) brightness\(0\.74\)/);
+
+  for (const themeId of ["jade-green", "ruby-red", "imperial-red", "glacier-blue"]) {
+    assert.match(
+      readabilitySection,
+      new RegExp(`\\.page\\.room-theme-${themeId} \\.call-phase-panel__count\\.is-disabled,`)
+    );
+  }
 });
 
 test("room player names stay on one line and the self identity sits below the cup", () => {

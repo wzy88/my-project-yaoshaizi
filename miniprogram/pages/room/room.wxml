@@ -13,7 +13,7 @@
     <view class="room-screen__star room-screen__star--8"></view>
   </view>
 
-  <view wx:if="{{roomThemeLoading}}" class="room-theme-loader">
+  <view wx:if="{{!roomThemeReady || roomThemeLoading || (legalAccepted && pendingActionText && connecting)}}" class="room-theme-loader">
     <view class="room-theme-loader__die">
       <view class="room-theme-loader__die-face room-theme-loader__die-face--front">
         <view class="room-theme-loader__pip"></view>
