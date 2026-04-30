@@ -21,7 +21,7 @@ const ROOM_THEME_ASSET_MAP = {
     menuIconSrc: "/pages/room/assets/room-themes/ruby-red-menu-btn-black.png",
     primaryIconSrc: "/pages/room/assets/room-themes/ruby-red-die-black.svg",
     primaryButtonSrc: "/pages/room/assets/room-themes/ruby-red-call-btn-black.png",
-    openButtonSrc: "/pages/room/assets/room-themes/ruby-red-open-btn-black.png",
+    openButtonSrc: "",
     secondaryIconSrc: "",
     pageBackgroundSrc: "/pages/room/assets/room-themes/ruby-red-bg-black.jpg",
     bubbleSkinSrc: "",

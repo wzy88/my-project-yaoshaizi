@@ -269,6 +269,8 @@ test("room theme details keep seat color, bubble tail, and button geometry consi
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*bottom:\s*auto[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx[\s\S]*border-radius:\s*999rpx/);
   assert.match(qaSection, /black room call button uses native dark-gold chrome[\s\S]*\.page\.room-theme-ruby-red \.room-fab\.room-fab--ruby-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
   assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab\.room-fab--ruby-slice \.room-fab__skin\s*\{[\s\S]*display:\s*none/);
+  assert.match(qaSection, /black room open button uses native dark-gold chrome[\s\S]*\.page\.room-theme-ruby-red \.room-fab-secondary\.room-fab-secondary--ruby-slice\s*\{[\s\S]*left:\s*32rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
+  assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab-secondary\.room-fab-secondary--ruby-slice \.room-fab-secondary__skin\s*\{[\s\S]*display:\s*none/);
   const actionGeometryStart = qaSection.indexOf("/* theme QA locks: non-black room action buttons use the black-room geometry baseline */");
   const actionGeometryEnd = qaSection.indexOf("/* theme QA locks: red room buttons use the black-room geometry without shrunken SVG slice padding */", actionGeometryStart);
   assert.ok(actionGeometryStart >= 0);

@@ -11776,6 +11776,43 @@ button.room-topbar__shortcut::after {
     0 0 8rpx rgba(235, 194, 106, 0.16);
 }
 
+/* theme QA locks: black room open button uses native dark-gold chrome, not the old red image slice */
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice {
+  left: 32rpx;
+  right: auto;
+  top: 36rpx;
+  bottom: auto;
+  width: 176rpx;
+  height: 84rpx;
+  border-radius: 999rpx;
+  padding: 0 20rpx;
+  background:
+    radial-gradient(circle at 34% 12%, rgba(255, 244, 202, 0.32) 0%, rgba(255, 244, 202, 0) 38%),
+    linear-gradient(180deg, #332719 0%, #17130f 52%, #070607 100%);
+  border: 2rpx solid rgba(225, 178, 82, 0.82);
+  box-shadow:
+    0 12rpx 24rpx rgba(0, 0, 0, 0.38),
+    inset 0 2rpx 0 rgba(255, 236, 184, 0.18),
+    inset 0 -5rpx 0 rgba(0, 0, 0, 0.24);
+  filter: none;
+  overflow: hidden;
+}
+
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice .room-fab-secondary__skin {
+  display: none;
+}
+
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice .room-fab-secondary__text {
+  position: relative;
+  z-index: 1;
+  opacity: 1;
+  max-width: 92rpx;
+  color: #f2d28c;
+  text-shadow:
+    0 1rpx 0 rgba(0, 0, 0, 0.78),
+    0 0 8rpx rgba(235, 194, 106, 0.16);
+}
+
 /* theme QA locks: non-black room action buttons use the black-room geometry baseline */
 .page.room-theme-jade-green .room-fab,
 .page.room-theme-imperial-red .room-fab,
