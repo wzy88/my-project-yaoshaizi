@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 const roomModulePath = require.resolve("../miniprogram/pages/room/room.js");
 const { DEFAULT_PROFILE_AVATAR_ASSETS } = require("../miniprogram/utils/profile-defaults.js");
+const { buildLocalRoomThemeManifest } = require("../miniprogram/utils/room-theme-loader.js");
 const {
   LEGAL_ACCEPT_KEY,
   LEGAL_VERSION,
@@ -113,6 +114,7 @@ function instantiateRoomPage({
     },
     cloud: apiAvailability.cloud || null,
     env: apiAvailability.env || null,
+    request: apiAvailability.request,
     getFileSystemManager: apiAvailability.getFileSystemManager,
     connectSocket() {
       throw new Error("connectSocket should be stubbed in the test instance");
@@ -1124,6 +1126,90 @@ test("room page: mode create keeps the selected theme through room state sync", 
 
     assert.equal(page.data.roomThemeId, "imperial-red");
     assert.equal(page.data.roomThemeClass, "room-theme-imperial-red");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: create payload keeps each selected premium theme when remote manifest falls back to green", async () => {
+  const sentPackets = [];
+  const requestedThemeIds = [];
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws",
+    apiAvailability: {
+      request(options) {
+        requestedThemeIds.push(options.data && options.data.themeId);
+        options.success({
+          statusCode: 200,
+          data: {
+            manifest: {
+              id: "jade-green",
+              version: "remote-green-fallback",
+              label: "青岚",
+              className: "room-theme-jade-green",
+              delivery: "bundled",
+              assets: {},
+              criticalAssets: [],
+              tokens: {
+                themeId: "jade-green"
+              },
+              loading: {
+                title: "正在布置「青岚」房间",
+                steps: ["同步主题配置", "进入房间"]
+              }
+            }
+          }
+        });
+      }
+    }
+  });
+
+  try {
+    page.setData({
+      legalAccepted: true,
+      connected: true,
+      nickname: "手机玩家",
+      avatarUrl: "",
+      createDirection: "cw",
+      createWildcardOneEnabled: true,
+      createDicePerPlayer: "5",
+      createMinOpeningCount: "5",
+      createTestMode: false
+    });
+    page.socketTask = {
+      send({ data, success }) {
+        sentPackets.push(JSON.parse(data));
+        if (typeof success === "function") {
+          success();
+        }
+      }
+    };
+
+    const themeIds = ["ruby-red", "imperial-red", "glacier-blue"];
+    for (const themeId of themeIds) {
+      sentPackets.length = 0;
+      page.setData({
+        createRoomThemeId: themeId,
+        roomThemeManifest: buildLocalRoomThemeManifest(themeId),
+        roomThemeId: themeId,
+        roomThemeClass: `room-theme-${themeId}`
+      });
+      const config = page.buildCreateConfigOrToast();
+
+      assert.equal(config.themeId, themeId);
+      await page.sendCreateActionAfterThemeLoad({ kind: "create", config });
+
+      assert.equal(sentPackets.length, 1);
+      assert.equal(sentPackets[0].event, "room:create");
+      assert.equal(sentPackets[0].payload.config.themeId, themeId);
+      assert.notEqual(sentPackets[0].payload.config.themeId, "jade-green");
+    }
+
+    assert.deepEqual(requestedThemeIds, themeIds);
   } finally {
     cleanup();
   }

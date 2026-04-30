@@ -265,74 +265,91 @@ wsTest("ws smoke: create -> join -> start -> finishRolling -> call -> open", { t
   }
 });
 
-wsTest("ws smoke: themed room create broadcasts the selected theme and can start with two players", { timeout: 15000 }, async () => {
+wsTest("ws smoke: themed room create and join keep the selected theme for every premium room", { timeout: 20000 }, async () => {
   const externalWsUrlRaw = String(process.env.DICE_WS_URL || "").trim();
   const useExternal = Boolean(externalWsUrlRaw);
 
   const server = useExternal ? null : startServerProcess();
   const wsUrl = useExternal ? externalWsUrlRaw : await server.waitForWsUrl();
 
-  const { ws: wsA, open: openA } = connectWs(wsUrl);
-  await openA;
-  const qA = createMessageQueue(wsA);
+  try {
+    for (const themeId of ["ruby-red", "imperial-red", "glacier-blue"]) {
+      const { ws: wsA, open: openA } = connectWs(wsUrl);
+      await openA;
+      const qA = createMessageQueue(wsA);
 
-  const actionCreate = sendAction(wsA, "room:create", {
-    nickname: "A",
-    avatar: "",
-    config: {
-      direction: "cw",
-      wildcardOneEnabled: true,
-      openMode: "single",
-      dicePerPlayer: 5,
-      minOpeningCount: 2,
-      testMode: false,
-      themeId: "ruby-red"
+      const actionCreate = sendAction(wsA, "room:create", {
+        nickname: "A",
+        avatar: "",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 2,
+          testMode: false,
+          themeId
+        }
+      });
+      const ackCreate = await qA.waitForAck(actionCreate);
+      assert.equal(ackCreate.ok, true);
+      assert.equal(ackCreate.themeId, themeId);
+      assert.equal(ackCreate.themeManifest.id, themeId);
+      const roomId = ackCreate.roomId;
+      const playerA = ackCreate.playerId;
+
+      const firstState = await qA.waitForEvent("room:state", (state) => state && state.roomId === roomId, 4000);
+      assert.equal(firstState.config.themeId, themeId);
+      assert.equal(firstState.themeManifest.id, themeId);
+
+      const { ws: wsB, open: openB } = connectWs(wsUrl);
+      await openB;
+      const qB = createMessageQueue(wsB);
+      const actionJoin = sendAction(wsB, "room:join", { roomId, nickname: "B", avatar: "" });
+      const ackJoin = await qB.waitForAck(actionJoin);
+      assert.equal(ackJoin.ok, true);
+      assert.ok(ackJoin.playerId && ackJoin.playerId !== playerA);
+      assert.equal(ackJoin.themeId, themeId);
+      assert.equal(ackJoin.themeManifest.id, themeId);
+
+      const creatorReadyState = await qA.waitForEvent(
+        "room:state",
+        (state) => state && state.roomId === roomId && state.phase === "ready" && state.players && state.players.length === 2,
+        4000
+      );
+      assert.equal(creatorReadyState.config.themeId, themeId);
+      assert.equal(creatorReadyState.themeManifest.id, themeId);
+
+      const joinerReadyState = await qB.waitForEvent(
+        "room:state",
+        (state) => state && state.roomId === roomId && state.phase === "ready" && state.players && state.players.length === 2,
+        4000
+      );
+      assert.equal(joinerReadyState.config.themeId, themeId);
+      assert.equal(joinerReadyState.themeManifest.id, themeId);
+
+      const startAction = sendAction(wsA, "game:start", {});
+      const startAck = await qA.waitForAck(startAction);
+      assert.equal(startAck.ok, true);
+
+      const rollingState = await qA.waitForEvent(
+        "room:state",
+        (state) => state && state.roomId === roomId && state.phase === "rolling",
+        4000
+      );
+      assert.equal(rollingState.phase, "rolling");
+      assert.equal(rollingState.config.themeId, themeId);
+
+      try {
+        wsB.close();
+      } catch {}
+      try {
+        wsA.close();
+      } catch {}
     }
-  });
-  const ackCreate = await qA.waitForAck(actionCreate);
-  assert.equal(ackCreate.ok, true);
-  assert.equal(ackCreate.themeManifest.id, "ruby-red");
-  const roomId = ackCreate.roomId;
-  const playerA = ackCreate.playerId;
-
-  const firstState = await qA.waitForEvent("room:state", (state) => state && state.roomId === roomId, 4000);
-  assert.equal(firstState.config.themeId, "ruby-red");
-  assert.equal(firstState.themeManifest.id, "ruby-red");
-
-  const { ws: wsB, open: openB } = connectWs(wsUrl);
-  await openB;
-  const qB = createMessageQueue(wsB);
-  const actionJoin = sendAction(wsB, "room:join", { roomId, nickname: "B", avatar: "" });
-  const ackJoin = await qB.waitForAck(actionJoin);
-  assert.equal(ackJoin.ok, true);
-  assert.ok(ackJoin.playerId && ackJoin.playerId !== playerA);
-
-  const readyState = await qA.waitForEvent(
-    "room:state",
-    (state) => state && state.roomId === roomId && state.phase === "ready" && state.players && state.players.length === 2,
-    4000
-  );
-  assert.equal(readyState.config.themeId, "ruby-red");
-
-  const startAction = sendAction(wsA, "game:start", {});
-  const startAck = await qA.waitForAck(startAction);
-  assert.equal(startAck.ok, true);
-
-  const rollingState = await qA.waitForEvent(
-    "room:state",
-    (state) => state && state.roomId === roomId && state.phase === "rolling",
-    4000
-  );
-  assert.equal(rollingState.phase, "rolling");
-  assert.equal(rollingState.config.themeId, "ruby-red");
-
-  try {
-    wsB.close();
-  } catch {}
-  try {
-    wsA.close();
-  } catch {}
-  if (server) {
-    await server.stop();
+  } finally {
+    if (server) {
+      await server.stop();
+    }
   }
 });

@@ -10,6 +10,7 @@ import {
 const require = createRequire(import.meta.url);
 const {
   buildLocalRoomThemeManifest,
+  loadRoomThemeManifest,
   normalizeRoomThemeManifest,
   registerRoomThemeManifest
 } = require("../miniprogram/utils/room-theme-loader.js");
@@ -59,4 +60,56 @@ test("miniapp theme loader can register server-provided assets over bundled fall
   assert.equal(getRoomThemeAssets("glacier-blue").tableclothSrc, local.assets.tableclothSrc);
   assert.equal(getSelfDieAsset(3, "glacier-blue"), "https://cdn.example.com/themes/glacier-blue/die-3.svg");
   assert.equal(getSelfDieAsset(4, "glacier-blue"), local.assets.dice["4"]);
+});
+
+test("miniapp theme loader rejects green fallback manifests for every selected premium theme", async () => {
+  const originalWx = globalThis.wx;
+  const originalGetApp = globalThis.getApp;
+  const storage = {};
+  let requestedThemeId = "ruby-red";
+
+  globalThis.getApp = () => ({
+    globalData: {
+      wsUrl: "ws://example.test/ws"
+    }
+  });
+  globalThis.wx = {
+    getStorageSync(key) {
+      return Object.prototype.hasOwnProperty.call(storage, key) ? storage[key] : "";
+    },
+    setStorageSync(key, value) {
+      storage[key] = value;
+    },
+    request(options) {
+      assert.equal(options.data.themeId, requestedThemeId);
+      options.success({
+        statusCode: 200,
+        data: {
+          manifest: getRoomThemeManifest("jade-green")
+        }
+      });
+    }
+  };
+
+  try {
+    const themeExpectations = [
+      ["ruby-red", "room-theme-ruby-red"],
+      ["imperial-red", "room-theme-imperial-red"],
+      ["glacier-blue", "room-theme-glacier-blue"]
+    ];
+
+    for (const [themeId, className] of themeExpectations) {
+      requestedThemeId = themeId;
+      const manifest = await loadRoomThemeManifest(themeId, {
+        preferRemote: true,
+        downloadAssets: false
+      });
+
+      assert.equal(manifest.id, themeId);
+      assert.equal(manifest.className, className);
+    }
+  } finally {
+    globalThis.wx = originalWx;
+    globalThis.getApp = originalGetApp;
+  }
 });

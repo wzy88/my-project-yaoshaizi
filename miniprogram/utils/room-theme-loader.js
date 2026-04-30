@@ -291,17 +291,22 @@ async function hydrateThemeAssets(manifest) {
 }
 
 async function fetchRoomThemeManifest(themeId, themeVersion = "") {
+  const requestedThemeId = normalizeRoomThemeId(themeId);
   const requestedVersion = String(themeVersion || "").trim();
   const response = await requestBackend({
     path: "/api/room-theme-manifest",
     method: "POST",
     data: {
-      themeId: normalizeRoomThemeId(themeId),
+      themeId: requestedThemeId,
       themeVersion: requestedVersion === "bundled" ? "" : requestedVersion
     }
   });
   const data = response && response.data ? response.data : response;
-  return normalizeRoomThemeManifest(data && data.manifest ? data.manifest : data, themeId);
+  const manifest = normalizeRoomThemeManifest(data && data.manifest ? data.manifest : data, requestedThemeId);
+  if (manifest.id !== requestedThemeId) {
+    throw new Error(`room theme manifest mismatch: requested ${requestedThemeId}, got ${manifest.id}`);
+  }
+  return manifest;
 }
 
 async function loadRoomThemeManifest(themeId, options = {}) {
