@@ -1221,6 +1221,7 @@ page {
 }
 
 .settlement-dice-bonus {
+  flex: 0 0 auto;
   min-width: 36rpx;
   height: 28rpx;
   padding: 0 8rpx;
@@ -5592,12 +5593,37 @@ button.room-topbar-menu-popover__item::after {
   position: relative;
 }
 
+.room-self__dice-cup::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -23rpx;
+  width: 228rpx;
+  height: 46rpx;
+  transform: translateX(-50%);
+  border-radius: 999rpx;
+  background:
+    radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.18) 44%, rgba(0, 0, 0, 0) 72%);
+  filter: blur(3rpx);
+  opacity: 0.46;
+  pointer-events: none;
+}
+
+.room-self__dice-cup.is-covered::before {
+  bottom: -25rpx;
+  width: 246rpx;
+  height: 52rpx;
+  opacity: 0.78;
+  filter: blur(4rpx);
+}
+
 .room-self__dice-cup.is-covered .room-self__dice-stack {
-  opacity: 0.08;
-  filter: blur(6rpx) saturate(0.65);
+  opacity: 0.025;
+  filter: blur(8rpx) saturate(0.44) brightness(0.66);
 }
 
 .room-self__dice-cup.is-covered .room-self__dice-glass {
+  z-index: 6;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(132, 185, 205, 0.1) 42%, rgba(0, 0, 0, 0.2) 100%);
   box-shadow: 0 24rpx 42rpx rgba(0, 0, 0, 0.5), inset 0 14rpx 28rpx rgba(255, 255, 255, 0.18), inset 0 -8rpx 20rpx rgba(0, 0, 0, 0.32);
@@ -5607,16 +5633,16 @@ button.room-topbar-menu-popover__item::after {
   content: "已遮住";
   position: absolute;
   left: 50%;
-  top: 44rpx;
+  top: 112rpx;
   z-index: 8;
   transform: translateX(-50%);
-  padding: 6rpx 16rpx;
+  padding: 5rpx 14rpx;
   border-radius: 999rpx;
   background: rgba(13, 22, 26, 0.68);
   color: rgba(244, 255, 239, 0.9);
-  font-size: 18rpx;
+  font-size: 17rpx;
   font-weight: 800;
-  letter-spacing: 0.8rpx;
+  letter-spacing: 0.5rpx;
   pointer-events: none;
 }
 
@@ -5684,6 +5710,45 @@ button.room-topbar-menu-popover__item::after {
   box-shadow: 0 22rpx 38rpx rgba(0, 0, 0, 0.42), inset 0 10rpx 20rpx rgba(255, 255, 255, 0.14), inset 0 -6rpx 16rpx rgba(0, 0, 0, 0.18);
 }
 
+.room-self__dice-glass::before,
+.room-self__dice-glass::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.room-self__dice-glass::before {
+  left: 32rpx;
+  top: 22rpx;
+  width: 54rpx;
+  height: 174rpx;
+  border-radius: 999rpx;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0.13) 34%, rgba(255, 255, 255, 0) 78%);
+  opacity: 0.24;
+  transform: rotate(7deg);
+  filter: blur(0.4rpx);
+}
+
+.room-self__dice-glass::after {
+  left: 46rpx;
+  right: 46rpx;
+  bottom: 13rpx;
+  height: 22rpx;
+  border-radius: 999rpx;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 100%);
+  opacity: 0.38;
+}
+
+.room-self__dice-cup.is-covered .room-self__dice-glass::before {
+  opacity: 0.56;
+}
+
+.room-self__dice-cup.is-covered .room-self__dice-glass::after {
+  opacity: 0.82;
+}
+
 .room-self__dice-texture {
   position: absolute;
   inset: 0;
@@ -5698,7 +5763,7 @@ button.room-topbar-menu-popover__item::after {
   left: 52.94rpx;
   right: 52.94rpx;
   top: 16.06rpx;
-  height: 44.79rpx;
+  height: 34rpx;
   border-radius: 999rpx;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(208, 208, 208, 0.343) 14.286%, rgba(163, 163, 163, 0.286) 28.571%, rgba(120, 120, 120, 0.229) 42.857%, rgba(79, 79, 79, 0.171) 57.143%, rgba(42, 42, 42, 0.114) 71.429%, rgba(10, 10, 10, 0.057) 85.714%, rgba(0, 0, 0, 0) 100%);
   box-shadow: none;
@@ -6991,11 +7056,20 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-ruby-red .ghost-cup {
-  opacity: 0.88;
+  opacity: 0.96;
 }
 
 .page.room-theme-ruby-red .ghost-cup .figma-cup {
-  filter: brightness(1.08) contrast(1.08) saturate(1.02) drop-shadow(0 8rpx 18rpx rgba(0, 0, 0, 0.24));
+  filter:
+    brightness(1.18)
+    contrast(1.12)
+    saturate(1.06)
+    drop-shadow(0 10rpx 18rpx rgba(0, 0, 0, 0.28))
+    drop-shadow(0 0 10rpx rgba(227, 180, 84, 0.12));
+}
+
+.page.room-theme-ruby-red .ghost-cup .figma-cup__skin {
+  filter: brightness(1.16) contrast(1.1) saturate(1.06);
 }
 
 .page.room-theme-ruby-red .ghost-cup .figma-cup__body {
@@ -7003,14 +7077,16 @@ button.room-topbar-menu-popover__item::after {
   top: 8rpx;
   width: 46rpx;
   height: 64rpx;
-  opacity: 0.32;
-  border: 1rpx solid rgba(220, 184, 96, 0.18);
+  opacity: 0.46;
+  border: 1rpx solid rgba(232, 192, 102, 0.3);
   background:
-    linear-gradient(90deg, rgba(255, 241, 204, 0.12) 0%, rgba(142, 118, 66, 0.16) 26%, rgba(34, 31, 28, 0.2) 56%, rgba(10, 10, 12, 0.42) 100%),
-    linear-gradient(180deg, rgba(68, 62, 52, 0.54) 0%, rgba(40, 35, 30, 0.6) 42%, rgba(14, 13, 14, 0.76) 100%);
+    radial-gradient(circle at 46% 4%, rgba(255, 238, 190, 0.28) 0%, rgba(255, 238, 190, 0.08) 24%, rgba(255, 238, 190, 0) 46%),
+    linear-gradient(90deg, rgba(255, 241, 204, 0.2) 0%, rgba(172, 134, 54, 0.18) 24%, rgba(48, 43, 36, 0.24) 58%, rgba(10, 10, 12, 0.46) 100%),
+    linear-gradient(180deg, rgba(78, 69, 50, 0.58) 0%, rgba(42, 36, 28, 0.66) 42%, rgba(14, 13, 14, 0.78) 100%);
   box-shadow:
-    inset 2rpx 0 10rpx rgba(255, 239, 198, 0.1),
-    inset -2rpx 0 8rpx rgba(0, 0, 0, 0.32);
+    inset 2rpx 0 12rpx rgba(255, 239, 198, 0.18),
+    inset -2rpx 0 10rpx rgba(0, 0, 0, 0.36),
+    0 0 8rpx rgba(232, 192, 102, 0.08);
 }
 
 .page.room-theme-ruby-red .seat-stage-cup .figma-cup__body {
@@ -7043,11 +7119,12 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-ruby-red .seat-stage-cup {
   filter:
-    brightness(1.52)
-    contrast(1.16)
-    saturate(1.16)
+    brightness(1.5)
+    contrast(1.18)
+    saturate(1.18)
     drop-shadow(0 10rpx 20rpx rgba(0, 0, 0, 0.26))
-    drop-shadow(0 0 18rpx rgba(255, 238, 196, 0.22));
+    drop-shadow(0 0 24rpx rgba(255, 222, 150, 0.34))
+    drop-shadow(0 0 10rpx rgba(180, 54, 38, 0.16));
 }
 
 .page.room-theme-ruby-red .seat-stage-cup.is-occupied {
@@ -7083,10 +7160,30 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-ruby-red .ghost-cup .figma-cup__shadow,
-.page.room-theme-ruby-red .ghost-cup .figma-cup__rim,
-.page.room-theme-ruby-red .ghost-cup .figma-cup__shine,
 .page.room-theme-ruby-red .seat-stage-cup .figma-cup__shadow {
   display: none;
+}
+
+.page.room-theme-ruby-red .ghost-cup .figma-cup__rim {
+  display: block;
+  top: 4rpx;
+  width: 42rpx;
+  height: 7rpx;
+  opacity: 0.72;
+  background: linear-gradient(180deg, rgba(255, 239, 190, 0.8) 0%, rgba(198, 155, 73, 0.54) 52%, rgba(73, 56, 24, 0.42) 100%);
+  box-shadow:
+    0 1rpx 5rpx rgba(0, 0, 0, 0.28),
+    0 0 8rpx rgba(232, 192, 102, 0.16);
+}
+
+.page.room-theme-ruby-red .ghost-cup .figma-cup__shine {
+  display: block;
+  left: 18rpx;
+  top: 14rpx;
+  width: 8rpx;
+  height: 34rpx;
+  opacity: 0.34;
+  background: linear-gradient(180deg, rgba(255, 245, 220, 0.5) 0%, rgba(255, 245, 220, 0.08) 100%);
 }
 
 .page.room-theme-ruby-red .seat-stage-cup .figma-cup__rim {
@@ -7117,11 +7214,13 @@ button.room-topbar-menu-popover__item::after {
   width: 46rpx;
   height: 64rpx;
   opacity: 0.98;
-  border: 1rpx solid rgba(255, 236, 194, 0.24);
+  border: 1rpx solid rgba(255, 236, 194, 0.34);
   box-shadow:
-    inset 2rpx 0 10rpx rgba(255, 245, 220, 0.18),
+    inset 0 8rpx 16rpx rgba(255, 230, 164, 0.18),
+    inset 2rpx 0 12rpx rgba(255, 245, 220, 0.22),
     inset -2rpx 0 8rpx rgba(0, 0, 0, 0.3),
-    0 4rpx 12rpx rgba(0, 0, 0, 0.18);
+    0 4rpx 12rpx rgba(0, 0, 0, 0.18),
+    0 0 16rpx rgba(255, 218, 138, 0.2);
 }
 
 .page.room-theme-ruby-red .seat-stage-cup .figma-cup__shine {
@@ -7129,7 +7228,8 @@ button.room-topbar-menu-popover__item::after {
   top: 14rpx;
   width: 10rpx;
   height: 34rpx;
-  opacity: 0.72;
+  opacity: 0.82;
+  background: linear-gradient(180deg, rgba(255, 248, 226, 0.72) 0%, rgba(255, 217, 136, 0.14) 100%);
 }
 
 .page.room-theme-ruby-red .room-self__avatar-shell {
@@ -7150,20 +7250,41 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-ruby-red .room-self__dice-glass,
-.page.room-theme-ruby-red .room-self__dice-cup.has-dice .room-self__dice-glass,
+.page.room-theme-ruby-red .room-self__dice-cup.has-dice .room-self__dice-glass {
+  background:
+    radial-gradient(ellipse at 50% 8%, rgba(255, 238, 190, 0.2) 0%, rgba(255, 238, 190, 0.055) 28%, rgba(255, 238, 190, 0) 52%),
+    linear-gradient(100deg, rgba(255, 221, 138, 0.06) 0%, rgba(25, 22, 21, 0.08) 30%, rgba(5, 5, 7, 0.18) 100%),
+    linear-gradient(180deg, rgba(30, 28, 27, 0.08) 0%, rgba(6, 6, 8, 0.18) 100%);
+  border-top-color: rgba(245, 216, 143, 0.42);
+  border-left-color: rgba(198, 155, 73, 0.22);
+  border-right-color: rgba(96, 70, 22, 0.18);
+  border-bottom-color: rgba(198, 155, 73, 0.28);
+  box-shadow:
+    0 18rpx 32rpx rgba(0, 0, 0, 0.22),
+    inset 0 8rpx 18rpx rgba(255, 236, 194, 0.045),
+    inset 10rpx 0 18rpx rgba(255, 218, 138, 0.025),
+    inset -12rpx 0 18rpx rgba(0, 0, 0, 0.12),
+    0 0 12rpx rgba(232, 192, 102, 0.045);
+}
+
 .page.room-theme-ruby-red .room-self__dice-cup.is-covered .room-self__dice-glass {
   background:
-    radial-gradient(circle at 50% 16%, rgba(255, 243, 214, 0.16) 0%, rgba(255, 243, 214, 0.04) 22%, rgba(255, 243, 214, 0) 38%),
-    linear-gradient(180deg, rgba(28, 27, 25, 0.26) 0%, rgba(12, 12, 14, 0.48) 38%, rgba(4, 4, 6, 0.62) 100%);
-  border-top-color: rgba(245, 216, 143, 0.4);
-  border-left-color: rgba(198, 155, 73, 0.28);
-  border-right-color: rgba(198, 155, 73, 0.22);
-  border-bottom-color: rgba(198, 155, 73, 0.46);
+    radial-gradient(ellipse at 50% 7%, rgba(255, 235, 170, 0.36) 0%, rgba(255, 235, 170, 0.12) 20%, rgba(255, 235, 170, 0) 42%),
+    radial-gradient(circle at 76% 34%, rgba(145, 30, 24, 0.22) 0%, rgba(145, 30, 24, 0.06) 28%, rgba(145, 30, 24, 0) 52%),
+    linear-gradient(118deg, rgba(245, 216, 143, 0) 0%, rgba(245, 216, 143, 0) 34%, rgba(245, 216, 143, 0.055) 36%, rgba(245, 216, 143, 0) 39%, rgba(245, 216, 143, 0) 63%, rgba(245, 216, 143, 0.04) 65%, rgba(245, 216, 143, 0) 68%),
+    linear-gradient(100deg, rgba(246, 196, 93, 0.18) 0%, rgba(39, 31, 21, 0.72) 28%, rgba(9, 9, 11, 0.96) 68%, rgba(0, 0, 0, 0.99) 100%),
+    linear-gradient(180deg, rgba(54, 45, 30, 0.92) 0%, rgba(14, 13, 14, 0.98) 42%, rgba(2, 2, 4, 1) 100%);
+  border-top-color: rgba(255, 226, 157, 0.9);
+  border-left-color: rgba(220, 173, 82, 0.62);
+  border-right-color: rgba(88, 62, 18, 0.58);
+  border-bottom-color: rgba(198, 155, 73, 0.82);
   box-shadow:
-    0 24rpx 42rpx rgba(0, 0, 0, 0.28),
-    inset 0 14rpx 28rpx rgba(255, 236, 194, 0.06),
-    inset 0 -10rpx 22rpx rgba(0, 0, 0, 0.28),
-    0 0 18rpx rgba(232, 192, 102, 0.08);
+    0 34rpx 56rpx rgba(0, 0, 0, 0.56),
+    inset 0 18rpx 32rpx rgba(255, 236, 194, 0.12),
+    inset 13rpx 0 28rpx rgba(255, 214, 126, 0.08),
+    inset -18rpx 0 28rpx rgba(0, 0, 0, 0.42),
+    inset 0 -18rpx 34rpx rgba(0, 0, 0, 0.58),
+    0 0 28rpx rgba(232, 192, 102, 0.16);
 }
 
 .page.room-theme-ruby-red .room-self__dice-texture {
@@ -7171,7 +7292,65 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-ruby-red .room-self__dice-rim {
-  background: linear-gradient(180deg, rgba(251, 233, 182, 0.88) 0%, rgba(221, 179, 92, 0.56) 42%, rgba(114, 84, 28, 0.12) 100%);
+  height: 34rpx;
+  background:
+    radial-gradient(ellipse at 50% 16%, rgba(255, 248, 222, 0.58) 0%, rgba(239, 204, 122, 0.24) 40%, rgba(99, 73, 24, 0.04) 76%, rgba(99, 73, 24, 0) 100%);
+  box-shadow:
+    inset 0 2rpx 3rpx rgba(255, 248, 226, 0.18),
+    0 2rpx 6rpx rgba(0, 0, 0, 0.14);
+}
+
+.page.room-theme-ruby-red .room-self__dice-cup.is-covered .room-self__dice-rim {
+  height: 54rpx;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 250, 224, 0.96) 0%, rgba(245, 208, 120, 0.62) 34%, rgba(141, 103, 33, 0.18) 70%, rgba(141, 103, 33, 0) 100%);
+  box-shadow:
+    inset 0 4rpx 5rpx rgba(255, 250, 226, 0.4),
+    0 3rpx 10rpx rgba(0, 0, 0, 0.28),
+    0 0 14rpx rgba(239, 204, 122, 0.18);
+}
+
+.page.room-theme-ruby-red .room-self__dice-glass::before {
+  background:
+    linear-gradient(180deg, rgba(255, 245, 220, 0.2) 0%, rgba(255, 210, 120, 0.055) 36%, rgba(255, 210, 120, 0) 82%);
+  opacity: 0.24;
+}
+
+.page.room-theme-ruby-red .room-self__dice-glass::after {
+  background:
+    linear-gradient(180deg, rgba(239, 204, 122, 0.22) 0%, rgba(86, 62, 20, 0.12) 100%);
+  opacity: 0.34;
+}
+
+.page.room-theme-ruby-red .room-self__dice-cup.is-covered .room-self__dice-glass::before {
+  opacity: 0.64;
+}
+
+.page.room-theme-ruby-red .room-self__dice-cup.is-covered .room-self__dice-glass::after {
+  background:
+    linear-gradient(90deg, rgba(255, 225, 138, 0) 0%, rgba(255, 225, 138, 0.2) 18%, rgba(255, 225, 138, 0.1) 50%, rgba(86, 62, 20, 0.18) 100%);
+  opacity: 0.92;
+}
+
+.page.room-theme-ruby-red .room-self__dice-gloss {
+  display: block;
+  position: absolute;
+  left: 78rpx;
+  top: 30rpx;
+  width: 18rpx;
+  height: 128rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, rgba(255, 248, 226, 0.12) 0%, rgba(255, 248, 226, 0.025) 76%, rgba(255, 248, 226, 0) 100%);
+  opacity: 0.34;
+}
+
+.page.room-theme-ruby-red .room-self__dice-cup.is-covered .room-self__dice-gloss {
+  left: 72rpx;
+  top: 28rpx;
+  width: 24rpx;
+  height: 144rpx;
+  background: linear-gradient(180deg, rgba(255, 248, 226, 0.34) 0%, rgba(255, 215, 128, 0.08) 62%, rgba(255, 215, 128, 0) 100%);
+  opacity: 0.86;
 }
 
 .page.room-theme-ruby-red .room-self__dice-cup {
@@ -7223,7 +7402,7 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-imperial-red .room-topbar__room-value {
   color: #f3d274;
-  text-shadow: 0 4rpx 12rpx rgba(61, 8, 11, 0.18);
+  text-shadow: 0 4rpx 12rpx rgba(214, 196, 122, 0.14);
 }
 
 .page.room-theme-imperial-red .room-chrome-btn--menu {
@@ -7250,22 +7429,24 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-imperial-red .room-stage__table-frame {
   background:
-    linear-gradient(180deg, rgba(120, 23, 24, 0.18) 0%, rgba(92, 16, 18, 0.3) 52%, rgba(58, 10, 12, 0.4) 100%);
-  border-color: #e5bf66;
+    radial-gradient(circle at 50% 42%, rgba(191, 45, 42, 0.2) 0%, rgba(128, 22, 24, 0.16) 42%, rgba(66, 10, 12, 0.36) 100%),
+    linear-gradient(180deg, rgba(126, 24, 25, 0.28) 0%, rgba(78, 12, 15, 0.42) 100%);
+  border-color: rgba(229, 191, 102, 0.86);
   box-shadow:
-    0 42rpx 88rpx rgba(61, 8, 11, 0.22),
-    inset 0 1rpx 0 rgba(255, 230, 165, 0.24),
-    inset 0 -26rpx 42rpx rgba(61, 8, 11, 0.16);
+    0 34rpx 72rpx rgba(118, 20, 18, 0.18),
+    0 18rpx 48rpx rgba(214, 196, 122, 0.1),
+    inset 0 1rpx 0 rgba(255, 230, 165, 0.2),
+    inset 0 -22rpx 38rpx rgba(86, 12, 13, 0.22);
 }
 
 .page.room-theme-imperial-red .room-stage__table-felt {
   background:
-    radial-gradient(circle at 50% 48%, rgba(247, 217, 138, 0.08) 0%, rgba(247, 217, 138, 0) 28%),
-    linear-gradient(180deg, rgba(167, 25, 29, 0.16) 0%, rgba(194, 42, 38, 0.22) 100%);
+    radial-gradient(circle at 50% 48%, rgba(247, 217, 138, 0.07) 0%, rgba(247, 217, 138, 0) 30%),
+    linear-gradient(180deg, rgba(146, 24, 26, 0.18) 0%, rgba(168, 36, 34, 0.2) 100%);
 }
 
 .page.room-theme-imperial-red .room-stage__table-line {
-  border-color: rgba(229, 191, 102, 0.42);
+  border-color: rgba(229, 191, 102, 0.34);
 }
 
 .page.room-theme-imperial-red .room-stage__watermark-cn,
@@ -7299,7 +7480,7 @@ button.room-topbar-menu-popover__item::after {
     linear-gradient(180deg, rgba(124, 171, 109, 0.98) 0%, rgba(95, 146, 89, 0.98) 52%, rgba(66, 108, 68, 0.98) 100%);
   border-color: rgba(231, 194, 101, 0.9);
   box-shadow:
-    0 12rpx 24rpx rgba(61, 8, 11, 0.18),
+    0 12rpx 24rpx rgba(214, 196, 122, 0.14),
     0 0 0 2rpx rgba(129, 78, 31, 0.18),
     inset 0 3rpx 0 rgba(255, 244, 214, 0.24);
   overflow: visible;
@@ -7323,7 +7504,7 @@ button.room-topbar-menu-popover__item::after {
     linear-gradient(180deg, rgba(138, 188, 124, 0.99) 0%, rgba(108, 164, 101, 0.99) 52%, rgba(75, 118, 75, 0.99) 100%);
   border-color: rgba(247, 221, 143, 0.98);
   box-shadow:
-    0 12rpx 24rpx rgba(61, 8, 11, 0.18),
+    0 12rpx 24rpx rgba(214, 196, 122, 0.14),
     0 0 0 2rpx rgba(231, 194, 101, 0.36),
     0 0 24rpx rgba(247, 221, 143, 0.26),
     inset 0 3rpx 0 rgba(255, 250, 230, 0.24);
@@ -7419,46 +7600,45 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-imperial-red .room-fab {
   background:
-    radial-gradient(circle at 50% 16%, rgba(255, 248, 209, 0.88) 0%, rgba(255, 248, 209, 0.24) 30%, rgba(255, 248, 209, 0) 48%),
-    linear-gradient(180deg, rgba(248, 220, 119, 1) 0%, rgba(236, 188, 72, 1) 52%, rgba(197, 133, 31, 1) 100%);
-  border-color: rgba(255, 236, 170, 0.98);
+    radial-gradient(circle at 22% 12%, rgba(255, 255, 238, 0.72) 0%, rgba(223, 241, 189, 0.28) 26%, rgba(223, 241, 189, 0) 48%),
+    linear-gradient(135deg, rgba(174, 210, 150, 0.99) 0%, rgba(88, 154, 96, 0.99) 34%, rgba(48, 112, 72, 1) 72%, rgba(30, 84, 60, 1) 100%);
+  border-color: rgba(246, 220, 142, 0.58);
   box-shadow:
-    0 16rpx 34rpx rgba(97, 25, 20, 0.28),
-    0 0 0 4rpx rgba(147, 33, 28, 0.46),
-    inset 0 4rpx 0 rgba(255, 248, 217, 0.72),
-    inset 0 -6rpx 0 rgba(146, 86, 17, 0.24);
+    0 14rpx 28rpx rgba(214, 196, 122, 0.18),
+    0 0 0 0.6rpx rgba(244, 216, 139, 0.54),
+    inset 0 1rpx 0 rgba(255, 248, 217, 0.34);
 }
 
 .page.room-theme-imperial-red .room-fab.room-fab--paired {
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 14%, rgba(255, 243, 207, 0.34) 0%, rgba(255, 243, 207, 0) 36%),
-    linear-gradient(180deg, rgba(182, 36, 40, 0.98) 0%, rgba(139, 21, 26, 0.99) 58%, rgba(108, 16, 21, 0.99) 100%);
-  border-color: rgba(244, 216, 139, 0.72);
+    radial-gradient(circle at 22% 16%, rgba(255, 255, 238, 0.54) 0%, rgba(223, 241, 189, 0.2) 32%, rgba(223, 241, 189, 0) 52%),
+    linear-gradient(135deg, rgba(154, 200, 128, 0.98) 0%, rgba(74, 144, 86, 0.99) 48%, rgba(34, 94, 64, 0.99) 100%);
+  border-color: rgba(244, 216, 139, 0.36);
   box-shadow:
-    0 12rpx 24rpx rgba(61, 8, 11, 0.24),
-    inset 0 3rpx 0 rgba(255, 244, 209, 0.38);
+    0 12rpx 24rpx rgba(214, 196, 122, 0.14),
+    inset 0 1rpx 0 rgba(255, 244, 209, 0.2);
 }
 
 .page.room-theme-imperial-red .room-fab.room-fab--paired .room-fab__label {
   color: #f8ddb1;
-  text-shadow: 0 2rpx 6rpx rgba(73, 20, 20, 0.16);
+  text-shadow: 0 2rpx 6rpx rgba(42, 110, 72, 0.16);
 }
 
 .page.room-theme-imperial-red .room-fab.room-fab--paired .room-fab__icon-image {
-  filter: drop-shadow(0 4rpx 8rpx rgba(73, 20, 20, 0.18));
+  filter: drop-shadow(0 4rpx 8rpx rgba(42, 110, 72, 0.16));
 }
 
 .page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice {
   top: 42rpx;
-  width: 104rpx;
-  height: 104rpx;
+  width: 160rpx;
+  height: 84rpx;
   padding: 0;
-  border-radius: 50%;
+  border-radius: 999rpx;
   background: transparent;
   border-color: transparent;
   box-shadow: none;
-  filter: none;
+  filter: drop-shadow(0 10rpx 20rpx rgba(214, 196, 122, 0.2));
   overflow: hidden;
 }
 
@@ -7470,6 +7650,7 @@ button.room-topbar-menu-popover__item::after {
   border-color: transparent;
   box-shadow: none;
   border-radius: 58rpx;
+  filter: drop-shadow(0 12rpx 24rpx rgba(214, 196, 122, 0.22));
   overflow: hidden;
 }
 
@@ -7479,16 +7660,16 @@ button.room-topbar-menu-popover__item::after {
   width: 210rpx;
   height: 112rpx;
   transform: translate(-50%, -50%);
-  z-index: 1;
+  z-index: 0;
 }
 
 .page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice .room-fab-secondary__skin {
   left: 50%;
   top: 50%;
-  width: 104rpx;
-  height: 104rpx;
+  width: 160rpx;
+  height: 84rpx;
   transform: translate(-50%, -50%);
-  z-index: 1;
+  z-index: 0;
 }
 
 .page.room-theme-imperial-red .room-fab.room-fab--imperial-slice.room-fab--pressing,
@@ -7499,34 +7680,49 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-imperial-red .room-fab .room-fab__label,
 .page.room-theme-imperial-red .room-fab-secondary__text {
-  color: #6f1a15;
-  text-shadow: 0 1rpx 0 rgba(255, 247, 224, 0.42);
+  color: #ffe9a6;
+  text-shadow:
+    0 1rpx 0 rgba(30, 80, 48, 0.24),
+    0 0 7rpx rgba(255, 244, 180, 0.26);
 }
 
 .page.room-theme-imperial-red .room-fab .room-fab__icon-image {
   width: 38rpx;
   height: 38rpx;
-  filter: drop-shadow(0 3rpx 6rpx rgba(133, 70, 16, 0.18));
+  filter:
+    drop-shadow(0 2rpx 2rpx rgba(74, 118, 66, 0.22))
+    drop-shadow(0 0 5rpx rgba(255, 235, 154, 0.34));
+}
+
+.page.room-theme-imperial-red .room-fab .room-fab__icon-image {
+  display: none;
+}
+
+.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__icon-image {
+  display: block;
 }
 
 .page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__icon-image,
 .page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__label {
-  opacity: 0;
+  position: relative;
+  z-index: 1;
+  opacity: 1;
 }
 
 .page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice .room-fab-secondary__text {
-  opacity: 0;
+  z-index: 1;
+  opacity: 1;
 }
 
 .page.room-theme-imperial-red .room-fab.is-disabled {
   background:
-    radial-gradient(circle at 50% 20%, rgba(202, 187, 144, 0.96) 0%, rgba(166, 142, 86, 0.96) 42%, rgba(118, 92, 46, 0.96) 100%);
-  border-color: rgba(255, 236, 170, 0.44);
+    radial-gradient(circle at 22% 14%, rgba(255, 255, 238, 0.38) 0%, rgba(223, 241, 189, 0.14) 38%, rgba(223, 241, 189, 0) 58%),
+    linear-gradient(135deg, rgba(112, 150, 96, 0.78) 0%, rgba(54, 102, 66, 0.8) 52%, rgba(34, 74, 55, 0.82) 100%);
+  border-color: rgba(255, 236, 170, 0.2);
   box-shadow:
-    0 10rpx 24rpx rgba(61, 8, 11, 0.18),
-    0 0 0 4rpx rgba(94, 44, 20, 0.28),
-    inset 0 3rpx 0 rgba(255, 246, 196, 0.18),
-    inset 0 -3rpx 0 rgba(90, 60, 24, 0.16);
+    0 10rpx 22rpx rgba(214, 196, 122, 0.1),
+    0 0 0 0.5rpx rgba(244, 216, 139, 0.26),
+    inset 0 1rpx 0 rgba(255, 246, 196, 0.12);
 }
 
 .page.room-theme-imperial-red .room-fab.is-disabled .room-fab__label {
@@ -7546,14 +7742,13 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-imperial-red .call-phase-panel__count,
 .page.room-theme-imperial-red .call-phase-panel__point-option {
-  border-color: rgba(165, 120, 58, 0.78);
+  border-color: rgba(232, 194, 101, 0.48);
   background:
-    radial-gradient(circle at 50% 16%, rgba(255, 249, 230, 0.5) 0%, rgba(255, 249, 230, 0.14) 30%, rgba(255, 249, 230, 0) 50%),
-    linear-gradient(180deg, rgba(249, 237, 197, 0.98) 0%, rgba(232, 204, 147, 0.98) 56%, rgba(192, 141, 74, 0.96) 100%);
+    radial-gradient(circle at 24% 16%, rgba(255, 255, 238, 0.5) 0%, rgba(223, 241, 189, 0.18) 32%, rgba(223, 241, 189, 0) 54%),
+    linear-gradient(135deg, rgba(170, 206, 146, 0.96) 0%, rgba(84, 150, 92, 0.97) 42%, rgba(44, 106, 70, 0.98) 100%);
   box-shadow:
-    0 10rpx 24rpx rgba(61, 8, 11, 0.12),
-    inset 0 1rpx 0 rgba(255, 251, 235, 0.54),
-    inset 0 -6rpx 14rpx rgba(164, 120, 57, 0.2);
+    0 10rpx 24rpx rgba(214, 196, 122, 0.1),
+    inset 0 1rpx 0 rgba(255, 251, 235, 0.28);
 }
 
 .page.room-theme-imperial-red .call-phase-panel__count-sheen,
@@ -7566,8 +7761,8 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-imperial-red .call-phase-panel__count-text {
-  color: #6a1d16;
-  text-shadow: 0 1rpx 0 rgba(255, 250, 236, 0.52);
+  color: #fff3c4;
+  text-shadow: 0 2rpx 5rpx rgba(48, 116, 76, 0.22);
 }
 
 .page.room-theme-imperial-red .call-phase-panel__count.is-active,
@@ -7577,21 +7772,21 @@ button.room-topbar-menu-popover__item::after {
   border-color: #d8b35f;
   box-shadow:
     0 0 0 2rpx rgba(216, 179, 95, 0.18),
-    0 12rpx 28rpx rgba(61, 8, 11, 0.2),
+    0 12rpx 28rpx rgba(214, 196, 122, 0.16),
     0 0 28rpx rgba(216, 179, 95, 0.18);
 }
 
 .page.room-theme-imperial-red .call-phase-panel__count.is-active {
   background:
-    radial-gradient(circle at 50% 16%, rgba(255, 246, 208, 0.4) 0%, rgba(255, 246, 208, 0) 34%),
-    radial-gradient(circle at 50% 46%, rgba(190, 48, 43, 0.12) 0%, rgba(190, 48, 43, 0) 54%),
-    linear-gradient(180deg, rgba(191, 40, 38, 0.98) 0%, rgba(158, 26, 28, 0.98) 56%, rgba(121, 18, 22, 0.98) 100%);
+    radial-gradient(circle at 24% 14%, rgba(255, 255, 238, 0.62) 0%, rgba(223, 241, 189, 0.2) 34%, rgba(223, 241, 189, 0) 54%),
+    radial-gradient(circle at 50% 46%, rgba(244, 216, 139, 0.18) 0%, rgba(244, 216, 139, 0) 54%),
+    linear-gradient(135deg, rgba(182, 218, 154, 0.99) 0%, rgba(90, 164, 100, 0.99) 44%, rgba(48, 116, 76, 0.99) 100%);
 }
 
 .page.room-theme-imperial-red .call-phase-panel__count.is-active .call-phase-panel__count-text,
 .page.room-theme-imperial-red .call-phase-panel__value-text {
   color: #fff5d8;
-  text-shadow: 0 2rpx 8rpx rgba(73, 20, 20, 0.22);
+  text-shadow: 0 2rpx 8rpx rgba(42, 110, 72, 0.18);
 }
 
 .page.room-theme-imperial-red .call-phase-panel__point-option.is-active,
@@ -7601,12 +7796,12 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-imperial-red .call-phase-panel__point-option.is-active {
   background:
-    radial-gradient(circle at 50% 16%, rgba(255, 246, 208, 0.4) 0%, rgba(255, 246, 208, 0) 34%),
-    radial-gradient(circle at 50% 46%, rgba(190, 48, 43, 0.12) 0%, rgba(190, 48, 43, 0) 54%),
-    linear-gradient(180deg, rgba(191, 40, 38, 0.98) 0%, rgba(158, 26, 28, 0.98) 56%, rgba(121, 18, 22, 0.98) 100%);
+    radial-gradient(circle at 24% 14%, rgba(255, 255, 238, 0.62) 0%, rgba(223, 241, 189, 0.2) 34%, rgba(223, 241, 189, 0) 54%),
+    radial-gradient(circle at 50% 46%, rgba(244, 216, 139, 0.18) 0%, rgba(244, 216, 139, 0) 54%),
+    linear-gradient(135deg, rgba(182, 218, 154, 0.99) 0%, rgba(90, 164, 100, 0.99) 44%, rgba(48, 116, 76, 0.99) 100%);
   box-shadow:
     0 0 0 2rpx rgba(216, 179, 95, 0.18),
-    0 12rpx 28rpx rgba(61, 8, 11, 0.2),
+    0 12rpx 28rpx rgba(214, 196, 122, 0.16),
     0 0 28rpx rgba(216, 179, 95, 0.18);
 }
 
@@ -7617,8 +7812,8 @@ button.room-topbar-menu-popover__item::after {
 .page.room-theme-imperial-red .call-phase-panel__value-box,
 .page.room-theme-imperial-red .call-phase-panel__point-box {
   background:
-    radial-gradient(circle at 50% 16%, rgba(255, 246, 208, 0.2) 0%, rgba(255, 246, 208, 0) 32%),
-    linear-gradient(180deg, rgba(178, 33, 37, 0.98) 0%, rgba(147, 24, 29, 0.98) 56%, rgba(118, 18, 22, 0.98) 100%);
+    radial-gradient(circle at 24% 14%, rgba(255, 255, 238, 0.32) 0%, rgba(223, 241, 189, 0.08) 34%, rgba(223, 241, 189, 0) 54%),
+    linear-gradient(135deg, rgba(152, 198, 128, 0.98) 0%, rgba(74, 144, 88, 0.99) 48%, rgba(42, 106, 72, 0.99) 100%);
 }
 
 .page.room-theme-imperial-red .call-phase-panel__unit {
@@ -7626,11 +7821,11 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-imperial-red .call-phase-panel__btn--primary {
-  border-color: rgba(232, 194, 101, 0.82);
+  border-color: rgba(232, 194, 101, 0.5);
   background:
-    radial-gradient(circle at 50% 10%, rgba(255, 248, 217, 0.3) 0%, rgba(255, 248, 217, 0) 34%),
-    linear-gradient(180deg, rgba(178, 33, 37, 0.98) 0%, rgba(142, 22, 27, 0.98) 58%, rgba(106, 16, 20, 0.98) 100%);
-  box-shadow: 0 8rpx 40rpx rgba(61, 8, 11, 0.16);
+    radial-gradient(circle at 24% 14%, rgba(255, 255, 238, 0.56) 0%, rgba(223, 241, 189, 0.18) 34%, rgba(223, 241, 189, 0) 54%),
+    linear-gradient(135deg, rgba(174, 210, 150, 0.98) 0%, rgba(88, 154, 96, 0.98) 44%, rgba(48, 116, 76, 1) 100%);
+  box-shadow: 0 8rpx 40rpx rgba(214, 196, 122, 0.12);
 }
 
 .page.room-theme-imperial-red .call-phase-panel__btn-text {
@@ -7640,11 +7835,11 @@ button.room-topbar-menu-popover__item::after {
 .page.room-theme-imperial-red .ghost-cup .figma-cup,
 .page.room-theme-imperial-red .seat-stage-cup .figma-cup {
   filter:
-    brightness(1.04)
+    brightness(1.08)
     contrast(1.08)
     saturate(1.08)
-    drop-shadow(0 8rpx 18rpx rgba(61, 8, 11, 0.18))
-    drop-shadow(0 0 12rpx rgba(229, 191, 102, 0.12));
+    drop-shadow(0 9rpx 18rpx rgba(214, 196, 122, 0.18))
+    drop-shadow(0 0 12rpx rgba(240, 207, 118, 0.18));
 }
 
 .page.room-theme-imperial-red .ghost-cup .figma-cup__skin,
@@ -7660,11 +7855,17 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-imperial-red .ghost-cup .figma-cup__skin,
 .page.room-theme-imperial-red .seat-stage-cup .figma-cup__skin {
-  display: none;
+  display: block;
 }
 
 .page.room-theme-imperial-red .ghost-cup .figma-cup__shadow,
-.page.room-theme-imperial-red .seat-stage-cup .figma-cup__shadow {
+.page.room-theme-imperial-red .seat-stage-cup .figma-cup__shadow,
+.page.room-theme-imperial-red .ghost-cup .figma-cup__rim,
+.page.room-theme-imperial-red .seat-stage-cup .figma-cup__rim,
+.page.room-theme-imperial-red .ghost-cup .figma-cup__body,
+.page.room-theme-imperial-red .seat-stage-cup .figma-cup__body,
+.page.room-theme-imperial-red .ghost-cup .figma-cup__shine,
+.page.room-theme-imperial-red .seat-stage-cup .figma-cup__shine {
   display: none;
 }
 
@@ -7700,9 +7901,9 @@ button.room-topbar-menu-popover__item::after {
     linear-gradient(180deg, rgba(236, 255, 245, 0.94) 0%, rgba(176, 231, 208, 0.92) 20%, rgba(102, 191, 154, 0.92) 46%, rgba(52, 127, 97, 0.94) 72%, rgba(21, 68, 54, 0.98) 100%);
   box-shadow:
     inset 2rpx 0 12rpx rgba(255, 252, 239, 0.42),
-    inset -3rpx 0 10rpx rgba(24, 76, 57, 0.38),
-    inset 0 -8rpx 12rpx rgba(9, 39, 31, 0.2),
-    0 4rpx 12rpx rgba(61, 8, 11, 0.12);
+    inset -3rpx 0 10rpx rgba(55, 124, 82, 0.2),
+    inset 0 -8rpx 12rpx rgba(55, 124, 82, 0.14),
+    0 4rpx 12rpx rgba(214, 196, 122, 0.1);
 }
 
 .page.room-theme-imperial-red .ghost-cup .figma-cup__shine,
@@ -7722,13 +7923,22 @@ button.room-topbar-menu-popover__item::after {
   opacity: 0.48;
 }
 
+.page.room-theme-imperial-red .ghost-cup .figma-cup__rim,
+.page.room-theme-imperial-red .seat-stage-cup .figma-cup__rim,
+.page.room-theme-imperial-red .ghost-cup .figma-cup__body,
+.page.room-theme-imperial-red .seat-stage-cup .figma-cup__body,
+.page.room-theme-imperial-red .ghost-cup .figma-cup__shine,
+.page.room-theme-imperial-red .seat-stage-cup .figma-cup__shine {
+  display: none;
+}
+
 .page.room-theme-imperial-red .seat-stage-cup {
   filter:
-    brightness(1.22)
-    contrast(1.14)
-    saturate(1.18)
-    drop-shadow(0 12rpx 22rpx rgba(61, 8, 11, 0.24))
-    drop-shadow(0 0 20rpx rgba(231, 194, 101, 0.18));
+    brightness(1.18)
+    contrast(1.12)
+    saturate(1.12)
+    drop-shadow(0 12rpx 22rpx rgba(214, 196, 122, 0.18))
+    drop-shadow(0 0 20rpx rgba(241, 207, 118, 0.26));
 }
 
 .page.room-theme-imperial-red .seat-stage-cup.is-occupied {
@@ -7736,31 +7946,31 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-imperial-red .seat-stage-cup--slot-top .figma-cup__skin {
-  filter: brightness(1.1) saturate(0.96) contrast(1.04);
+  filter: brightness(1.12) saturate(1.04) contrast(1.04);
 }
 
 .page.room-theme-imperial-red .seat-stage-cup--slot-upper-left .figma-cup__skin {
-  filter: hue-rotate(138deg) saturate(1.04) brightness(1.1) contrast(1.04);
+  filter: brightness(1.1) saturate(1.02) contrast(1.04);
 }
 
 .page.room-theme-imperial-red .seat-stage-cup--slot-upper-right .figma-cup__skin {
-  filter: hue-rotate(18deg) saturate(1.08) brightness(1.1) contrast(1.04);
+  filter: brightness(1.1) saturate(1.04) contrast(1.04);
 }
 
 .page.room-theme-imperial-red .seat-stage-cup--slot-mid-left .figma-cup__skin {
-  filter: hue-rotate(-8deg) saturate(0.82) brightness(1.04) contrast(1.04);
+  filter: brightness(1.06) saturate(0.98) contrast(1.04);
 }
 
 .page.room-theme-imperial-red .seat-stage-cup--slot-mid-right .figma-cup__skin {
-  filter: hue-rotate(228deg) saturate(0.96) brightness(1.06) contrast(1.04);
+  filter: brightness(1.08) saturate(1) contrast(1.04);
 }
 
 .page.room-theme-imperial-red .seat-stage-cup--slot-lower-left .figma-cup__skin {
-  filter: hue-rotate(98deg) saturate(1.02) brightness(1.08) contrast(1.04);
+  filter: brightness(1.08) saturate(1.02) contrast(1.04);
 }
 
 .page.room-theme-imperial-red .seat-stage-cup--slot-lower-right .figma-cup__skin {
-  filter: hue-rotate(188deg) saturate(0.9) brightness(1.04) contrast(1.04);
+  filter: brightness(1.06) saturate(0.98) contrast(1.04);
 }
 
 .page.room-theme-imperial-red .room-self__avatar-shell {
@@ -7778,37 +7988,122 @@ button.room-topbar-menu-popover__item::after {
   padding: 8rpx 18rpx;
   box-shadow:
     inset 0 1rpx 0 rgba(255, 232, 188, 0.08),
-    0 8rpx 16rpx rgba(61, 8, 11, 0.16);
+    0 8rpx 16rpx rgba(214, 196, 122, 0.12);
 }
 
 .page.room-theme-imperial-red .room-self__dice-glass,
-.page.room-theme-imperial-red .room-self__dice-cup.has-dice .room-self__dice-glass,
+.page.room-theme-imperial-red .room-self__dice-cup.has-dice .room-self__dice-glass {
+  background:
+    radial-gradient(ellipse at 50% 8%, rgba(255, 236, 174, 0.22) 0%, rgba(255, 236, 174, 0.06) 28%, rgba(255, 236, 174, 0) 52%),
+    linear-gradient(104deg, rgba(255, 224, 146, 0.08) 0%, rgba(129, 28, 28, 0.08) 38%, rgba(72, 16, 18, 0.16) 76%, rgba(28, 9, 12, 0.2) 100%),
+    linear-gradient(180deg, rgba(154, 33, 34, 0.08) 0%, rgba(67, 16, 19, 0.16) 100%);
+  border-top-width: 0.8rpx;
+  border-left-width: 0.8rpx;
+  border-right-width: 0.8rpx;
+  border-bottom-width: 3.2rpx;
+  border-top-color: rgba(255, 238, 170, 0.46);
+  border-left-color: rgba(239, 205, 126, 0.26);
+  border-right-color: rgba(132, 46, 38, 0.18);
+  border-bottom-color: rgba(223, 188, 103, 0.28);
+  box-shadow:
+    0 18rpx 32rpx rgba(117, 49, 22, 0.16),
+    inset 0 8rpx 18rpx rgba(255, 238, 170, 0.06),
+    inset 9rpx 0 18rpx rgba(255, 238, 170, 0.035),
+    inset -12rpx 0 20rpx rgba(84, 18, 18, 0.1);
+}
+
 .page.room-theme-imperial-red .room-self__dice-cup.is-covered .room-self__dice-glass {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(213, 230, 188, 0.16) 26%, rgba(114, 162, 109, 0.22) 56%, rgba(49, 86, 58, 0.3) 100%);
-  border-top-color: rgba(239, 248, 224, 0.42);
-  border-left-color: rgba(239, 248, 224, 0.3);
-  border-right-color: rgba(132, 176, 120, 0.26);
-  border-bottom-color: rgba(223, 188, 103, 0.34);
+    radial-gradient(ellipse at 50% 7%, rgba(255, 238, 174, 0.42) 0%, rgba(255, 238, 174, 0.14) 22%, rgba(255, 238, 174, 0) 44%),
+    radial-gradient(circle at 28% 24%, rgba(255, 246, 218, 0.16) 0%, rgba(255, 246, 218, 0.05) 20%, rgba(255, 246, 218, 0) 44%),
+    radial-gradient(circle at 76% 42%, rgba(42, 143, 94, 0.16) 0%, rgba(42, 143, 94, 0.04) 24%, rgba(42, 143, 94, 0) 50%),
+    linear-gradient(124deg, rgba(255, 232, 153, 0) 0%, rgba(255, 232, 153, 0) 32%, rgba(255, 232, 153, 0.06) 34%, rgba(255, 232, 153, 0) 37%, rgba(255, 232, 153, 0) 61%, rgba(255, 232, 153, 0.045) 63%, rgba(255, 232, 153, 0) 66%),
+    linear-gradient(104deg, rgba(244, 206, 106, 0.22) 0%, rgba(160, 40, 37, 0.7) 30%, rgba(100, 20, 23, 0.92) 70%, rgba(40, 10, 13, 0.98) 100%),
+    linear-gradient(180deg, rgba(202, 52, 48, 0.9) 0%, rgba(125, 24, 26, 0.96) 50%, rgba(54, 12, 15, 1) 100%);
+  border-top-color: rgba(255, 232, 153, 0.9);
+  border-left-color: rgba(244, 216, 139, 0.62);
+  border-right-color: rgba(112, 34, 28, 0.54);
+  border-bottom-color: rgba(223, 188, 103, 0.72);
   box-shadow:
-    0 24rpx 42rpx rgba(61, 8, 11, 0.3),
-    inset 0 12rpx 24rpx rgba(255, 255, 255, 0.16),
-    inset 0 -7rpx 18rpx rgba(44, 74, 52, 0.18);
+    0 32rpx 56rpx rgba(95, 20, 18, 0.42),
+    inset 0 18rpx 32rpx rgba(255, 238, 170, 0.14),
+    inset 12rpx 0 26rpx rgba(255, 224, 146, 0.08),
+    inset -15rpx 0 26rpx rgba(70, 10, 12, 0.28),
+    inset 0 -16rpx 30rpx rgba(40, 10, 13, 0.32),
+    0 0 26rpx rgba(241, 207, 118, 0.18);
 }
 
 .page.room-theme-imperial-red .room-self__dice-rim {
-  background: linear-gradient(180deg, rgba(246, 250, 231, 0.82) 0%, rgba(184, 214, 154, 0.54) 42%, rgba(72, 114, 74, 0.18) 100%);
+  height: 34rpx;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 250, 220, 0.58) 0%, rgba(244, 216, 139, 0.28) 38%, rgba(136, 42, 34, 0.08) 74%, rgba(136, 42, 34, 0) 100%);
+  box-shadow:
+    inset 0 2rpx 3rpx rgba(255, 251, 236, 0.2),
+    0 2rpx 6rpx rgba(117, 49, 22, 0.1);
+}
+
+.page.room-theme-imperial-red .room-self__dice-cup.is-covered .room-self__dice-rim {
+  height: 54rpx;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 252, 226, 0.96) 0%, rgba(244, 216, 139, 0.7) 34%, rgba(160, 104, 28, 0.24) 72%, rgba(160, 104, 28, 0) 100%);
+  box-shadow:
+    inset 0 4rpx 5rpx rgba(255, 251, 236, 0.44),
+    0 3rpx 10rpx rgba(117, 49, 22, 0.22),
+    0 0 16rpx rgba(244, 216, 139, 0.22);
+}
+
+.page.room-theme-imperial-red .room-self__dice-glass::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 235, 0.24) 0%, rgba(229, 191, 102, 0.06) 28%, rgba(190, 72, 54, 0.035) 62%, rgba(190, 72, 54, 0) 88%);
+  opacity: 0.24;
+}
+
+.page.room-theme-imperial-red .room-self__dice-glass::after {
+  background:
+    linear-gradient(180deg, rgba(245, 214, 132, 0.2) 0%, rgba(132, 46, 38, 0.1) 100%);
+  opacity: 0.34;
+}
+
+.page.room-theme-imperial-red .room-self__dice-cup.is-covered .room-self__dice-glass::before {
+  opacity: 0.62;
+}
+
+.page.room-theme-imperial-red .room-self__dice-cup.is-covered .room-self__dice-glass::after {
+  background:
+    linear-gradient(90deg, rgba(245, 214, 132, 0) 0%, rgba(245, 214, 132, 0.24) 18%, rgba(128, 43, 36, 0.08) 56%, rgba(42, 143, 94, 0.12) 100%);
+  opacity: 0.9;
+}
+
+.page.room-theme-imperial-red .room-self__dice-gloss {
+  display: block;
+  position: absolute;
+  left: 70rpx;
+  top: 28rpx;
+  width: 20rpx;
+  height: 132rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 235, 0.13) 0%, rgba(255, 244, 190, 0.03) 70%, rgba(255, 244, 190, 0) 100%);
+  opacity: 0.32;
+}
+
+.page.room-theme-imperial-red .room-self__dice-cup.is-covered .room-self__dice-gloss {
+  left: 66rpx;
+  top: 27rpx;
+  width: 24rpx;
+  height: 146rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 235, 0.36) 0%, rgba(255, 224, 146, 0.08) 58%, rgba(255, 224, 146, 0) 100%);
+  opacity: 0.82;
 }
 
 .page.room-theme-imperial-red .room-self__dice-cup {
   filter:
-    drop-shadow(0 18rpx 28rpx rgba(61, 8, 11, 0.22))
+    drop-shadow(0 18rpx 28rpx rgba(214, 196, 122, 0.16))
     drop-shadow(0 0 14rpx rgba(223, 188, 103, 0.08));
 }
 
 .page.room-theme-imperial-red .room-self__die {
   filter:
-    drop-shadow(0 2rpx 4rpx rgba(61, 8, 11, 0.12))
+    drop-shadow(0 2rpx 4rpx rgba(214, 196, 122, 0.1))
     drop-shadow(0 0 2rpx rgba(223, 188, 103, 0.04));
 }
 
@@ -8428,28 +8723,109 @@ button.room-topbar__shortcut::after {
 }
 
 .page.room-theme-jade-green .room-self__dice-glass,
-.page.room-theme-jade-green .room-self__dice-cup.has-dice .room-self__dice-glass,
+.page.room-theme-jade-green .room-self__dice-cup.has-dice .room-self__dice-glass {
+  background:
+    radial-gradient(ellipse at 50% 8%, rgba(231, 250, 216, 0.18) 0%, rgba(231, 250, 216, 0.05) 28%, rgba(231, 250, 216, 0) 52%),
+    linear-gradient(105deg, rgba(218, 202, 146, 0.06) 0%, rgba(70, 143, 108, 0.08) 32%, rgba(18, 75, 58, 0.18) 100%),
+    linear-gradient(180deg, rgba(48, 124, 89, 0.12) 0%, rgba(16, 65, 50, 0.2) 100%);
+  border-top-color: rgba(200, 168, 105, 0.34);
+  border-left-color: rgba(111, 175, 153, 0.24);
+  border-right-color: rgba(42, 104, 78, 0.18);
+  border-bottom-color: rgba(200, 168, 105, 0.22);
+  box-shadow:
+    0 18rpx 32rpx rgba(0, 0, 0, 0.2),
+    inset 0 8rpx 18rpx rgba(255, 255, 239, 0.05),
+    inset 10rpx 0 18rpx rgba(207, 238, 214, 0.03),
+    inset -12rpx 0 18rpx rgba(7, 45, 34, 0.1);
+}
+
 .page.room-theme-jade-green .room-self__dice-cup.is-covered .room-self__dice-glass {
   background:
-    linear-gradient(180deg, rgba(30, 77, 58, 0.78) 0%, rgba(24, 65, 50, 0.7) 100%);
-  border-top-color: rgba(111, 175, 153, 0.5);
-  border-left-color: rgba(111, 175, 153, 0.42);
-  border-right-color: rgba(111, 175, 153, 0.42);
-  border-bottom-color: rgba(111, 175, 153, 0.34);
+    radial-gradient(ellipse at 50% 7%, rgba(232, 255, 221, 0.26) 0%, rgba(232, 255, 221, 0.08) 24%, rgba(232, 255, 221, 0) 46%),
+    linear-gradient(120deg, rgba(232, 255, 221, 0) 0%, rgba(232, 255, 221, 0) 36%, rgba(232, 255, 221, 0.035) 38%, rgba(232, 255, 221, 0) 42%, rgba(232, 255, 221, 0) 64%, rgba(200, 168, 105, 0.035) 66%, rgba(200, 168, 105, 0) 70%),
+    linear-gradient(105deg, rgba(200, 168, 105, 0.1) 0%, rgba(61, 128, 95, 0.58) 38%, rgba(22, 82, 62, 0.82) 74%, rgba(10, 45, 36, 0.94) 100%),
+    linear-gradient(180deg, rgba(46, 118, 85, 0.82) 0%, rgba(20, 72, 55, 0.92) 52%, rgba(9, 39, 32, 0.98) 100%);
+  border-top-color: rgba(200, 168, 105, 0.62);
+  border-left-color: rgba(111, 175, 153, 0.48);
+  border-right-color: rgba(30, 92, 69, 0.42);
+  border-bottom-color: rgba(200, 168, 105, 0.42);
   box-shadow:
-    0 24rpx 42rpx rgba(0, 0, 0, 0.42),
-    inset 0 12rpx 24rpx rgba(255, 255, 239, 0.08),
-    inset 0 -7rpx 18rpx rgba(0, 0, 0, 0.22);
+    0 30rpx 50rpx rgba(0, 0, 0, 0.46),
+    inset 0 16rpx 30rpx rgba(255, 255, 239, 0.08),
+    inset 11rpx 0 24rpx rgba(207, 238, 214, 0.055),
+    inset -14rpx 0 24rpx rgba(7, 45, 34, 0.22),
+    inset 0 -14rpx 26rpx rgba(0, 0, 0, 0.32),
+    0 0 18rpx rgba(200, 168, 105, 0.08);
 }
 
 .page.room-theme-jade-green .room-self__dice-rim {
+  height: 34rpx;
   background:
-    linear-gradient(180deg, rgba(255, 255, 239, 0.28) 0%, rgba(111, 175, 153, 0.12) 36%, rgba(24, 65, 50, 0) 100%);
+    radial-gradient(ellipse at 50% 18%, rgba(255, 255, 230, 0.42) 0%, rgba(200, 168, 105, 0.18) 36%, rgba(74, 144, 105, 0.06) 72%, rgba(74, 144, 105, 0) 100%);
+  box-shadow:
+    inset 0 2rpx 3rpx rgba(255, 255, 239, 0.14),
+    0 2rpx 6rpx rgba(0, 0, 0, 0.12);
+}
+
+.page.room-theme-jade-green .room-self__dice-cup.is-covered .room-self__dice-rim {
+  height: 50rpx;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 255, 232, 0.74) 0%, rgba(200, 168, 105, 0.38) 36%, rgba(74, 144, 105, 0.16) 72%, rgba(74, 144, 105, 0) 100%);
+  box-shadow:
+    inset 0 3rpx 4rpx rgba(255, 255, 239, 0.26),
+    0 3rpx 9rpx rgba(0, 0, 0, 0.22);
+}
+
+.page.room-theme-jade-green .room-self__dice-glass::before {
+  background:
+    linear-gradient(180deg, rgba(244, 255, 232, 0.18) 0%, rgba(200, 168, 105, 0.045) 36%, rgba(111, 175, 153, 0.02) 70%, rgba(111, 175, 153, 0) 88%);
+  opacity: 0.22;
+}
+
+.page.room-theme-jade-green .room-self__dice-glass::after {
+  background:
+    linear-gradient(180deg, rgba(200, 168, 105, 0.2) 0%, rgba(24, 65, 50, 0.14) 100%);
+  opacity: 0.32;
+}
+
+.page.room-theme-jade-green .room-self__dice-cup.is-covered .room-self__dice-glass::before {
+  opacity: 0.52;
+}
+
+.page.room-theme-jade-green .room-self__dice-cup.is-covered .room-self__dice-glass::after {
+  background:
+    linear-gradient(90deg, rgba(200, 168, 105, 0) 0%, rgba(200, 168, 105, 0.16) 20%, rgba(24, 65, 50, 0.1) 100%);
+  opacity: 0.76;
+}
+
+.page.room-theme-jade-green .room-self__dice-gloss {
+  display: block;
+  position: absolute;
+  left: 72rpx;
+  top: 30rpx;
+  width: 18rpx;
+  height: 130rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(180deg, rgba(244, 255, 232, 0.11) 0%, rgba(244, 255, 232, 0.026) 74%, rgba(244, 255, 232, 0) 100%);
+  opacity: 0.3;
+}
+
+.page.room-theme-jade-green .room-self__dice-cup.is-covered .room-self__dice-gloss {
+  left: 68rpx;
+  top: 28rpx;
+  width: 22rpx;
+  height: 140rpx;
+  background: linear-gradient(180deg, rgba(244, 255, 232, 0.28) 0%, rgba(244, 255, 232, 0.07) 66%, rgba(244, 255, 232, 0) 100%);
+  opacity: 0.68;
 }
 
 .page.room-theme-jade-green .room-self__dice-cup.is-covered::after {
-  background: rgba(14, 23, 20, 0.78);
+  background: rgba(14, 32, 25, 0.86);
   color: #e7d8b3;
+  border: 1rpx solid rgba(200, 168, 105, 0.46);
+  box-shadow:
+    0 8rpx 18rpx rgba(0, 0, 0, 0.24),
+    inset 0 1rpx 0 rgba(255, 255, 239, 0.08);
 }
 
 .page.room-theme-jade-green .room-self__avatar-shell {
@@ -8868,12 +9244,40 @@ button.room-topbar__shortcut::after {
 }
 
 .page.room-theme-imperial-red .room-topbar__shortcut {
-  background: rgba(101, 20, 23, 0.84);
-  border-color: rgba(232, 194, 101, 0.32);
+  background:
+    radial-gradient(circle at 24% 12%, rgba(255, 255, 238, 0.42) 0%, rgba(223, 241, 189, 0.14) 34%, rgba(223, 241, 189, 0) 56%),
+    linear-gradient(135deg, rgba(144, 190, 120, 0.88) 0%, rgba(74, 138, 84, 0.9) 50%, rgba(42, 102, 72, 0.94) 100%);
+  border-color: rgba(232, 194, 101, 0.34);
+  box-shadow:
+    0 10rpx 22rpx rgba(214, 196, 122, 0.12),
+    0 0 0 0.5rpx rgba(244, 216, 139, 0.22),
+    inset 0 1rpx 0 rgba(255, 246, 204, 0.16);
 }
 
 .page.room-theme-imperial-red .room-topbar__shortcut--ghost {
-  background: rgba(101, 20, 23, 0.68);
+  background:
+    radial-gradient(circle at 24% 12%, rgba(255, 255, 238, 0.28) 0%, rgba(223, 241, 189, 0.09) 34%, rgba(223, 241, 189, 0) 56%),
+    linear-gradient(135deg, rgba(100, 148, 88, 0.72) 0%, rgba(42, 104, 64, 0.76) 50%, rgba(20, 76, 56, 0.82) 100%);
+}
+
+.page.room-theme-imperial-red .room-topbar-menu-popover__item {
+  background:
+    radial-gradient(circle at 20% 12%, rgba(255, 255, 238, 0.28) 0%, rgba(223, 241, 189, 0.1) 34%, rgba(223, 241, 189, 0) 58%),
+    linear-gradient(135deg, rgba(100, 148, 88, 0.76) 0%, rgba(42, 104, 64, 0.8) 50%, rgba(20, 76, 56, 0.86) 100%);
+  border-color: rgba(232, 194, 101, 0.2);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 246, 204, 0.14),
+    0 8rpx 18rpx rgba(214, 196, 122, 0.12);
+}
+
+.page.room-theme-imperial-red .room-topbar-menu-popover__item::before {
+  background: linear-gradient(180deg, rgba(244, 223, 134, 0.82), rgba(142, 185, 121, 0.42));
+}
+
+.page.room-theme-imperial-red .room-topbar-menu-popover__item--danger {
+  background:
+    radial-gradient(circle at 20% 12%, rgba(255, 255, 238, 0.2) 0%, rgba(223, 241, 189, 0.06) 34%, rgba(223, 241, 189, 0) 58%),
+    linear-gradient(135deg, rgba(88, 104, 72, 0.72) 0%, rgba(73, 55, 44, 0.78) 48%, rgba(64, 28, 28, 0.86) 100%);
 }
 
 .page.room-theme-imperial-red .room-topbar__shortcut-text,
@@ -8895,8 +9299,13 @@ button.room-topbar__shortcut::after {
 .page.room-theme-imperial-red .history-card,
 .page.room-theme-imperial-red .history-card__matrix-row,
 .page.room-theme-imperial-red .history-tab {
-  background: rgba(94, 19, 22, 0.84);
-  border-color: rgba(232, 194, 101, 0.28);
+  background:
+    radial-gradient(circle at 22% 12%, rgba(255, 255, 238, 0.32) 0%, rgba(223, 241, 189, 0.1) 34%, rgba(223, 241, 189, 0) 58%),
+    linear-gradient(135deg, rgba(132, 180, 112, 0.8) 0%, rgba(68, 128, 80, 0.84) 48%, rgba(40, 100, 70, 0.88) 100%);
+  border-color: rgba(232, 194, 101, 0.24);
+  box-shadow:
+    0 10rpx 22rpx rgba(214, 196, 122, 0.1),
+    inset 0 1rpx 0 rgba(255, 246, 204, 0.14);
 }
 
 .page.room-theme-imperial-red .room-stage__observer-card {
@@ -8928,7 +9337,12 @@ button.room-topbar__shortcut::after {
 
 .page.room-theme-imperial-red .history-tab.is-active {
   border-color: rgba(232, 194, 101, 0.56);
-  box-shadow: 0 10rpx 18rpx rgba(61, 8, 11, 0.16);
+  background:
+    radial-gradient(circle at 22% 12%, rgba(255, 255, 238, 0.44) 0%, rgba(223, 241, 189, 0.16) 34%, rgba(223, 241, 189, 0) 58%),
+    linear-gradient(135deg, rgba(162, 204, 134, 0.88) 0%, rgba(82, 150, 90, 0.9) 46%, rgba(46, 112, 76, 0.94) 100%);
+  box-shadow:
+    0 10rpx 18rpx rgba(214, 196, 122, 0.12),
+    0 0 18rpx rgba(244, 216, 139, 0.16);
 }
 
 .page.room-theme-imperial-red .history-tab.is-active .history-tab__text {
@@ -8939,12 +9353,12 @@ button.room-topbar__shortcut::after {
 .page.room-theme-imperial-red .room-fab-secondary--right {
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 14%, rgba(255, 243, 207, 0.34) 0%, rgba(255, 243, 207, 0) 36%),
-    linear-gradient(180deg, rgba(182, 36, 40, 0.98) 0%, rgba(139, 21, 26, 0.99) 58%, rgba(108, 16, 21, 0.99) 100%);
-  border-color: rgba(244, 216, 139, 0.72);
+    radial-gradient(circle at 22% 16%, rgba(255, 255, 238, 0.52) 0%, rgba(223, 241, 189, 0.18) 34%, rgba(223, 241, 189, 0) 56%),
+    linear-gradient(135deg, rgba(154, 200, 128, 0.98) 0%, rgba(74, 144, 86, 0.99) 48%, rgba(34, 94, 64, 0.99) 100%);
+  border-color: rgba(244, 216, 139, 0.36);
   box-shadow:
-    0 12rpx 24rpx rgba(61, 8, 11, 0.24),
-    inset 0 3rpx 0 rgba(255, 244, 209, 0.38);
+    0 12rpx 24rpx rgba(214, 196, 122, 0.14),
+    inset 0 1rpx 0 rgba(255, 244, 209, 0.2);
 }
 
 .page.room-theme-imperial-red .room-fab-secondary--left .room-fab-secondary__text,
@@ -8956,4 +9370,2167 @@ button.room-topbar__shortcut::after {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
+}
+
+/* premium room surface palette: visual-only color/state refinements */
+.room-mask {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(239, 206, 126, 0.14) 0%, rgba(239, 206, 126, 0) 34%),
+    linear-gradient(180deg, rgba(7, 8, 14, 0.54) 0%, rgba(7, 8, 14, 0.84) 100%);
+  backdrop-filter: blur(18rpx);
+}
+
+.room-mask--settings {
+  background:
+    radial-gradient(circle at 16% 10%, rgba(238, 206, 126, 0.16) 0%, rgba(238, 206, 126, 0) 34%),
+    radial-gradient(circle at 86% 14%, rgba(68, 205, 171, 0.14) 0%, rgba(68, 205, 171, 0) 36%),
+    linear-gradient(180deg, rgba(7, 9, 15, 0.58) 0%, rgba(5, 7, 12, 0.86) 100%);
+}
+
+.room-sheet,
+.room-sheet--settings,
+.room-sheet--seating,
+.room-sheet--settlement,
+.room-sheet--legal {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(245, 216, 142, 0.16) 0%, rgba(245, 216, 142, 0.04) 34%, rgba(245, 216, 142, 0) 58%),
+    radial-gradient(circle at 100% 100%, rgba(62, 198, 160, 0.13) 0%, rgba(62, 198, 160, 0) 56%),
+    linear-gradient(180deg, rgba(25, 27, 38, 0.985) 0%, rgba(12, 14, 24, 0.99) 100%);
+  border-color: rgba(246, 218, 143, 0.2);
+  box-shadow:
+    0 32rpx 88rpx rgba(0, 0, 0, 0.58),
+    inset 0 1rpx 0 rgba(255, 247, 219, 0.12),
+    inset 0 -28rpx 48rpx rgba(0, 0, 0, 0.2),
+    0 0 0 1rpx rgba(255, 255, 255, 0.035);
+}
+
+.room-sheet__glow--settlement-a,
+.room-sheet__glow--settings-a,
+.room-sheet__glow--legal-a {
+  background: radial-gradient(circle, rgba(246, 214, 132, 0.34) 0%, rgba(246, 214, 132, 0) 72%);
+}
+
+.room-sheet__glow--settlement-b,
+.room-sheet__glow--settings-b,
+.room-sheet__glow--legal-b {
+  background: radial-gradient(circle, rgba(62, 198, 160, 0.22) 0%, rgba(62, 198, 160, 0) 74%);
+}
+
+.sheet-head--settlement,
+.sheet-head--settings,
+.sheet-head--legal {
+  border-bottom-color: rgba(246, 226, 165, 0.1);
+}
+
+.sheet-eyebrow,
+.entry-sheet__eyebrow,
+.settlement-summary-card__eyebrow,
+.seat-direction-panel__label,
+.history-card__round {
+  color: rgba(248, 215, 134, 0.9);
+}
+
+.sheet-title,
+.settings-hero__title,
+.seat-hero__title,
+.settlement-summary,
+.history-card__summary,
+.settlement-name,
+.rules-card__title {
+  color: #fbf3df;
+}
+
+.sheet-close--pill,
+.room-topbar-menu-popover__item,
+.settings-hero,
+.seat-hero,
+.seat-direction-panel,
+.seat-grid-panel,
+.settings-row,
+.settlement-summary-card,
+.settlement-row,
+.settlement-matrix,
+.history-card,
+.history-card__matrix-row,
+.history-tab,
+.rules-card,
+.entry-room-card,
+.entry-consent,
+.join-server-card {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 244, 202, 0.1) 0%, rgba(255, 244, 202, 0) 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.058) 0%, rgba(255, 255, 255, 0.018) 100%);
+  border-color: rgba(246, 226, 165, 0.13);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 248, 223, 0.07),
+    0 14rpx 28rpx rgba(0, 0, 0, 0.18);
+}
+
+.sheet-close--pill,
+.entry-field__action,
+.entry-agreement__link,
+.join-server-card__action {
+  color: #f5d681;
+}
+
+.settings-hero__desc,
+.seat-hero__desc,
+.settings-row__hint,
+.entry-sheet__desc,
+.entry-room-card__hint,
+.entry-field__hint,
+.entry-consent__copy-text,
+.join-server-card__hint,
+.rules-card__item,
+.call-phase-panel__summary-text,
+.settlement-count-note,
+.history-card__matrix-label {
+  color: rgba(221, 229, 240, 0.72);
+}
+
+.settings-row__signal.is-on {
+  background: #f6d77d;
+  box-shadow: 0 0 0 6rpx rgba(246, 215, 125, 0.1), 0 0 18rpx rgba(246, 215, 125, 0.28);
+}
+
+.settings-row__signal.is-off {
+  background: rgba(151, 163, 184, 0.46);
+}
+
+.settings-row__badge.is-on,
+.history-tab.is-active,
+.entry-consent__checkbox.is-checked {
+  background:
+    radial-gradient(circle at 30% 12%, rgba(255, 250, 218, 0.28) 0%, rgba(255, 250, 218, 0) 48%),
+    linear-gradient(180deg, rgba(246, 215, 125, 0.24), rgba(202, 161, 65, 0.15));
+  border-color: rgba(246, 215, 125, 0.42);
+  color: #f8dc8a;
+  box-shadow: 0 10rpx 22rpx rgba(246, 215, 125, 0.12);
+}
+
+.settings-row__badge.is-off {
+  background: linear-gradient(180deg, rgba(144, 156, 178, 0.16), rgba(144, 156, 178, 0.07));
+  border-color: rgba(144, 156, 178, 0.16);
+  color: rgba(215, 224, 240, 0.68);
+}
+
+.seat-direction__item,
+.seat-grid__item,
+.call-phase-panel__count,
+.call-phase-panel__point-option {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0) 46%),
+    linear-gradient(180deg, #1f2430 0%, #161b25 50%, #10141d 100%);
+  border-color: rgba(226, 235, 244, 0.1);
+  color: rgba(221, 229, 240, 0.74);
+}
+
+.seat-direction__item.is-active,
+.seat-grid__item.is-selected,
+.seat-grid__item.hint-selected,
+.call-phase-panel__count.is-active,
+.call-phase-panel__point-option.is-active,
+.call-phase-panel__value-box,
+.call-phase-panel__point-box {
+  background:
+    radial-gradient(circle at 28% 0%, rgba(255, 248, 207, 0.22) 0%, rgba(255, 248, 207, 0) 42%),
+    linear-gradient(180deg, rgba(57, 48, 28, 0.94) 0%, rgba(28, 24, 18, 0.94) 100%);
+  border-color: rgba(246, 215, 125, 0.56);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 248, 220, 0.12),
+    0 0 0 1rpx rgba(246, 215, 125, 0.16),
+    0 16rpx 32rpx rgba(246, 215, 125, 0.12);
+}
+
+.seat-grid__item.hint-move-in,
+.seat-grid__item.hint-move-out,
+.seat-grid__item.hint-swap {
+  border-color: rgba(78, 213, 181, 0.38);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.06),
+    0 12rpx 24rpx rgba(78, 213, 181, 0.1);
+}
+
+.call-phase-overlay {
+  background:
+    linear-gradient(180deg, rgba(9, 12, 18, 0) 0%, rgba(9, 12, 18, 0.18) 30%, rgba(8, 10, 16, 0.86) 58%, rgba(7, 9, 15, 0.98) 100%);
+}
+
+.call-phase-panel {
+  background:
+    radial-gradient(circle at 16% 0%, rgba(246, 215, 125, 0.14) 0%, rgba(246, 215, 125, 0) 44%),
+    linear-gradient(180deg, rgba(25, 29, 38, 0.99) 0%, rgba(13, 16, 24, 0.99) 100%);
+  border-top-color: rgba(246, 226, 165, 0.18);
+  box-shadow:
+    0 -24rpx 84rpx rgba(0, 0, 0, 0.6),
+    inset 0 1rpx 0 rgba(255, 248, 223, 0.08);
+}
+
+.call-phase-panel__count.is-active .call-phase-panel__count-text,
+.call-phase-panel__value-text,
+.call-phase-panel__count.is-tail .call-phase-panel__count-text {
+  color: #f5d681;
+}
+
+.call-phase-panel__count.is-disabled,
+.call-phase-panel__point-option.is-disabled,
+.call-phase-panel__point-box.is-disabled,
+.call-phase-panel__btn.is-disabled,
+.dock-btn--disabled {
+  opacity: 0.42;
+  filter: grayscale(0.12) saturate(0.72);
+}
+
+.call-phase-panel__btn--primary,
+.dock-btn--gold,
+.dock-btn--settlement {
+  background:
+    radial-gradient(circle at 32% 14%, rgba(255, 251, 219, 0.44) 0%, rgba(255, 251, 219, 0) 36%),
+    linear-gradient(180deg, #f8df84 0%, #e7bd55 48%, #b9842e 100%);
+  border-color: rgba(255, 231, 158, 0.82);
+  box-shadow:
+    0 16rpx 36rpx rgba(219, 170, 70, 0.3),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.22),
+    inset 0 -10rpx 18rpx rgba(91, 58, 13, 0.16);
+}
+
+.dock-btn--ghost {
+  background:
+    radial-gradient(circle at 30% 12%, rgba(230, 241, 255, 0.22) 0%, rgba(230, 241, 255, 0) 40%),
+    linear-gradient(180deg, #60758e 0%, #3b5068 100%);
+}
+
+.room-topbar-menu-popover {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(246, 222, 148, 0.18) 0%, rgba(246, 222, 148, 0) 56%),
+    radial-gradient(circle at 100% 100%, rgba(68, 205, 171, 0.15) 0%, rgba(68, 205, 171, 0) 58%),
+    linear-gradient(160deg, rgba(27, 38, 43, 0.97) 0%, rgba(18, 24, 34, 0.98) 58%, rgba(11, 13, 22, 0.99) 100%);
+  border-color: rgba(246, 222, 148, 0.24);
+}
+
+.room-topbar-menu-popover__text,
+.history-tab.is-active .history-tab__text,
+.history-card__matrix-value {
+  color: #fbf3df;
+}
+
+.room-topbar-menu-popover__item--danger {
+  background:
+    radial-gradient(circle at 22% 0%, rgba(255, 205, 190, 0.12) 0%, rgba(255, 205, 190, 0) 46%),
+    linear-gradient(180deg, rgba(91, 38, 44, 0.5) 0%, rgba(39, 24, 32, 0.42) 100%);
+  border-color: rgba(255, 178, 166, 0.2);
+}
+
+.settlement-row--winner {
+  border-color: rgba(246, 215, 125, 0.28);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(246, 215, 125, 0.12) 0%, rgba(246, 215, 125, 0) 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.018) 100%);
+}
+
+.settlement-row--loser {
+  border-color: rgba(78, 213, 181, 0.2);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(78, 213, 181, 0.1) 0%, rgba(78, 213, 181, 0) 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.048) 0%, rgba(255, 255, 255, 0.016) 100%);
+}
+
+.settlement-row__tag--winner {
+  background: linear-gradient(180deg, #f8df84 0%, #c68f37 100%);
+  color: #3a2208;
+}
+
+.settlement-row__tag--loser {
+  background: linear-gradient(180deg, #aab4c0 0%, #586271 100%);
+  color: #ffffff;
+}
+
+.settlement-die-wrap.is-counted,
+.settlement-dice-bonus {
+  background: rgba(246, 215, 125, 0.16);
+  border-color: rgba(246, 215, 125, 0.52);
+  color: #f5d681;
+}
+
+.settlement-die-wrap.is-wildcard::after {
+  background: rgba(61, 191, 154, 0.96);
+}
+
+.page.room-theme-ruby-red .room-mask {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(224, 181, 96, 0.13) 0%, rgba(224, 181, 96, 0) 34%),
+    linear-gradient(180deg, rgba(8, 6, 6, 0.6) 0%, rgba(7, 5, 5, 0.88) 100%);
+}
+
+.page.room-theme-ruby-red .room-sheet,
+.page.room-theme-ruby-red .room-sheet--settings,
+.page.room-theme-ruby-red .room-sheet--seating,
+.page.room-theme-ruby-red .room-sheet--settlement,
+.page.room-theme-ruby-red .room-sheet--legal,
+.page.room-theme-ruby-red .call-phase-panel,
+.page.room-theme-ruby-red .room-topbar-menu-popover {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(224, 181, 96, 0.15) 0%, rgba(224, 181, 96, 0.03) 36%, rgba(224, 181, 96, 0) 58%),
+    radial-gradient(circle at 100% 100%, rgba(156, 54, 48, 0.16) 0%, rgba(156, 54, 48, 0) 58%),
+    linear-gradient(180deg, rgba(24, 20, 18, 0.99) 0%, rgba(10, 9, 9, 0.99) 100%);
+  border-color: rgba(224, 181, 96, 0.24);
+}
+
+.page.room-theme-ruby-red .sheet-eyebrow,
+.page.room-theme-ruby-red .entry-sheet__eyebrow,
+.page.room-theme-ruby-red .settlement-summary-card__eyebrow,
+.page.room-theme-ruby-red .seat-direction-panel__label,
+.page.room-theme-ruby-red .history-card__round,
+.page.room-theme-ruby-red .call-phase-panel__count.is-active .call-phase-panel__count-text,
+.page.room-theme-ruby-red .call-phase-panel__value-text {
+  color: #edc977;
+}
+
+.page.room-theme-ruby-red .room-topbar-menu-popover__item,
+.page.room-theme-ruby-red .settings-hero,
+.page.room-theme-ruby-red .seat-hero,
+.page.room-theme-ruby-red .seat-direction-panel,
+.page.room-theme-ruby-red .seat-grid-panel,
+.page.room-theme-ruby-red .settings-row,
+.page.room-theme-ruby-red .settlement-summary-card,
+.page.room-theme-ruby-red .settlement-row,
+.page.room-theme-ruby-red .settlement-matrix,
+.page.room-theme-ruby-red .history-card,
+.page.room-theme-ruby-red .history-card__matrix-row,
+.page.room-theme-ruby-red .history-tab,
+.page.room-theme-ruby-red .rules-card,
+.page.room-theme-ruby-red .seat-direction__item,
+.page.room-theme-ruby-red .seat-grid__item,
+.page.room-theme-ruby-red .call-phase-panel__count,
+.page.room-theme-ruby-red .call-phase-panel__point-option {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(239, 203, 121, 0.1) 0%, rgba(239, 203, 121, 0) 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.048) 0%, rgba(255, 255, 255, 0.014) 100%);
+  border-color: rgba(224, 181, 96, 0.18);
+}
+
+.page.room-theme-ruby-red .seat-direction__item.is-active,
+.page.room-theme-ruby-red .seat-grid__item.is-selected,
+.page.room-theme-ruby-red .seat-grid__item.hint-selected,
+.page.room-theme-ruby-red .call-phase-panel__count.is-active,
+.page.room-theme-ruby-red .call-phase-panel__point-option.is-active,
+.page.room-theme-ruby-red .call-phase-panel__value-box,
+.page.room-theme-ruby-red .call-phase-panel__point-box,
+.page.room-theme-ruby-red .history-tab.is-active,
+.page.room-theme-ruby-red .settings-row__badge.is-on {
+  background:
+    radial-gradient(circle at 28% 0%, rgba(255, 235, 177, 0.22) 0%, rgba(255, 235, 177, 0) 42%),
+    linear-gradient(180deg, rgba(66, 47, 26, 0.94) 0%, rgba(24, 17, 14, 0.94) 100%);
+  border-color: rgba(237, 201, 119, 0.54);
+  color: #edc977;
+}
+
+.page.room-theme-imperial-red .room-sheet,
+.page.room-theme-imperial-red .room-sheet--settings,
+.page.room-theme-imperial-red .room-sheet--seating,
+.page.room-theme-imperial-red .room-sheet--settlement,
+.page.room-theme-imperial-red .room-sheet--legal,
+.page.room-theme-imperial-red .call-phase-panel,
+.page.room-theme-imperial-red .room-topbar-menu-popover {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(255, 222, 150, 0.17) 0%, rgba(255, 222, 150, 0.04) 36%, rgba(255, 222, 150, 0) 58%),
+    radial-gradient(circle at 100% 100%, rgba(98, 171, 105, 0.14) 0%, rgba(98, 171, 105, 0) 58%),
+    linear-gradient(180deg, rgba(64, 19, 23, 0.99) 0%, rgba(25, 11, 15, 0.99) 100%);
+  border-color: rgba(244, 216, 139, 0.26);
+}
+
+.page.room-theme-imperial-red .sheet-eyebrow,
+.page.room-theme-imperial-red .entry-sheet__eyebrow,
+.page.room-theme-imperial-red .settlement-summary-card__eyebrow,
+.page.room-theme-imperial-red .seat-direction-panel__label,
+.page.room-theme-imperial-red .history-card__round,
+.page.room-theme-imperial-red .call-phase-panel__count.is-active .call-phase-panel__count-text,
+.page.room-theme-imperial-red .call-phase-panel__value-text {
+  color: #f8ddb1;
+}
+
+.page.room-theme-imperial-red .room-topbar-menu-popover__item,
+.page.room-theme-imperial-red .settings-hero,
+.page.room-theme-imperial-red .seat-hero,
+.page.room-theme-imperial-red .seat-direction-panel,
+.page.room-theme-imperial-red .seat-grid-panel,
+.page.room-theme-imperial-red .settings-row,
+.page.room-theme-imperial-red .settlement-summary-card,
+.page.room-theme-imperial-red .settlement-row,
+.page.room-theme-imperial-red .settlement-matrix,
+.page.room-theme-imperial-red .history-card,
+.page.room-theme-imperial-red .history-card__matrix-row,
+.page.room-theme-imperial-red .history-tab,
+.page.room-theme-imperial-red .rules-card,
+.page.room-theme-imperial-red .seat-direction__item,
+.page.room-theme-imperial-red .seat-grid__item,
+.page.room-theme-imperial-red .call-phase-panel__count,
+.page.room-theme-imperial-red .call-phase-panel__point-option {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 238, 185, 0.12) 0%, rgba(255, 238, 185, 0) 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.052) 0%, rgba(255, 255, 255, 0.016) 100%);
+  border-color: rgba(244, 216, 139, 0.18);
+}
+
+.page.room-theme-imperial-red .seat-direction__item.is-active,
+.page.room-theme-imperial-red .seat-grid__item.is-selected,
+.page.room-theme-imperial-red .seat-grid__item.hint-selected,
+.page.room-theme-imperial-red .call-phase-panel__count.is-active,
+.page.room-theme-imperial-red .call-phase-panel__point-option.is-active,
+.page.room-theme-imperial-red .call-phase-panel__value-box,
+.page.room-theme-imperial-red .call-phase-panel__point-box,
+.page.room-theme-imperial-red .history-tab.is-active,
+.page.room-theme-imperial-red .settings-row__badge.is-on {
+  background:
+    radial-gradient(circle at 26% 0%, rgba(255, 246, 206, 0.24) 0%, rgba(255, 246, 206, 0) 42%),
+    linear-gradient(135deg, rgba(106, 132, 78, 0.86) 0%, rgba(63, 93, 62, 0.9) 50%, rgba(61, 33, 27, 0.94) 100%);
+  border-color: rgba(248, 221, 177, 0.54);
+  color: #f8ddb1;
+}
+
+@keyframes glacier-blue-bubble-sheen {
+  0% {
+    opacity: 0;
+    transform: translateX(-44%) rotate(-8deg);
+  }
+  42% {
+    opacity: 0.72;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(44%) rotate(-8deg);
+  }
+}
+
+.page.room-theme-glacier-blue {
+  color: #eafaff;
+  background:
+    radial-gradient(circle at 50% 10%, rgba(226, 253, 255, 0.32) 0%, rgba(226, 253, 255, 0) 36%),
+    linear-gradient(180deg, #dff7ff 0%, #234d70 54%, #0a1b31 100%);
+}
+
+.page.room-theme-glacier-blue .room-screen__theme-bg {
+  opacity: 0.96;
+  filter: saturate(1.04) contrast(1.02);
+}
+
+.page.room-theme-glacier-blue .room-screen__aurora {
+  background:
+    radial-gradient(circle at 50% 16%, rgba(235, 255, 255, 0.28) 0%, rgba(235, 255, 255, 0.08) 28%, rgba(235, 255, 255, 0) 48%),
+    radial-gradient(circle at 82% 26%, rgba(246, 126, 94, 0.14) 0%, rgba(246, 126, 94, 0) 36%);
+}
+
+.page.room-theme-glacier-blue .room-screen__grain {
+  opacity: 0.045;
+}
+
+.page.room-theme-glacier-blue .room-stage__table-frame {
+  background:
+    linear-gradient(180deg, rgba(231, 250, 255, 0.96) 0%, rgba(98, 151, 178, 0.98) 46%, rgba(21, 54, 80, 0.98) 100%);
+  border-color: rgba(239, 255, 255, 0.92);
+  box-shadow:
+    0 38rpx 76rpx rgba(4, 18, 35, 0.56),
+    0 0 36rpx rgba(170, 242, 255, 0.18),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.38);
+}
+
+.page.room-theme-glacier-blue .room-stage__table-felt {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.48) 0%, rgba(255, 255, 255, 0.12) 28%, rgba(255, 255, 255, 0) 52%),
+    linear-gradient(180deg, #d6f8ff 0%, #6aa8c5 48%, #244d70 100%);
+}
+
+.page.room-theme-glacier-blue .room-stage__table-theme-image {
+  opacity: 0.95;
+  mix-blend-mode: normal;
+}
+
+.page.room-theme-glacier-blue .room-stage__table-line {
+  border-color: rgba(247, 255, 255, 0.68);
+  box-shadow:
+    0 0 22rpx rgba(213, 251, 255, 0.2),
+    inset 0 0 18rpx rgba(24, 69, 100, 0.12);
+}
+
+.page.room-theme-glacier-blue .room-stage__watermark-cn,
+.page.room-theme-glacier-blue .room-stage__watermark-en {
+  color: rgba(14, 50, 76, 0.22);
+  text-shadow: 0 1rpx 0 rgba(255, 255, 255, 0.2);
+}
+
+.page.room-theme-glacier-blue .room-topbar__room-label,
+.page.room-theme-glacier-blue .room-topbar__room-value,
+.page.room-theme-glacier-blue .seat__name,
+.page.room-theme-glacier-blue .room-self__name,
+.page.room-theme-glacier-blue .room-stage__rule-entry-text,
+.page.room-theme-glacier-blue .room-stage__waiting-entry-text,
+.page.room-theme-glacier-blue .room-turn-countdown__text,
+.page.room-theme-glacier-blue .history-card__round,
+.page.room-theme-glacier-blue .rules-card__title {
+  color: #f4feff;
+  text-shadow: 0 1rpx 0 rgba(12, 42, 64, 0.38);
+}
+
+.page.room-theme-glacier-blue .room-topbar__shortcut,
+.page.room-theme-glacier-blue .room-topbar__shortcut--ghost,
+.page.room-theme-glacier-blue .room-stage__rule-entry,
+.page.room-theme-glacier-blue .room-stage__waiting-entry,
+.page.room-theme-glacier-blue .room-stage__observer-card {
+  background:
+    radial-gradient(circle at 24% 10%, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(180deg, rgba(216, 250, 255, 0.52) 0%, rgba(77, 132, 164, 0.5) 100%);
+  border-color: rgba(236, 255, 255, 0.62);
+  box-shadow:
+    0 10rpx 22rpx rgba(5, 23, 42, 0.22),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.36);
+  backdrop-filter: blur(14rpx);
+}
+
+.page.room-theme-glacier-blue .room-stage__observer-avatar-shell {
+  border-color: rgba(237, 255, 255, 0.82);
+  background: rgba(21, 60, 88, 0.62);
+  box-shadow:
+    0 4rpx 12rpx rgba(6, 28, 48, 0.2),
+    0 0 12rpx rgba(195, 246, 255, 0.18);
+}
+
+.page.room-theme-glacier-blue .room-stage__observer-name {
+  color: #ffffff;
+}
+
+.page.room-theme-glacier-blue .room-stage__observer-status,
+.page.room-theme-glacier-blue .call-phase-panel__summary-text,
+.page.room-theme-glacier-blue .rules-card__item,
+.page.room-theme-glacier-blue .settlement-count-note,
+.page.room-theme-glacier-blue .history-card__summary,
+.page.room-theme-glacier-blue .history-card__matrix-value,
+.page.room-theme-glacier-blue .history-tab__text {
+  color: rgba(230, 249, 255, 0.78);
+}
+
+.page.room-theme-glacier-blue .seat__bubble,
+.page.room-theme-glacier-blue .room-self__bubble {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 22% 8%, rgba(255, 255, 255, 0.48) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(180deg, rgba(228, 252, 255, 0.92) 0%, rgba(116, 182, 207, 0.88) 54%, rgba(38, 83, 114, 0.92) 100%);
+  border-color: rgba(239, 255, 255, 0.72);
+  box-shadow:
+    0 12rpx 22rpx rgba(8, 30, 52, 0.2),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.46);
+}
+
+.page.room-theme-glacier-blue .seat__bubble::after,
+.page.room-theme-glacier-blue .room-self__bubble::after {
+  border-color: rgba(239, 255, 255, 0.38);
+}
+
+.page.room-theme-glacier-blue .seat__bubble.latest,
+.page.room-theme-glacier-blue .room-self__bubble.latest {
+  border-color: rgba(255, 180, 150, 0.74);
+  background:
+    radial-gradient(circle at 22% 8%, rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(180deg, rgba(255, 230, 218, 0.94) 0%, rgba(242, 128, 96, 0.92) 58%, rgba(112, 54, 82, 0.94) 100%);
+  box-shadow:
+    0 12rpx 24rpx rgba(216, 92, 62, 0.18),
+    0 0 0 2rpx rgba(255, 220, 205, 0.16),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.42);
+}
+
+.page.room-theme-glacier-blue .seat__bubble.latest::before,
+.page.room-theme-glacier-blue .room-self__bubble.latest::before {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0));
+  animation: glacier-blue-bubble-sheen 2.3s ease-in-out infinite;
+}
+
+.page.room-theme-glacier-blue .seat__bubble-count,
+.page.room-theme-glacier-blue .seat__bubble-unit,
+.page.room-theme-glacier-blue .room-self__bubble-count {
+  color: #123b5e;
+  text-shadow: 0 1rpx 0 rgba(255, 255, 255, 0.26);
+}
+
+.page.room-theme-glacier-blue .seat__bubble.latest .seat__bubble-count,
+.page.room-theme-glacier-blue .seat__bubble.latest .seat__bubble-unit,
+.page.room-theme-glacier-blue .room-self__bubble.latest .room-self__bubble-count {
+  color: #fff7f2;
+  text-shadow: 0 1rpx 0 rgba(93, 39, 52, 0.34);
+}
+
+.page.room-theme-glacier-blue .ghost-cup .figma-cup,
+.page.room-theme-glacier-blue .seat-stage-cup .figma-cup {
+  width: 84rpx;
+  height: 104rpx;
+  left: -12rpx;
+  top: -14rpx;
+  transform: none;
+  filter:
+    drop-shadow(0 9rpx 18rpx rgba(5, 26, 45, 0.22))
+    drop-shadow(0 0 10rpx rgba(199, 250, 255, 0.16));
+}
+
+.page.room-theme-glacier-blue .ghost-cup .figma-cup__skin,
+.page.room-theme-glacier-blue .seat-stage-cup .figma-cup__skin {
+  width: 84rpx;
+  height: 104rpx;
+  filter: brightness(1.05) saturate(1.04);
+}
+
+.page.room-theme-glacier-blue .ghost-cup .figma-cup__rim,
+.page.room-theme-glacier-blue .seat-stage-cup .figma-cup__rim,
+.page.room-theme-glacier-blue .ghost-cup .figma-cup__body,
+.page.room-theme-glacier-blue .seat-stage-cup .figma-cup__body,
+.page.room-theme-glacier-blue .ghost-cup .figma-cup__shine,
+.page.room-theme-glacier-blue .seat-stage-cup .figma-cup__shine {
+  display: none;
+}
+
+.page.room-theme-glacier-blue .ghost-cup {
+  opacity: 0.72;
+  filter: saturate(0.82) brightness(1.08);
+}
+
+.page.room-theme-glacier-blue .seat-stage-cup {
+  opacity: 1;
+}
+
+.page.room-theme-glacier-blue .room-self__dice-glass,
+.page.room-theme-glacier-blue .room-self__dice-cup.has-dice .room-self__dice-glass {
+  background:
+    radial-gradient(circle at 28% 8%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(180deg, rgba(232, 254, 255, 0.96) 0%, rgba(98, 161, 194, 0.96) 58%, rgba(27, 67, 100, 0.98) 100%);
+  border-color: rgba(239, 255, 255, 0.74);
+  box-shadow:
+    0 18rpx 36rpx rgba(6, 28, 50, 0.26),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.46);
+}
+
+.page.room-theme-glacier-blue .room-self__dice-rim {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.76) 0%, rgba(154, 223, 240, 0.42) 100%);
+  border-color: rgba(239, 255, 255, 0.84);
+}
+
+.page.room-theme-glacier-blue .room-self__dice-face {
+  filter: drop-shadow(0 3rpx 7rpx rgba(6, 32, 56, 0.18));
+}
+
+.page.room-theme-glacier-blue .room-fab {
+  background:
+    radial-gradient(circle at 26% 12%, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(180deg, #d9fbff 0%, #73c1df 48%, #22577e 100%);
+  border-color: rgba(239, 255, 255, 0.86);
+  box-shadow:
+    0 16rpx 30rpx rgba(10, 48, 78, 0.26),
+    0 0 0 2rpx rgba(208, 250, 255, 0.16),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.46);
+}
+
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice {
+  width: 210rpx;
+  height: 116rpx;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  border-radius: 58rpx;
+  filter: drop-shadow(0 12rpx 24rpx rgba(108, 221, 244, 0.18));
+  overflow: hidden;
+}
+
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__skin {
+  left: 50%;
+  top: 47%;
+  width: 210rpx;
+  height: 112rpx;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+}
+
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__icon-image,
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__label {
+  position: relative;
+  z-index: 1;
+  opacity: 1;
+}
+
+.page.room-theme-glacier-blue .room-fab .room-fab__label,
+.page.room-theme-glacier-blue .room-fab-secondary__text,
+.page.room-theme-glacier-blue .call-phase-panel__btn-text,
+.page.room-theme-glacier-blue .dock-btn__label {
+  color: #f8ffff;
+  text-shadow:
+    0 1rpx 0 rgba(12, 54, 82, 0.42),
+    0 0 8rpx rgba(221, 255, 255, 0.32);
+}
+
+.page.room-theme-glacier-blue .room-fab .room-fab__icon-image {
+  width: 38rpx;
+  height: 38rpx;
+  filter:
+    drop-shadow(0 2rpx 2rpx rgba(21, 68, 104, 0.22))
+    drop-shadow(0 0 5rpx rgba(221, 255, 255, 0.32));
+}
+
+.page.room-theme-glacier-blue .room-fab-secondary--left,
+.page.room-theme-glacier-blue .room-fab-secondary--right,
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice {
+  top: 42rpx;
+  width: 160rpx;
+  height: 84rpx;
+  background:
+    radial-gradient(circle at 25% 12%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(180deg, rgba(230, 254, 255, 0.98) 0%, rgba(101, 180, 209, 0.98) 52%, rgba(28, 75, 112, 0.98) 100%);
+  border-color: rgba(239, 255, 255, 0.78);
+  box-shadow:
+    0 14rpx 28rpx rgba(7, 38, 66, 0.24),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.42);
+}
+
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice {
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 10rpx 20rpx rgba(216, 92, 62, 0.16));
+  overflow: hidden;
+}
+
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice .room-fab-secondary__skin {
+  left: 50%;
+  top: 50%;
+  width: 160rpx;
+  height: 84rpx;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+}
+
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice .room-fab-secondary__text {
+  position: relative;
+  z-index: 1;
+  opacity: 1;
+}
+
+.page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice.room-fab--pressing,
+.page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice.room-fab-secondary--pressing {
+  box-shadow: none;
+  filter: none;
+}
+
+.page.room-theme-glacier-blue .room-fab.is-disabled {
+  opacity: 0.9;
+  background:
+    radial-gradient(circle at 26% 12%, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(180deg, rgba(190, 222, 232, 0.9) 0%, rgba(82, 130, 156, 0.9) 58%, rgba(34, 69, 96, 0.92) 100%);
+  border-color: rgba(224, 249, 255, 0.46);
+}
+
+.page.room-theme-glacier-blue .call-phase-overlay {
+  background: linear-gradient(180deg, rgba(8, 25, 42, 0) 0%, rgba(8, 25, 42, 0.18) 30%, rgba(10, 31, 52, 0.82) 58%, rgba(6, 18, 32, 0.96) 100%);
+}
+
+.page.room-theme-glacier-blue .room-mask {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(224, 254, 255, 0.2) 0%, rgba(224, 254, 255, 0) 34%),
+    linear-gradient(180deg, rgba(6, 22, 38, 0.5) 0%, rgba(6, 16, 30, 0.82) 100%);
+}
+
+.page.room-theme-glacier-blue .room-sheet,
+.page.room-theme-glacier-blue .room-sheet--settings,
+.page.room-theme-glacier-blue .room-sheet--seating,
+.page.room-theme-glacier-blue .room-sheet--settlement,
+.page.room-theme-glacier-blue .room-sheet--legal,
+.page.room-theme-glacier-blue .call-phase-panel,
+.page.room-theme-glacier-blue .room-topbar-menu-popover {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(240, 255, 255, 0.2) 0%, rgba(240, 255, 255, 0.04) 36%, rgba(240, 255, 255, 0) 58%),
+    radial-gradient(circle at 100% 100%, rgba(245, 132, 98, 0.12) 0%, rgba(245, 132, 98, 0) 58%),
+    linear-gradient(180deg, rgba(22, 55, 80, 0.98) 0%, rgba(8, 24, 42, 0.99) 100%);
+  border-color: rgba(216, 250, 255, 0.28);
+  box-shadow:
+    0 -24rpx 76rpx rgba(4, 15, 28, 0.48),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.14);
+}
+
+.page.room-theme-glacier-blue .sheet-eyebrow,
+.page.room-theme-glacier-blue .entry-sheet__eyebrow,
+.page.room-theme-glacier-blue .settlement-summary-card__eyebrow,
+.page.room-theme-glacier-blue .seat-direction-panel__label,
+.page.room-theme-glacier-blue .call-phase-panel__count.is-active .call-phase-panel__count-text,
+.page.room-theme-glacier-blue .call-phase-panel__value-text {
+  color: #cbf8ff;
+}
+
+.page.room-theme-glacier-blue .room-topbar-menu-popover__item,
+.page.room-theme-glacier-blue .settings-hero,
+.page.room-theme-glacier-blue .seat-hero,
+.page.room-theme-glacier-blue .seat-direction-panel,
+.page.room-theme-glacier-blue .seat-grid-panel,
+.page.room-theme-glacier-blue .settings-row,
+.page.room-theme-glacier-blue .settlement-summary-card,
+.page.room-theme-glacier-blue .settlement-row,
+.page.room-theme-glacier-blue .settlement-matrix,
+.page.room-theme-glacier-blue .history-card,
+.page.room-theme-glacier-blue .history-card__matrix-row,
+.page.room-theme-glacier-blue .history-tab,
+.page.room-theme-glacier-blue .rules-card,
+.page.room-theme-glacier-blue .seat-direction__item,
+.page.room-theme-glacier-blue .seat-grid__item,
+.page.room-theme-glacier-blue .call-phase-panel__count,
+.page.room-theme-glacier-blue .call-phase-panel__point-option {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(240, 255, 255, 0.13) 0%, rgba(240, 255, 255, 0) 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.056) 0%, rgba(255, 255, 255, 0.018) 100%);
+  border-color: rgba(216, 250, 255, 0.2);
+}
+
+.page.room-theme-glacier-blue .seat-direction__item.is-active,
+.page.room-theme-glacier-blue .seat-grid__item.is-selected,
+.page.room-theme-glacier-blue .seat-grid__item.hint-selected,
+.page.room-theme-glacier-blue .call-phase-panel__count.is-active,
+.page.room-theme-glacier-blue .call-phase-panel__point-option.is-active,
+.page.room-theme-glacier-blue .call-phase-panel__value-box,
+.page.room-theme-glacier-blue .call-phase-panel__point-box,
+.page.room-theme-glacier-blue .history-tab.is-active,
+.page.room-theme-glacier-blue .settings-row__badge.is-on {
+  background:
+    radial-gradient(circle at 28% 0%, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, rgba(211, 252, 255, 0.28) 0%, rgba(81, 151, 187, 0.72) 46%, rgba(30, 77, 112, 0.94) 100%);
+  border-color: rgba(203, 248, 255, 0.58);
+  color: #cbf8ff;
+}
+
+.page.room-theme-glacier-blue .call-phase-panel__btn--primary,
+.page.room-theme-glacier-blue .dock-btn--gold,
+.page.room-theme-glacier-blue .dock-btn--settlement {
+  background:
+    radial-gradient(circle at 26% 12%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(180deg, rgba(255, 221, 209, 0.96) 0%, rgba(232, 111, 78, 0.94) 54%, rgba(126, 54, 78, 0.96) 100%);
+  border-color: rgba(255, 227, 216, 0.62);
+  box-shadow:
+    0 12rpx 28rpx rgba(216, 92, 62, 0.2),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.28);
+}
+
+.page.room-theme-glacier-blue .settlement-row--winner {
+  border-color: rgba(255, 190, 164, 0.32);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(255, 190, 164, 0.14) 0%, rgba(255, 190, 164, 0) 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.018) 100%);
+}
+
+.page.room-theme-glacier-blue .settlement-row__tag--winner {
+  background: linear-gradient(180deg, #ffe1d5 0%, #e66f4e 100%);
+  color: #53233c;
+}
+
+.page.room-theme-glacier-blue .settlement-die-wrap.is-counted,
+.page.room-theme-glacier-blue .settlement-dice-bonus {
+  background: rgba(207, 248, 255, 0.16);
+  border-color: rgba(207, 248, 255, 0.52);
+  color: #cbf8ff;
+}
+
+/* imperial-red reference pass: red lacquer table, fine gold line, restrained motifs */
+.page.room-theme-imperial-red .room-stage__table-frame {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(214, 58, 49, 0.72) 0%, rgba(175, 35, 35, 0.5) 38%, rgba(98, 15, 18, 0.66) 100%),
+    linear-gradient(180deg, #B82228 0%, #8F171C 52%, #641017 100%);
+  border-color: rgba(239, 199, 113, 0.96);
+  box-shadow:
+    0 24rpx 54rpx rgba(79, 10, 13, 0.32),
+    0 0 0 2rpx rgba(82, 22, 17, 0.32),
+    inset 0 2rpx 0 rgba(255, 236, 169, 0.34),
+    inset 0 0 0 1rpx rgba(255, 245, 196, 0.16),
+    inset 0 -34rpx 52rpx rgba(66, 8, 11, 0.2);
+}
+
+.page.room-theme-imperial-red .room-stage__table-frame::before,
+.page.room-theme-imperial-red .room-stage__table-frame::after,
+.page.room-theme-imperial-red .room-stage__table-felt::before,
+.page.room-theme-imperial-red .room-stage__table-felt::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.page.room-theme-imperial-red .room-stage__table-frame::before {
+  inset: 8rpx;
+  border-radius: 88rpx;
+  border: 1rpx solid rgba(255, 231, 157, 0.18);
+  box-shadow:
+    inset 0 0 0 1rpx rgba(130, 64, 26, 0.22),
+    inset 0 18rpx 34rpx rgba(255, 214, 135, 0.06),
+    inset 0 -22rpx 40rpx rgba(62, 8, 11, 0.16);
+}
+
+.page.room-theme-imperial-red .room-stage__table-frame::after {
+  left: 28rpx;
+  right: 28rpx;
+  top: 16rpx;
+  height: 74rpx;
+  border-radius: 999rpx;
+  background: radial-gradient(ellipse at center, rgba(255, 237, 174, 0.16) 0%, rgba(255, 237, 174, 0.05) 44%, rgba(255, 237, 174, 0) 72%);
+  opacity: 0.7;
+}
+
+.page.room-theme-imperial-red .room-stage__table-felt {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(224, 63, 52, 0.42) 0%, rgba(178, 35, 35, 0.3) 38%, rgba(105, 15, 18, 0.36) 100%),
+    linear-gradient(180deg, rgba(190, 39, 41, 0.92) 0%, rgba(148, 24, 28, 0.94) 56%, rgba(102, 15, 20, 0.96) 100%);
+}
+
+.page.room-theme-imperial-red .room-stage__table-felt::before {
+  inset: 0;
+  background:
+    radial-gradient(circle at 8% 7%, rgba(255, 213, 127, 0.09) 0%, rgba(255, 213, 127, 0) 24%),
+    radial-gradient(circle at 92% 7%, rgba(255, 213, 127, 0.08) 0%, rgba(255, 213, 127, 0) 24%),
+    linear-gradient(90deg, rgba(255, 218, 138, 0.035) 0 1rpx, transparent 1rpx 88rpx),
+    linear-gradient(0deg, rgba(255, 218, 138, 0.026) 0 1rpx, transparent 1rpx 88rpx);
+  opacity: 0.74;
+}
+
+.page.room-theme-imperial-red .room-stage__table-felt::after {
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 10% 8%, rgba(245, 199, 112, 0) 0%, rgba(245, 199, 112, 0.08) 60%, rgba(245, 199, 112, 0) 68%),
+    radial-gradient(ellipse at 90% 8%, rgba(245, 199, 112, 0) 0%, rgba(245, 199, 112, 0.07) 58%, rgba(245, 199, 112, 0) 66%),
+    radial-gradient(ellipse at 10% 92%, rgba(245, 199, 112, 0) 0%, rgba(245, 199, 112, 0.06) 58%, rgba(245, 199, 112, 0) 66%),
+    radial-gradient(ellipse at 90% 92%, rgba(245, 199, 112, 0) 0%, rgba(245, 199, 112, 0.06) 58%, rgba(245, 199, 112, 0) 66%);
+  opacity: 0.72;
+}
+
+.page.room-theme-imperial-red .room-stage__table-line {
+  border-width: 1rpx;
+  border-color: rgba(239, 199, 113, 0.46);
+  box-shadow:
+    0 0 0 1rpx rgba(100, 38, 18, 0.12),
+    inset 0 1rpx 0 rgba(255, 239, 178, 0.08);
+}
+
+.page.room-theme-imperial-red .room-stage__watermark-cn,
+.page.room-theme-imperial-red .room-stage__watermark-en {
+  color: rgba(255, 212, 126, 0.1);
+}
+
+.page.room-theme-imperial-red .room-self__turn {
+  color: #f7dda0;
+  text-shadow:
+    0 2rpx 4rpx rgba(92, 31, 14, 0.18),
+    0 0 10rpx rgba(255, 233, 166, 0.14);
+}
+
+.page.room-theme-imperial-red .room-self__dice-cup::before {
+  bottom: -20rpx;
+  width: 252rpx;
+  height: 42rpx;
+  background:
+    radial-gradient(ellipse at center, rgba(126, 64, 22, 0.2) 0%, rgba(126, 64, 22, 0.08) 48%, rgba(126, 64, 22, 0) 76%);
+  filter: blur(2rpx);
+  opacity: 0.68;
+}
+
+.page.room-theme-imperial-red .room-self__dice-glass,
+.page.room-theme-imperial-red .room-self__dice-cup.has-dice .room-self__dice-glass {
+  border-radius: 34rpx 34rpx 42rpx 42rpx;
+  background:
+    radial-gradient(circle at 22% 12%, rgba(255, 255, 226, 0.42) 0%, rgba(255, 255, 226, 0.16) 22%, rgba(255, 255, 226, 0) 42%),
+    radial-gradient(circle at 62% 68%, rgba(28, 102, 66, 0.22) 0%, rgba(28, 102, 66, 0) 32%),
+    linear-gradient(125deg, rgba(221, 238, 180, 0.28) 0%, rgba(121, 177, 108, 0.42) 28%, rgba(67, 135, 88, 0.58) 58%, rgba(32, 92, 66, 0.72) 100%),
+    linear-gradient(180deg, rgba(188, 222, 154, 0.9) 0%, rgba(80, 151, 92, 0.93) 54%, rgba(31, 91, 67, 0.96) 100%);
+  border-top: 2rpx solid rgba(255, 238, 170, 0.88);
+  border-left: 2rpx solid rgba(244, 216, 139, 0.74);
+  border-right: 2rpx solid rgba(169, 118, 46, 0.52);
+  border-bottom: 6rpx solid rgba(210, 161, 70, 0.82);
+  box-shadow:
+    0 18rpx 34rpx rgba(116, 38, 18, 0.22),
+    0 0 0 2rpx rgba(94, 40, 18, 0.2),
+    inset 0 10rpx 18rpx rgba(255, 255, 226, 0.16),
+    inset 9rpx 0 18rpx rgba(255, 237, 170, 0.08),
+    inset -12rpx 0 20rpx rgba(19, 78, 55, 0.18),
+    inset 0 -12rpx 20rpx rgba(22, 74, 54, 0.18);
+}
+
+.page.room-theme-imperial-red .room-self__dice-glass::before {
+  left: 18rpx;
+  right: 18rpx;
+  top: 14rpx;
+  width: auto;
+  height: auto;
+  bottom: 14rpx;
+  border-radius: 26rpx 26rpx 34rpx 34rpx;
+  background:
+    radial-gradient(circle at 0 0, rgba(255, 228, 142, 0.82) 0 8rpx, rgba(255, 228, 142, 0) 9rpx),
+    radial-gradient(circle at 100% 0, rgba(255, 228, 142, 0.78) 0 8rpx, rgba(255, 228, 142, 0) 9rpx),
+    radial-gradient(circle at 0 100%, rgba(255, 228, 142, 0.72) 0 8rpx, rgba(255, 228, 142, 0) 9rpx),
+    radial-gradient(circle at 100% 100%, rgba(255, 228, 142, 0.72) 0 8rpx, rgba(255, 228, 142, 0) 9rpx);
+  opacity: 0.76;
+  transform: none;
+  filter: none;
+}
+
+.page.room-theme-imperial-red .room-self__dice-glass::after {
+  left: 30rpx;
+  right: 30rpx;
+  top: 18rpx;
+  bottom: auto;
+  height: 44rpx;
+  border-radius: 999rpx;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 238, 0.34) 0%, rgba(255, 245, 194, 0.12) 42%, rgba(255, 245, 194, 0) 100%);
+  opacity: 0.68;
+}
+
+.page.room-theme-imperial-red .room-self__dice-rim {
+  top: 10rpx;
+  height: 34rpx;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(255, 249, 219, 0.82) 0%, rgba(244, 216, 139, 0.42) 38%, rgba(84, 150, 86, 0.08) 76%, rgba(84, 150, 86, 0) 100%);
+}
+
+.page.room-theme-imperial-red .room-self__dice-cup.is-covered .room-self__dice-glass {
+  border-radius: 34rpx 34rpx 42rpx 42rpx;
+  background:
+    radial-gradient(circle at 22% 12%, rgba(255, 245, 190, 0.32) 0%, rgba(255, 245, 190, 0.12) 24%, rgba(255, 245, 190, 0) 44%),
+    linear-gradient(125deg, rgba(175, 207, 136, 0.52) 0%, rgba(66, 137, 92, 0.72) 46%, rgba(20, 82, 59, 0.92) 100%),
+    linear-gradient(180deg, rgba(136, 194, 127, 0.72) 0%, rgba(48, 129, 82, 0.86) 52%, rgba(17, 70, 50, 0.96) 100%);
+  box-shadow:
+    0 22rpx 40rpx rgba(116, 38, 18, 0.28),
+    inset 0 14rpx 26rpx rgba(255, 251, 226, 0.14),
+    inset 0 -12rpx 24rpx rgba(17, 70, 50, 0.28),
+    0 0 18rpx rgba(241, 207, 118, 0.12);
+}
+
+.page.room-theme-imperial-red .room-self__dice-gloss {
+  left: 44rpx;
+  top: 24rpx;
+  width: 18rpx;
+  height: 116rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 235, 0.28) 0%, rgba(255, 244, 190, 0.08) 70%, rgba(255, 244, 190, 0) 100%);
+}
+
+/* imperial-red palace hall pass: Forbidden City hall depth and imperial lacquer table */
+.page.room-theme-imperial-red .room-screen__theme-bg {
+  opacity: 1;
+  filter: saturate(1.08) contrast(1.04) brightness(1.02);
+}
+
+.page.room-theme-imperial-red .room-screen__aurora {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255, 215, 128, 0.16) 0%, rgba(255, 215, 128, 0.04) 24%, rgba(255, 215, 128, 0) 44%),
+    radial-gradient(circle at 50% 58%, rgba(212, 54, 44, 0.12) 0%, rgba(212, 54, 44, 0) 38%);
+}
+
+.page.room-theme-imperial-red .room-stage__table-frame {
+  background:
+    linear-gradient(180deg, rgba(103, 22, 18, 0.22) 0%, rgba(46, 7, 8, 0.42) 100%),
+    linear-gradient(180deg, #7E1B1E 0%, #541014 100%);
+  border-color: rgba(250, 215, 126, 0.98);
+  box-shadow:
+    0 34rpx 74rpx rgba(58, 7, 8, 0.44),
+    0 0 0 2rpx rgba(80, 26, 10, 0.46),
+    0 0 34rpx rgba(250, 215, 126, 0.16),
+    inset 0 2rpx 0 rgba(255, 239, 180, 0.34),
+    inset 0 -30rpx 48rpx rgba(45, 5, 7, 0.26);
+}
+
+.page.room-theme-imperial-red .room-stage__table-felt {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(223, 64, 48, 0.28) 0%, rgba(164, 30, 32, 0.16) 38%, rgba(82, 11, 15, 0.22) 100%),
+    linear-gradient(180deg, rgba(183, 36, 37, 0.7) 0%, rgba(118, 18, 23, 0.78) 100%);
+}
+
+.page.room-theme-imperial-red .room-stage__table-theme-image {
+  opacity: 0.98;
+  mix-blend-mode: normal;
+  filter: saturate(1.08) contrast(1.03) brightness(1.02);
+}
+
+.page.room-theme-imperial-red .room-stage__table-frame::before {
+  inset: 7rpx;
+  border-radius: 88rpx;
+  border: 1rpx solid rgba(255, 232, 164, 0.22);
+  box-shadow:
+    inset 0 0 0 1rpx rgba(120, 58, 17, 0.22),
+    inset 0 18rpx 38rpx rgba(255, 224, 144, 0.07),
+    inset 0 -24rpx 44rpx rgba(48, 5, 7, 0.2);
+}
+
+.page.room-theme-imperial-red .room-stage__table-line {
+  border-width: 1rpx;
+  border-color: rgba(255, 224, 144, 0.5);
+  box-shadow:
+    0 0 12rpx rgba(255, 219, 132, 0.08),
+    inset 0 1rpx 0 rgba(255, 244, 196, 0.08);
+}
+
+.page.room-theme-imperial-red .room-stage__watermark-cn,
+.page.room-theme-imperial-red .room-stage__watermark-en {
+  color: rgba(255, 216, 135, 0.075);
+}
+
+.page.room-theme-imperial-red .seat__bubble,
+.page.room-theme-imperial-red .room-self__bubble,
+.page.room-theme-imperial-red .call-phase-panel__count,
+.page.room-theme-imperial-red .call-phase-panel__point-option,
+.page.room-theme-imperial-red .call-phase-panel__value-box,
+.page.room-theme-imperial-red .call-phase-panel__point-box {
+  box-shadow:
+    0 12rpx 24rpx rgba(104, 31, 14, 0.16),
+    0 0 0 1rpx rgba(250, 215, 126, 0.18),
+    inset 0 2rpx 0 rgba(255, 248, 220, 0.2);
+}
+
+.page.room-theme-imperial-red .room-topbar__room-value,
+.page.room-theme-imperial-red .room-topbar__room-label {
+  color: #f7d98c;
+  text-shadow:
+    0 2rpx 0 rgba(78, 24, 10, 0.26),
+    0 0 10rpx rgba(255, 221, 132, 0.18);
+}
+
+/* Final self-cup pass: open is readable, covered is the premium showcase. */
+.page.room-theme-jade-green .room-self__dice-glass,
+.page.room-theme-jade-green .room-self__dice-cup.has-dice .room-self__dice-glass {
+  border-top-left-radius: 93.3rpx;
+  border-top-right-radius: 93.3rpx;
+  border-bottom-left-radius: 37.32rpx;
+  border-bottom-right-radius: 37.32rpx;
+  background:
+    radial-gradient(ellipse at 50% 8%, rgba(231, 250, 216, 0.16) 0%, rgba(231, 250, 216, 0.045) 28%, rgba(231, 250, 216, 0) 52%),
+    linear-gradient(105deg, rgba(218, 202, 146, 0.05) 0%, rgba(70, 143, 108, 0.07) 32%, rgba(18, 75, 58, 0.16) 100%);
+  border-top-color: rgba(200, 168, 105, 0.32);
+  border-left-color: rgba(111, 175, 153, 0.22);
+  border-right-color: rgba(42, 104, 78, 0.16);
+  border-bottom-color: rgba(200, 168, 105, 0.2);
+  box-shadow:
+    0 16rpx 28rpx rgba(0, 0, 0, 0.18),
+    inset 0 8rpx 18rpx rgba(255, 255, 239, 0.045),
+    inset -12rpx 0 18rpx rgba(7, 45, 34, 0.08);
+}
+
+.page.room-theme-jade-green .room-self__dice-cup.is-covered .room-self__dice-glass {
+  background:
+    radial-gradient(ellipse at 50% 7%, rgba(232, 255, 221, 0.26) 0%, rgba(232, 255, 221, 0.08) 24%, rgba(232, 255, 221, 0) 46%),
+    linear-gradient(120deg, rgba(232, 255, 221, 0) 0%, rgba(232, 255, 221, 0) 36%, rgba(232, 255, 221, 0.035) 38%, rgba(232, 255, 221, 0) 42%, rgba(232, 255, 221, 0) 64%, rgba(200, 168, 105, 0.035) 66%, rgba(200, 168, 105, 0) 70%),
+    linear-gradient(105deg, rgba(200, 168, 105, 0.1) 0%, rgba(61, 128, 95, 0.58) 38%, rgba(22, 82, 62, 0.82) 74%, rgba(10, 45, 36, 0.94) 100%),
+    linear-gradient(180deg, rgba(46, 118, 85, 0.82) 0%, rgba(20, 72, 55, 0.92) 52%, rgba(9, 39, 32, 0.98) 100%);
+  border-top-color: rgba(200, 168, 105, 0.62);
+  border-left-color: rgba(111, 175, 153, 0.48);
+  border-right-color: rgba(30, 92, 69, 0.42);
+  border-bottom-color: rgba(200, 168, 105, 0.42);
+  box-shadow:
+    0 30rpx 50rpx rgba(0, 0, 0, 0.46),
+    inset 0 16rpx 30rpx rgba(255, 255, 239, 0.08),
+    inset -14rpx 0 24rpx rgba(7, 45, 34, 0.22),
+    inset 0 -14rpx 26rpx rgba(0, 0, 0, 0.32);
+}
+
+.page.room-theme-ruby-red .room-self__dice-glass,
+.page.room-theme-ruby-red .room-self__dice-cup.has-dice .room-self__dice-glass {
+  border-top-left-radius: 93.3rpx;
+  border-top-right-radius: 93.3rpx;
+  border-bottom-left-radius: 37.32rpx;
+  border-bottom-right-radius: 37.32rpx;
+  background:
+    radial-gradient(ellipse at 50% 8%, rgba(255, 238, 190, 0.18) 0%, rgba(255, 238, 190, 0.05) 28%, rgba(255, 238, 190, 0) 52%),
+    linear-gradient(100deg, rgba(255, 221, 138, 0.055) 0%, rgba(25, 22, 21, 0.07) 30%, rgba(5, 5, 7, 0.16) 100%);
+  border-top-color: rgba(245, 216, 143, 0.4);
+  border-left-color: rgba(198, 155, 73, 0.2);
+  border-right-color: rgba(96, 70, 22, 0.16);
+  border-bottom-color: rgba(198, 155, 73, 0.26);
+  box-shadow:
+    0 16rpx 30rpx rgba(0, 0, 0, 0.2),
+    inset 0 8rpx 18rpx rgba(255, 236, 194, 0.04),
+    inset -12rpx 0 18rpx rgba(0, 0, 0, 0.1);
+}
+
+.page.room-theme-ruby-red .room-self__dice-cup.is-covered .room-self__dice-glass {
+  background:
+    radial-gradient(ellipse at 50% 7%, rgba(255, 235, 170, 0.36) 0%, rgba(255, 235, 170, 0.12) 20%, rgba(255, 235, 170, 0) 42%),
+    radial-gradient(circle at 76% 34%, rgba(145, 30, 24, 0.22) 0%, rgba(145, 30, 24, 0.06) 28%, rgba(145, 30, 24, 0) 52%),
+    linear-gradient(118deg, rgba(245, 216, 143, 0) 0%, rgba(245, 216, 143, 0) 34%, rgba(245, 216, 143, 0.055) 36%, rgba(245, 216, 143, 0) 39%, rgba(245, 216, 143, 0) 63%, rgba(245, 216, 143, 0.04) 65%, rgba(245, 216, 143, 0) 68%),
+    linear-gradient(100deg, rgba(246, 196, 93, 0.18) 0%, rgba(39, 31, 21, 0.72) 28%, rgba(9, 9, 11, 0.96) 68%, rgba(0, 0, 0, 0.99) 100%),
+    linear-gradient(180deg, rgba(54, 45, 30, 0.92) 0%, rgba(14, 13, 14, 0.98) 42%, rgba(2, 2, 4, 1) 100%);
+  border-top-color: rgba(255, 226, 157, 0.9);
+  border-left-color: rgba(220, 173, 82, 0.62);
+  border-right-color: rgba(88, 62, 18, 0.58);
+  border-bottom-color: rgba(198, 155, 73, 0.82);
+  box-shadow:
+    0 34rpx 56rpx rgba(0, 0, 0, 0.56),
+    inset 0 18rpx 32rpx rgba(255, 236, 194, 0.12),
+    inset -18rpx 0 28rpx rgba(0, 0, 0, 0.42),
+    inset 0 -18rpx 34rpx rgba(0, 0, 0, 0.58);
+}
+
+.page.room-theme-imperial-red .room-self__dice-glass,
+.page.room-theme-imperial-red .room-self__dice-cup.has-dice .room-self__dice-glass {
+  border-top-left-radius: 93.3rpx;
+  border-top-right-radius: 93.3rpx;
+  border-bottom-left-radius: 37.32rpx;
+  border-bottom-right-radius: 37.32rpx;
+  background:
+    radial-gradient(ellipse at 50% 8%, rgba(255, 236, 174, 0.2) 0%, rgba(255, 236, 174, 0.055) 28%, rgba(255, 236, 174, 0) 52%),
+    linear-gradient(104deg, rgba(255, 224, 146, 0.07) 0%, rgba(129, 28, 28, 0.07) 38%, rgba(72, 16, 18, 0.14) 76%, rgba(28, 9, 12, 0.18) 100%);
+  border-top: 1.15rpx solid rgba(255, 238, 170, 0.44);
+  border-left: 1.15rpx solid rgba(239, 205, 126, 0.24);
+  border-right: 1.15rpx solid rgba(132, 46, 38, 0.16);
+  border-bottom: 4rpx solid rgba(223, 188, 103, 0.26);
+  box-shadow:
+    0 16rpx 30rpx rgba(117, 49, 22, 0.14),
+    inset 0 8rpx 18rpx rgba(255, 238, 170, 0.05),
+    inset -12rpx 0 20rpx rgba(84, 18, 18, 0.08);
+}
+
+.page.room-theme-imperial-red .room-self__dice-cup.is-covered .room-self__dice-glass {
+  background:
+    radial-gradient(ellipse at 50% 7%, rgba(255, 238, 174, 0.42) 0%, rgba(255, 238, 174, 0.14) 22%, rgba(255, 238, 174, 0) 44%),
+    radial-gradient(circle at 28% 24%, rgba(255, 246, 218, 0.16) 0%, rgba(255, 246, 218, 0.05) 20%, rgba(255, 246, 218, 0) 44%),
+    radial-gradient(circle at 76% 42%, rgba(42, 143, 94, 0.16) 0%, rgba(42, 143, 94, 0.04) 24%, rgba(42, 143, 94, 0) 50%),
+    linear-gradient(124deg, rgba(255, 232, 153, 0) 0%, rgba(255, 232, 153, 0) 32%, rgba(255, 232, 153, 0.06) 34%, rgba(255, 232, 153, 0) 37%, rgba(255, 232, 153, 0) 61%, rgba(255, 232, 153, 0.045) 63%, rgba(255, 232, 153, 0) 66%),
+    linear-gradient(104deg, rgba(244, 206, 106, 0.22) 0%, rgba(160, 40, 37, 0.7) 30%, rgba(100, 20, 23, 0.92) 70%, rgba(40, 10, 13, 0.98) 100%),
+    linear-gradient(180deg, rgba(202, 52, 48, 0.9) 0%, rgba(125, 24, 26, 0.96) 50%, rgba(54, 12, 15, 1) 100%);
+  border-top: 1.15rpx solid rgba(255, 232, 153, 0.9);
+  border-left: 1.15rpx solid rgba(244, 216, 139, 0.62);
+  border-right: 1.15rpx solid rgba(112, 34, 28, 0.54);
+  border-bottom: 6rpx solid rgba(223, 188, 103, 0.72);
+  box-shadow:
+    0 32rpx 56rpx rgba(95, 20, 18, 0.42),
+    inset 0 18rpx 32rpx rgba(255, 238, 170, 0.14),
+    inset -15rpx 0 26rpx rgba(70, 10, 12, 0.28),
+    inset 0 -16rpx 30rpx rgba(40, 10, 13, 0.32);
+}
+
+.page.room-theme-jade-green .room-self__dice-rim,
+.page.room-theme-ruby-red .room-self__dice-rim,
+.page.room-theme-imperial-red .room-self__dice-rim {
+  top: 16.06rpx;
+  height: 32rpx;
+}
+
+.page.room-theme-jade-green .room-self__dice-cup.is-covered .room-self__dice-rim,
+.page.room-theme-ruby-red .room-self__dice-cup.is-covered .room-self__dice-rim,
+.page.room-theme-imperial-red .room-self__dice-cup.is-covered .room-self__dice-rim {
+  top: 14rpx;
+  height: 52rpx;
+}
+
+.page.room-theme-jade-green .room-self__dice-glass::before,
+.page.room-theme-ruby-red .room-self__dice-glass::before,
+.page.room-theme-imperial-red .room-self__dice-glass::before,
+.page.room-theme-jade-green .room-self__dice-glass::after,
+.page.room-theme-ruby-red .room-self__dice-glass::after,
+.page.room-theme-imperial-red .room-self__dice-glass::after {
+  opacity: 0.22;
+}
+
+.page.room-theme-jade-green .room-self__dice-cup.is-covered .room-self__dice-glass::before,
+.page.room-theme-ruby-red .room-self__dice-cup.is-covered .room-self__dice-glass::before,
+.page.room-theme-imperial-red .room-self__dice-cup.is-covered .room-self__dice-glass::before {
+  opacity: 0.62;
+}
+
+.page.room-theme-jade-green .room-self__dice-cup.is-covered .room-self__dice-glass::after,
+.page.room-theme-ruby-red .room-self__dice-cup.is-covered .room-self__dice-glass::after,
+.page.room-theme-imperial-red .room-self__dice-cup.is-covered .room-self__dice-glass::after {
+  opacity: 0.86;
+}
+
+/* Final room surface pass: panels and buttons follow the same material language as cups, dice, and table. */
+.page.room-theme-jade-green .room-mask {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(202, 180, 122, 0.1) 0%, rgba(202, 180, 122, 0) 36%),
+    linear-gradient(180deg, rgba(8, 31, 25, 0.54) 0%, rgba(6, 18, 16, 0.9) 100%);
+}
+
+.page.room-theme-jade-green .call-phase-overlay {
+  background:
+    linear-gradient(180deg, rgba(8, 28, 24, 0) 0%, rgba(8, 28, 24, 0.16) 30%, rgba(7, 21, 18, 0.86) 58%, rgba(5, 15, 14, 0.98) 100%);
+}
+
+.page.room-theme-jade-green .room-sheet,
+.page.room-theme-jade-green .room-sheet--settings,
+.page.room-theme-jade-green .room-sheet--seating,
+.page.room-theme-jade-green .room-sheet--settlement,
+.page.room-theme-jade-green .room-sheet--legal,
+.page.room-theme-jade-green .call-phase-panel,
+.page.room-theme-jade-green .room-topbar-menu-popover {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(219, 201, 142, 0.16) 0%, rgba(219, 201, 142, 0.035) 36%, rgba(219, 201, 142, 0) 60%),
+    radial-gradient(circle at 100% 100%, rgba(90, 171, 136, 0.13) 0%, rgba(90, 171, 136, 0) 58%),
+    linear-gradient(180deg, rgba(18, 51, 42, 0.985) 0%, rgba(8, 27, 24, 0.995) 100%);
+  border-color: rgba(200, 168, 105, 0.24);
+  box-shadow:
+    0 30rpx 82rpx rgba(0, 0, 0, 0.5),
+    inset 0 1rpx 0 rgba(250, 244, 216, 0.12),
+    inset 0 -24rpx 46rpx rgba(2, 20, 17, 0.28),
+    0 0 0 1rpx rgba(111, 175, 153, 0.06);
+}
+
+.page.room-theme-jade-green .room-sheet__glow--settlement-a,
+.page.room-theme-jade-green .room-sheet__glow--settings-a,
+.page.room-theme-jade-green .room-sheet__glow--legal-a {
+  background: radial-gradient(circle, rgba(200, 168, 105, 0.32) 0%, rgba(200, 168, 105, 0) 72%);
+}
+
+.page.room-theme-jade-green .room-sheet__glow--settlement-b,
+.page.room-theme-jade-green .room-sheet__glow--settings-b,
+.page.room-theme-jade-green .room-sheet__glow--legal-b {
+  background: radial-gradient(circle, rgba(111, 175, 153, 0.24) 0%, rgba(111, 175, 153, 0) 74%);
+}
+
+.page.room-theme-jade-green .sheet-head--settlement,
+.page.room-theme-jade-green .sheet-head--settings,
+.page.room-theme-jade-green .sheet-head--legal {
+  border-bottom-color: rgba(200, 168, 105, 0.14);
+}
+
+.page.room-theme-jade-green .sheet-eyebrow,
+.page.room-theme-jade-green .entry-sheet__eyebrow,
+.page.room-theme-jade-green .settlement-summary-card__eyebrow,
+.page.room-theme-jade-green .seat-direction-panel__label,
+.page.room-theme-jade-green .history-card__round,
+.page.room-theme-jade-green .call-phase-panel__count.is-active .call-phase-panel__count-text,
+.page.room-theme-jade-green .call-phase-panel__value-text {
+  color: #dfc486;
+}
+
+.page.room-theme-jade-green .sheet-title,
+.page.room-theme-jade-green .settings-hero__title,
+.page.room-theme-jade-green .seat-hero__title,
+.page.room-theme-jade-green .settlement-summary,
+.page.room-theme-jade-green .history-card__summary,
+.page.room-theme-jade-green .settlement-name,
+.page.room-theme-jade-green .rules-card__title,
+.page.room-theme-jade-green .room-topbar-menu-popover__text,
+.page.room-theme-jade-green .history-card__matrix-value {
+  color: #f4ecd3;
+}
+
+.page.room-theme-jade-green .room-topbar-menu-popover__item,
+.page.room-theme-jade-green .settings-hero,
+.page.room-theme-jade-green .seat-hero,
+.page.room-theme-jade-green .seat-direction-panel,
+.page.room-theme-jade-green .seat-grid-panel,
+.page.room-theme-jade-green .settings-row,
+.page.room-theme-jade-green .settlement-summary-card,
+.page.room-theme-jade-green .settlement-row,
+.page.room-theme-jade-green .settlement-matrix,
+.page.room-theme-jade-green .history-card,
+.page.room-theme-jade-green .history-card__matrix-row,
+.page.room-theme-jade-green .history-tab,
+.page.room-theme-jade-green .rules-card,
+.page.room-theme-jade-green .seat-direction__item,
+.page.room-theme-jade-green .seat-grid__item,
+.page.room-theme-jade-green .call-phase-panel__count,
+.page.room-theme-jade-green .call-phase-panel__point-option,
+.page.room-theme-jade-green .sheet-close--pill,
+.page.room-theme-jade-green .room-topbar__shortcut,
+.page.room-theme-jade-green .room-topbar__shortcut--ghost,
+.page.room-theme-jade-green .room-stage__rule-entry,
+.page.room-theme-jade-green .room-stage__waiting-entry,
+.page.room-theme-jade-green .room-stage__observer-card {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(244, 234, 184, 0.105) 0%, rgba(244, 234, 184, 0) 44%),
+    linear-gradient(180deg, rgba(255, 255, 242, 0.055) 0%, rgba(255, 255, 242, 0.017) 100%);
+  border-color: rgba(200, 168, 105, 0.18);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 239, 0.07),
+    0 12rpx 26rpx rgba(4, 26, 22, 0.18);
+}
+
+.page.room-theme-jade-green .settings-hero__desc,
+.page.room-theme-jade-green .seat-hero__desc,
+.page.room-theme-jade-green .settings-row__hint,
+.page.room-theme-jade-green .rules-card__item,
+.page.room-theme-jade-green .call-phase-panel__summary-text,
+.page.room-theme-jade-green .settlement-count-note,
+.page.room-theme-jade-green .history-card__summary,
+.page.room-theme-jade-green .history-card__matrix-label,
+.page.room-theme-jade-green .history-tab__text,
+.page.room-theme-jade-green .room-stage__observer-status {
+  color: rgba(224, 235, 219, 0.74);
+}
+
+.page.room-theme-jade-green .seat-direction__item,
+.page.room-theme-jade-green .seat-grid__item,
+.page.room-theme-jade-green .call-phase-panel__count,
+.page.room-theme-jade-green .call-phase-panel__point-option {
+  color: rgba(228, 238, 224, 0.76);
+}
+
+.page.room-theme-jade-green .seat-direction__item.is-active,
+.page.room-theme-jade-green .seat-grid__item.is-selected,
+.page.room-theme-jade-green .seat-grid__item.hint-selected,
+.page.room-theme-jade-green .call-phase-panel__count.is-active,
+.page.room-theme-jade-green .call-phase-panel__point-option.is-active,
+.page.room-theme-jade-green .call-phase-panel__value-box,
+.page.room-theme-jade-green .call-phase-panel__point-box,
+.page.room-theme-jade-green .history-tab.is-active,
+.page.room-theme-jade-green .settings-row__badge.is-on,
+.page.room-theme-jade-green .entry-consent__checkbox.is-checked {
+  background:
+    radial-gradient(circle at 28% 0%, rgba(246, 232, 178, 0.22) 0%, rgba(246, 232, 178, 0) 42%),
+    linear-gradient(180deg, rgba(63, 88, 55, 0.92) 0%, rgba(25, 57, 45, 0.94) 100%);
+  border-color: rgba(200, 168, 105, 0.52);
+  color: #dfc486;
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 239, 0.11),
+    0 0 0 1rpx rgba(111, 175, 153, 0.12),
+    0 14rpx 30rpx rgba(21, 82, 62, 0.16);
+}
+
+.page.room-theme-jade-green .seat-grid__item.hint-move-in,
+.page.room-theme-jade-green .seat-grid__item.hint-move-out,
+.page.room-theme-jade-green .seat-grid__item.hint-swap {
+  border-color: rgba(111, 200, 166, 0.42);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 239, 0.08),
+    0 12rpx 24rpx rgba(111, 200, 166, 0.1);
+}
+
+.page.room-theme-jade-green .call-phase-panel__unit {
+  color: rgba(224, 235, 219, 0.72);
+}
+
+.page.room-theme-jade-green .call-phase-panel__btn--primary,
+.page.room-theme-jade-green .dock-btn--gold,
+.page.room-theme-jade-green .dock-btn--settlement {
+  background:
+    radial-gradient(circle at 32% 14%, rgba(255, 251, 220, 0.42) 0%, rgba(255, 251, 220, 0) 36%),
+    linear-gradient(180deg, #ead079 0%, #cfa046 52%, #8f6928 100%);
+  border-color: rgba(244, 220, 144, 0.78);
+  box-shadow:
+    0 16rpx 34rpx rgba(138, 102, 28, 0.26),
+    inset 0 2rpx 0 rgba(255, 255, 239, 0.22),
+    inset 0 -9rpx 18rpx rgba(78, 51, 16, 0.18);
+}
+
+.page.room-theme-jade-green .dock-btn--ghost {
+  background:
+    radial-gradient(circle at 30% 12%, rgba(231, 255, 238, 0.16) 0%, rgba(231, 255, 238, 0) 40%),
+    linear-gradient(180deg, #285b48 0%, #17392f 100%);
+  border-color: rgba(111, 175, 153, 0.34);
+}
+
+.page.room-theme-jade-green .call-phase-panel__btn-text,
+.page.room-theme-jade-green .dock-btn--gold .dock-btn__label,
+.page.room-theme-jade-green .dock-btn--settlement .dock-btn__label {
+  color: #1e1708;
+  text-shadow: 0 1rpx 0 rgba(255, 246, 205, 0.26);
+}
+
+.page.room-theme-jade-green .dock-btn--ghost .dock-btn__label,
+.page.room-theme-jade-green .sheet-close--pill,
+.page.room-theme-jade-green .room-topbar__shortcut-text,
+.page.room-theme-jade-green .room-stage__rule-entry-text,
+.page.room-theme-jade-green .room-stage__waiting-entry-text {
+  color: #ead8aa;
+  text-shadow: 0 1rpx 0 rgba(3, 20, 17, 0.36);
+}
+
+.page.room-theme-jade-green .room-fab:not(.room-fab--ruby-slice):not(.room-fab--ruby-open-slice):not(.room-fab--imperial-slice):not(.room-fab--glacier-slice) {
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 238, 178, 0.76) 0%, rgba(255, 238, 178, 0) 34%),
+    linear-gradient(180deg, #e9c662 0%, #c99a39 54%, #8b6726 100%);
+  border-color: rgba(255, 233, 166, 0.88);
+}
+
+.page.room-theme-jade-green .room-fab-secondary--left,
+.page.room-theme-jade-green .room-fab-secondary--right,
+.page.room-theme-jade-green .room-fab-secondary.room-fab-secondary--jade-open {
+  background:
+    radial-gradient(circle at 28% 12%, rgba(231, 255, 238, 0.16) 0%, rgba(231, 255, 238, 0) 40%),
+    linear-gradient(180deg, #285b48 0%, #17392f 100%);
+  border-color: rgba(200, 168, 105, 0.72);
+}
+
+.page.room-theme-jade-green .room-topbar-menu-popover__item--danger {
+  background:
+    radial-gradient(circle at 22% 0%, rgba(255, 197, 168, 0.12) 0%, rgba(255, 197, 168, 0) 46%),
+    linear-gradient(180deg, rgba(83, 43, 42, 0.5) 0%, rgba(32, 26, 28, 0.44) 100%);
+  border-color: rgba(234, 140, 118, 0.2);
+}
+
+.page.room-theme-ruby-red .room-mask {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(237, 201, 119, 0.14) 0%, rgba(237, 201, 119, 0) 36%),
+    linear-gradient(180deg, rgba(8, 6, 6, 0.62) 0%, rgba(3, 3, 4, 0.92) 100%);
+}
+
+.page.room-theme-ruby-red .call-phase-overlay {
+  background:
+    linear-gradient(180deg, rgba(6, 5, 5, 0) 0%, rgba(6, 5, 5, 0.18) 30%, rgba(5, 4, 5, 0.88) 58%, rgba(2, 2, 3, 0.985) 100%);
+}
+
+.page.room-theme-ruby-red .room-sheet,
+.page.room-theme-ruby-red .room-sheet--settings,
+.page.room-theme-ruby-red .room-sheet--seating,
+.page.room-theme-ruby-red .room-sheet--settlement,
+.page.room-theme-ruby-red .room-sheet--legal,
+.page.room-theme-ruby-red .call-phase-panel,
+.page.room-theme-ruby-red .room-topbar-menu-popover {
+  background:
+    radial-gradient(circle at 13% 0%, rgba(245, 216, 143, 0.18) 0%, rgba(245, 216, 143, 0.04) 36%, rgba(245, 216, 143, 0) 60%),
+    radial-gradient(circle at 100% 100%, rgba(140, 30, 25, 0.18) 0%, rgba(140, 30, 25, 0) 58%),
+    linear-gradient(180deg, rgba(25, 21, 18, 0.992) 0%, rgba(6, 6, 8, 0.998) 100%);
+  border-color: rgba(245, 216, 143, 0.28);
+  box-shadow:
+    0 32rpx 88rpx rgba(0, 0, 0, 0.62),
+    inset 0 1rpx 0 rgba(255, 236, 194, 0.13),
+    inset 0 -30rpx 52rpx rgba(0, 0, 0, 0.28),
+    0 0 0 1rpx rgba(145, 30, 24, 0.08);
+}
+
+.page.room-theme-ruby-red .room-sheet__glow--settlement-a,
+.page.room-theme-ruby-red .room-sheet__glow--settings-a,
+.page.room-theme-ruby-red .room-sheet__glow--legal-a {
+  background: radial-gradient(circle, rgba(245, 216, 143, 0.38) 0%, rgba(245, 216, 143, 0) 72%);
+}
+
+.page.room-theme-ruby-red .room-sheet__glow--settlement-b,
+.page.room-theme-ruby-red .room-sheet__glow--settings-b,
+.page.room-theme-ruby-red .room-sheet__glow--legal-b {
+  background: radial-gradient(circle, rgba(145, 30, 24, 0.22) 0%, rgba(145, 30, 24, 0) 74%);
+}
+
+.page.room-theme-ruby-red .sheet-head--settlement,
+.page.room-theme-ruby-red .sheet-head--settings,
+.page.room-theme-ruby-red .sheet-head--legal {
+  border-bottom-color: rgba(245, 216, 143, 0.14);
+}
+
+.page.room-theme-ruby-red .sheet-eyebrow,
+.page.room-theme-ruby-red .entry-sheet__eyebrow,
+.page.room-theme-ruby-red .settlement-summary-card__eyebrow,
+.page.room-theme-ruby-red .seat-direction-panel__label,
+.page.room-theme-ruby-red .history-card__round,
+.page.room-theme-ruby-red .call-phase-panel__count.is-active .call-phase-panel__count-text,
+.page.room-theme-ruby-red .call-phase-panel__value-text {
+  color: #f0d188;
+}
+
+.page.room-theme-ruby-red .sheet-title,
+.page.room-theme-ruby-red .settings-hero__title,
+.page.room-theme-ruby-red .seat-hero__title,
+.page.room-theme-ruby-red .settlement-summary,
+.page.room-theme-ruby-red .history-card__summary,
+.page.room-theme-ruby-red .settlement-name,
+.page.room-theme-ruby-red .rules-card__title,
+.page.room-theme-ruby-red .room-topbar-menu-popover__text,
+.page.room-theme-ruby-red .history-card__matrix-value {
+  color: #fff2d7;
+}
+
+.page.room-theme-ruby-red .room-topbar-menu-popover__item,
+.page.room-theme-ruby-red .settings-hero,
+.page.room-theme-ruby-red .seat-hero,
+.page.room-theme-ruby-red .seat-direction-panel,
+.page.room-theme-ruby-red .seat-grid-panel,
+.page.room-theme-ruby-red .settings-row,
+.page.room-theme-ruby-red .settlement-summary-card,
+.page.room-theme-ruby-red .settlement-row,
+.page.room-theme-ruby-red .settlement-matrix,
+.page.room-theme-ruby-red .history-card,
+.page.room-theme-ruby-red .history-card__matrix-row,
+.page.room-theme-ruby-red .history-tab,
+.page.room-theme-ruby-red .rules-card,
+.page.room-theme-ruby-red .seat-direction__item,
+.page.room-theme-ruby-red .seat-grid__item,
+.page.room-theme-ruby-red .call-phase-panel__count,
+.page.room-theme-ruby-red .call-phase-panel__point-option,
+.page.room-theme-ruby-red .sheet-close--pill,
+.page.room-theme-ruby-red .room-topbar__shortcut,
+.page.room-theme-ruby-red .room-topbar__shortcut--ghost,
+.page.room-theme-ruby-red .room-stage__rule-entry,
+.page.room-theme-ruby-red .room-stage__waiting-entry,
+.page.room-theme-ruby-red .room-stage__observer-card {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 230, 170, 0.105) 0%, rgba(255, 230, 170, 0) 44%),
+    linear-gradient(180deg, rgba(255, 245, 222, 0.052) 0%, rgba(255, 245, 222, 0.014) 100%);
+  border-color: rgba(245, 216, 143, 0.19);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 236, 194, 0.07),
+    0 14rpx 28rpx rgba(0, 0, 0, 0.24);
+}
+
+.page.room-theme-ruby-red .settings-hero__desc,
+.page.room-theme-ruby-red .seat-hero__desc,
+.page.room-theme-ruby-red .settings-row__hint,
+.page.room-theme-ruby-red .rules-card__item,
+.page.room-theme-ruby-red .call-phase-panel__summary-text,
+.page.room-theme-ruby-red .settlement-count-note,
+.page.room-theme-ruby-red .history-card__summary,
+.page.room-theme-ruby-red .history-card__matrix-label,
+.page.room-theme-ruby-red .history-tab__text,
+.page.room-theme-ruby-red .room-stage__observer-status {
+  color: rgba(233, 224, 208, 0.74);
+}
+
+.page.room-theme-ruby-red .seat-direction__item,
+.page.room-theme-ruby-red .seat-grid__item,
+.page.room-theme-ruby-red .call-phase-panel__count,
+.page.room-theme-ruby-red .call-phase-panel__point-option {
+  color: rgba(232, 224, 211, 0.76);
+}
+
+.page.room-theme-ruby-red .seat-direction__item.is-active,
+.page.room-theme-ruby-red .seat-grid__item.is-selected,
+.page.room-theme-ruby-red .seat-grid__item.hint-selected,
+.page.room-theme-ruby-red .call-phase-panel__count.is-active,
+.page.room-theme-ruby-red .call-phase-panel__point-option.is-active,
+.page.room-theme-ruby-red .call-phase-panel__value-box,
+.page.room-theme-ruby-red .call-phase-panel__point-box,
+.page.room-theme-ruby-red .history-tab.is-active,
+.page.room-theme-ruby-red .settings-row__badge.is-on,
+.page.room-theme-ruby-red .entry-consent__checkbox.is-checked {
+  background:
+    radial-gradient(circle at 28% 0%, rgba(255, 235, 170, 0.24) 0%, rgba(255, 235, 170, 0) 42%),
+    linear-gradient(180deg, rgba(71, 53, 28, 0.95) 0%, rgba(18, 14, 12, 0.97) 100%);
+  border-color: rgba(245, 216, 143, 0.58);
+  color: #f0d188;
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 236, 194, 0.12),
+    0 0 0 1rpx rgba(145, 30, 24, 0.16),
+    0 16rpx 34rpx rgba(0, 0, 0, 0.24);
+}
+
+.page.room-theme-ruby-red .seat-grid__item.hint-move-in,
+.page.room-theme-ruby-red .seat-grid__item.hint-move-out,
+.page.room-theme-ruby-red .seat-grid__item.hint-swap {
+  border-color: rgba(190, 58, 48, 0.46);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 236, 194, 0.08),
+    0 12rpx 24rpx rgba(145, 30, 24, 0.16);
+}
+
+.page.room-theme-ruby-red .call-phase-panel__unit {
+  color: rgba(233, 224, 208, 0.72);
+}
+
+.page.room-theme-ruby-red .call-phase-panel__btn--primary,
+.page.room-theme-ruby-red .dock-btn--gold,
+.page.room-theme-ruby-red .dock-btn--settlement {
+  background:
+    radial-gradient(circle at 32% 14%, rgba(255, 244, 203, 0.45) 0%, rgba(255, 244, 203, 0) 36%),
+    linear-gradient(180deg, #f4d58b 0%, #d09b42 50%, #775318 100%);
+  border-color: rgba(255, 229, 158, 0.82);
+  box-shadow:
+    0 17rpx 38rpx rgba(0, 0, 0, 0.32),
+    0 0 24rpx rgba(237, 201, 119, 0.16),
+    inset 0 2rpx 0 rgba(255, 236, 194, 0.24),
+    inset 0 -10rpx 18rpx rgba(54, 34, 8, 0.18);
+}
+
+.page.room-theme-ruby-red .dock-btn--ghost {
+  background:
+    radial-gradient(circle at 30% 12%, rgba(255, 230, 170, 0.12) 0%, rgba(255, 230, 170, 0) 40%),
+    linear-gradient(180deg, #27201a 0%, #0b0a0b 100%);
+  border-color: rgba(245, 216, 143, 0.28);
+}
+
+.page.room-theme-ruby-red .call-phase-panel__btn-text,
+.page.room-theme-ruby-red .dock-btn--gold .dock-btn__label,
+.page.room-theme-ruby-red .dock-btn--settlement .dock-btn__label {
+  color: #221506;
+  text-shadow: 0 1rpx 0 rgba(255, 240, 190, 0.3);
+}
+
+.page.room-theme-ruby-red .dock-btn--ghost .dock-btn__label,
+.page.room-theme-ruby-red .sheet-close--pill,
+.page.room-theme-ruby-red .room-topbar__shortcut-text,
+.page.room-theme-ruby-red .room-stage__rule-entry-text,
+.page.room-theme-ruby-red .room-stage__waiting-entry-text {
+  color: #f0d188;
+  text-shadow: 0 1rpx 0 rgba(0, 0, 0, 0.46);
+}
+
+.page.room-theme-ruby-red .room-fab:not(.room-fab--ruby-slice):not(.room-fab--ruby-open-slice):not(.room-fab--imperial-slice):not(.room-fab--glacier-slice) {
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 235, 180, 0.42) 0%, rgba(255, 235, 180, 0) 36%),
+    linear-gradient(180deg, #33291c 0%, #121012 52%, #050506 100%);
+  border-color: rgba(245, 216, 143, 0.64);
+  box-shadow:
+    0 17rpx 36rpx rgba(0, 0, 0, 0.46),
+    0 0 26rpx rgba(237, 201, 119, 0.12),
+    inset 0 2rpx 0 rgba(255, 236, 194, 0.12);
+}
+
+.page.room-theme-ruby-red .room-fab-secondary--left:not(.room-fab-secondary--ruby-slice),
+.page.room-theme-ruby-red .room-fab-secondary--right:not(.room-fab-secondary--ruby-slice),
+.page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-open-slice:not(.room-fab-secondary--ruby-slice) {
+  background:
+    radial-gradient(circle at 28% 12%, rgba(255, 230, 170, 0.12) 0%, rgba(255, 230, 170, 0) 40%),
+    linear-gradient(180deg, #27201a 0%, #0b0a0b 100%);
+  border-color: rgba(245, 216, 143, 0.46);
+}
+
+.page.room-theme-ruby-red .room-topbar-menu-popover__item--danger {
+  background:
+    radial-gradient(circle at 22% 0%, rgba(210, 62, 52, 0.15) 0%, rgba(210, 62, 52, 0) 46%),
+    linear-gradient(180deg, rgba(83, 29, 27, 0.58) 0%, rgba(23, 17, 18, 0.48) 100%);
+  border-color: rgba(210, 62, 52, 0.26);
+}
+
+.page.room-theme-imperial-red .room-mask {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255, 222, 150, 0.16) 0%, rgba(255, 222, 150, 0) 36%),
+    linear-gradient(180deg, rgba(78, 12, 14, 0.54) 0%, rgba(27, 6, 9, 0.9) 100%);
+}
+
+.page.room-theme-imperial-red .call-phase-overlay {
+  background:
+    linear-gradient(180deg, rgba(65, 12, 15, 0) 0%, rgba(65, 12, 15, 0.18) 30%, rgba(48, 8, 12, 0.86) 58%, rgba(23, 5, 8, 0.985) 100%);
+}
+
+.page.room-theme-imperial-red .room-sheet,
+.page.room-theme-imperial-red .room-sheet--settings,
+.page.room-theme-imperial-red .room-sheet--seating,
+.page.room-theme-imperial-red .room-sheet--settlement,
+.page.room-theme-imperial-red .room-sheet--legal,
+.page.room-theme-imperial-red .call-phase-panel,
+.page.room-theme-imperial-red .room-topbar-menu-popover {
+  background:
+    radial-gradient(circle at 13% 0%, rgba(255, 232, 153, 0.2) 0%, rgba(255, 232, 153, 0.045) 36%, rgba(255, 232, 153, 0) 60%),
+    radial-gradient(circle at 100% 100%, rgba(42, 143, 94, 0.15) 0%, rgba(42, 143, 94, 0) 58%),
+    linear-gradient(180deg, rgba(92, 22, 24, 0.99) 0%, rgba(32, 9, 13, 0.998) 100%);
+  border-color: rgba(248, 221, 177, 0.3);
+  box-shadow:
+    0 32rpx 88rpx rgba(74, 10, 12, 0.54),
+    inset 0 1rpx 0 rgba(255, 238, 174, 0.14),
+    inset 0 -30rpx 52rpx rgba(45, 5, 7, 0.28),
+    0 0 0 1rpx rgba(42, 143, 94, 0.07);
+}
+
+.page.room-theme-imperial-red .room-sheet__glow--settlement-a,
+.page.room-theme-imperial-red .room-sheet__glow--settings-a,
+.page.room-theme-imperial-red .room-sheet__glow--legal-a {
+  background: radial-gradient(circle, rgba(255, 232, 153, 0.38) 0%, rgba(255, 232, 153, 0) 72%);
+}
+
+.page.room-theme-imperial-red .room-sheet__glow--settlement-b,
+.page.room-theme-imperial-red .room-sheet__glow--settings-b,
+.page.room-theme-imperial-red .room-sheet__glow--legal-b {
+  background: radial-gradient(circle, rgba(42, 143, 94, 0.22) 0%, rgba(42, 143, 94, 0) 74%);
+}
+
+.page.room-theme-imperial-red .sheet-head--settlement,
+.page.room-theme-imperial-red .sheet-head--settings,
+.page.room-theme-imperial-red .sheet-head--legal {
+  border-bottom-color: rgba(248, 221, 177, 0.15);
+}
+
+.page.room-theme-imperial-red .sheet-eyebrow,
+.page.room-theme-imperial-red .entry-sheet__eyebrow,
+.page.room-theme-imperial-red .settlement-summary-card__eyebrow,
+.page.room-theme-imperial-red .seat-direction-panel__label,
+.page.room-theme-imperial-red .history-card__round,
+.page.room-theme-imperial-red .call-phase-panel__count.is-active .call-phase-panel__count-text,
+.page.room-theme-imperial-red .call-phase-panel__value-text {
+  color: #ffe49f;
+}
+
+.page.room-theme-imperial-red .sheet-title,
+.page.room-theme-imperial-red .settings-hero__title,
+.page.room-theme-imperial-red .seat-hero__title,
+.page.room-theme-imperial-red .settlement-summary,
+.page.room-theme-imperial-red .history-card__summary,
+.page.room-theme-imperial-red .settlement-name,
+.page.room-theme-imperial-red .rules-card__title,
+.page.room-theme-imperial-red .room-topbar-menu-popover__text,
+.page.room-theme-imperial-red .history-card__matrix-value {
+  color: #fff0d4;
+}
+
+.page.room-theme-imperial-red .room-topbar-menu-popover__item,
+.page.room-theme-imperial-red .settings-hero,
+.page.room-theme-imperial-red .seat-hero,
+.page.room-theme-imperial-red .seat-direction-panel,
+.page.room-theme-imperial-red .seat-grid-panel,
+.page.room-theme-imperial-red .settings-row,
+.page.room-theme-imperial-red .settlement-summary-card,
+.page.room-theme-imperial-red .settlement-row,
+.page.room-theme-imperial-red .settlement-matrix,
+.page.room-theme-imperial-red .history-card,
+.page.room-theme-imperial-red .history-card__matrix-row,
+.page.room-theme-imperial-red .history-tab,
+.page.room-theme-imperial-red .rules-card,
+.page.room-theme-imperial-red .seat-direction__item,
+.page.room-theme-imperial-red .seat-grid__item,
+.page.room-theme-imperial-red .call-phase-panel__count,
+.page.room-theme-imperial-red .call-phase-panel__point-option,
+.page.room-theme-imperial-red .sheet-close--pill,
+.page.room-theme-imperial-red .room-topbar__shortcut,
+.page.room-theme-imperial-red .room-topbar__shortcut--ghost,
+.page.room-theme-imperial-red .room-stage__rule-entry,
+.page.room-theme-imperial-red .room-stage__waiting-entry,
+.page.room-theme-imperial-red .room-stage__observer-card {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255, 238, 185, 0.125) 0%, rgba(255, 238, 185, 0) 44%),
+    linear-gradient(180deg, rgba(255, 245, 222, 0.056) 0%, rgba(255, 245, 222, 0.016) 100%);
+  border-color: rgba(248, 221, 177, 0.2);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 238, 174, 0.08),
+    0 14rpx 28rpx rgba(74, 10, 12, 0.2);
+}
+
+.page.room-theme-imperial-red .settings-hero__desc,
+.page.room-theme-imperial-red .seat-hero__desc,
+.page.room-theme-imperial-red .settings-row__hint,
+.page.room-theme-imperial-red .rules-card__item,
+.page.room-theme-imperial-red .call-phase-panel__summary-text,
+.page.room-theme-imperial-red .settlement-count-note,
+.page.room-theme-imperial-red .history-card__summary,
+.page.room-theme-imperial-red .history-card__matrix-label,
+.page.room-theme-imperial-red .history-tab__text,
+.page.room-theme-imperial-red .room-stage__observer-status {
+  color: rgba(246, 224, 205, 0.76);
+}
+
+.page.room-theme-imperial-red .seat-direction__item,
+.page.room-theme-imperial-red .seat-grid__item,
+.page.room-theme-imperial-red .call-phase-panel__count,
+.page.room-theme-imperial-red .call-phase-panel__point-option {
+  color: rgba(246, 224, 205, 0.78);
+}
+
+.page.room-theme-imperial-red .seat-direction__item.is-active,
+.page.room-theme-imperial-red .seat-grid__item.is-selected,
+.page.room-theme-imperial-red .seat-grid__item.hint-selected,
+.page.room-theme-imperial-red .call-phase-panel__count.is-active,
+.page.room-theme-imperial-red .call-phase-panel__point-option.is-active,
+.page.room-theme-imperial-red .call-phase-panel__value-box,
+.page.room-theme-imperial-red .call-phase-panel__point-box,
+.page.room-theme-imperial-red .history-tab.is-active,
+.page.room-theme-imperial-red .settings-row__badge.is-on,
+.page.room-theme-imperial-red .entry-consent__checkbox.is-checked {
+  background:
+    radial-gradient(circle at 26% 0%, rgba(255, 246, 206, 0.25) 0%, rgba(255, 246, 206, 0) 42%),
+    linear-gradient(135deg, rgba(139, 156, 88, 0.8) 0%, rgba(72, 105, 65, 0.9) 46%, rgba(88, 29, 25, 0.96) 100%);
+  border-color: rgba(255, 228, 159, 0.6);
+  color: #ffe49f;
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 238, 174, 0.13),
+    0 0 0 1rpx rgba(42, 143, 94, 0.14),
+    0 16rpx 34rpx rgba(95, 20, 18, 0.22);
+}
+
+.page.room-theme-imperial-red .seat-grid__item.hint-move-in,
+.page.room-theme-imperial-red .seat-grid__item.hint-move-out,
+.page.room-theme-imperial-red .seat-grid__item.hint-swap {
+  border-color: rgba(100, 185, 115, 0.44);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 238, 174, 0.08),
+    0 12rpx 24rpx rgba(42, 143, 94, 0.12);
+}
+
+.page.room-theme-imperial-red .call-phase-panel__unit {
+  color: rgba(246, 224, 205, 0.74);
+}
+
+.page.room-theme-imperial-red .call-phase-panel__btn--primary,
+.page.room-theme-imperial-red .dock-btn--gold,
+.page.room-theme-imperial-red .dock-btn--settlement {
+  background:
+    radial-gradient(circle at 32% 14%, rgba(255, 250, 220, 0.48) 0%, rgba(255, 250, 220, 0) 36%),
+    linear-gradient(180deg, #ffe29b 0%, #d8a743 50%, #985b22 100%);
+  border-color: rgba(255, 232, 153, 0.86);
+  box-shadow:
+    0 17rpx 38rpx rgba(95, 20, 18, 0.28),
+    0 0 24rpx rgba(255, 216, 128, 0.14),
+    inset 0 2rpx 0 rgba(255, 250, 220, 0.25),
+    inset 0 -10rpx 18rpx rgba(82, 41, 10, 0.18);
+}
+
+.page.room-theme-imperial-red .dock-btn--ghost {
+  background:
+    radial-gradient(circle at 30% 12%, rgba(255, 238, 185, 0.14) 0%, rgba(255, 238, 185, 0) 40%),
+    linear-gradient(180deg, #6a2224 0%, #361015 100%);
+  border-color: rgba(248, 221, 177, 0.32);
+}
+
+.page.room-theme-imperial-red .call-phase-panel__btn-text,
+.page.room-theme-imperial-red .dock-btn--gold .dock-btn__label,
+.page.room-theme-imperial-red .dock-btn--settlement .dock-btn__label {
+  color: #321506;
+  text-shadow: 0 1rpx 0 rgba(255, 240, 190, 0.32);
+}
+
+.page.room-theme-imperial-red .dock-btn--ghost .dock-btn__label,
+.page.room-theme-imperial-red .sheet-close--pill,
+.page.room-theme-imperial-red .room-topbar__shortcut-text,
+.page.room-theme-imperial-red .room-stage__rule-entry-text,
+.page.room-theme-imperial-red .room-stage__waiting-entry-text {
+  color: #ffe1a3;
+  text-shadow: 0 1rpx 0 rgba(68, 15, 11, 0.42);
+}
+
+.page.room-theme-imperial-red .room-fab:not(.room-fab--ruby-slice):not(.room-fab--ruby-open-slice):not(.room-fab--imperial-slice):not(.room-fab--glacier-slice) {
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 244, 196, 0.48) 0%, rgba(255, 244, 196, 0) 36%),
+    linear-gradient(180deg, #d24a42 0%, #9a2527 56%, #5a1217 100%);
+  border-color: rgba(255, 232, 153, 0.74);
+  box-shadow:
+    0 17rpx 36rpx rgba(95, 20, 18, 0.34),
+    0 0 22rpx rgba(255, 216, 128, 0.12),
+    inset 0 2rpx 0 rgba(255, 238, 174, 0.14);
+}
+
+.page.room-theme-imperial-red .room-fab-secondary--left:not(.room-fab-secondary--imperial-slice),
+.page.room-theme-imperial-red .room-fab-secondary--right:not(.room-fab-secondary--imperial-slice) {
+  background:
+    radial-gradient(circle at 28% 12%, rgba(255, 238, 185, 0.14) 0%, rgba(255, 238, 185, 0) 40%),
+    linear-gradient(180deg, #6a2224 0%, #361015 100%);
+  border-color: rgba(248, 221, 177, 0.48);
+}
+
+.page.room-theme-imperial-red .room-topbar-menu-popover__item--danger {
+  background:
+    radial-gradient(circle at 22% 0%, rgba(255, 126, 99, 0.14) 0%, rgba(255, 126, 99, 0) 46%),
+    linear-gradient(180deg, rgba(102, 30, 29, 0.58) 0%, rgba(38, 15, 18, 0.48) 100%);
+  border-color: rgba(255, 166, 136, 0.24);
+}
+
+.page.room-theme-glacier-blue .room-mask {
+  background:
+    radial-gradient(circle at 50% 8%, rgba(226, 253, 255, 0.22) 0%, rgba(226, 253, 255, 0) 36%),
+    linear-gradient(180deg, rgba(5, 23, 42, 0.52) 0%, rgba(5, 15, 30, 0.88) 100%);
+}
+
+.page.room-theme-glacier-blue .call-phase-overlay {
+  background:
+    linear-gradient(180deg, rgba(8, 25, 42, 0) 0%, rgba(8, 25, 42, 0.18) 30%, rgba(9, 31, 52, 0.84) 58%, rgba(5, 16, 30, 0.97) 100%);
+}
+
+.page.room-theme-glacier-blue .room-sheet,
+.page.room-theme-glacier-blue .room-sheet--settings,
+.page.room-theme-glacier-blue .room-sheet--seating,
+.page.room-theme-glacier-blue .room-sheet--settlement,
+.page.room-theme-glacier-blue .room-sheet--legal,
+.page.room-theme-glacier-blue .call-phase-panel,
+.page.room-theme-glacier-blue .room-topbar-menu-popover {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(240, 255, 255, 0.23) 0%, rgba(240, 255, 255, 0.05) 36%, rgba(240, 255, 255, 0) 60%),
+    radial-gradient(circle at 100% 100%, rgba(245, 132, 98, 0.14) 0%, rgba(245, 132, 98, 0) 58%),
+    linear-gradient(180deg, rgba(25, 67, 96, 0.982) 0%, rgba(6, 24, 43, 0.994) 100%);
+  border-color: rgba(216, 250, 255, 0.34);
+  box-shadow:
+    0 32rpx 86rpx rgba(4, 15, 28, 0.52),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.16),
+    inset 0 -28rpx 50rpx rgba(4, 15, 28, 0.24),
+    0 0 0 1rpx rgba(245, 132, 98, 0.05);
+  backdrop-filter: blur(16rpx);
+}
+
+.page.room-theme-glacier-blue .room-sheet__glow--settlement-a,
+.page.room-theme-glacier-blue .room-sheet__glow--settings-a,
+.page.room-theme-glacier-blue .room-sheet__glow--legal-a {
+  background: radial-gradient(circle, rgba(203, 248, 255, 0.34) 0%, rgba(203, 248, 255, 0) 72%);
+}
+
+.page.room-theme-glacier-blue .room-sheet__glow--settlement-b,
+.page.room-theme-glacier-blue .room-sheet__glow--settings-b,
+.page.room-theme-glacier-blue .room-sheet__glow--legal-b {
+  background: radial-gradient(circle, rgba(245, 132, 98, 0.18) 0%, rgba(245, 132, 98, 0) 74%);
+}
+
+.page.room-theme-glacier-blue .sheet-head--settlement,
+.page.room-theme-glacier-blue .sheet-head--settings,
+.page.room-theme-glacier-blue .sheet-head--legal {
+  border-bottom-color: rgba(216, 250, 255, 0.16);
+}
+
+.page.room-theme-glacier-blue .sheet-eyebrow,
+.page.room-theme-glacier-blue .entry-sheet__eyebrow,
+.page.room-theme-glacier-blue .settlement-summary-card__eyebrow,
+.page.room-theme-glacier-blue .seat-direction-panel__label,
+.page.room-theme-glacier-blue .history-card__round,
+.page.room-theme-glacier-blue .call-phase-panel__count.is-active .call-phase-panel__count-text,
+.page.room-theme-glacier-blue .call-phase-panel__value-text {
+  color: #d7fbff;
+}
+
+.page.room-theme-glacier-blue .sheet-title,
+.page.room-theme-glacier-blue .settings-hero__title,
+.page.room-theme-glacier-blue .seat-hero__title,
+.page.room-theme-glacier-blue .settlement-summary,
+.page.room-theme-glacier-blue .history-card__summary,
+.page.room-theme-glacier-blue .settlement-name,
+.page.room-theme-glacier-blue .rules-card__title,
+.page.room-theme-glacier-blue .room-topbar-menu-popover__text,
+.page.room-theme-glacier-blue .history-card__matrix-value {
+  color: #f7ffff;
+}
+
+.page.room-theme-glacier-blue .room-topbar-menu-popover__item,
+.page.room-theme-glacier-blue .settings-hero,
+.page.room-theme-glacier-blue .seat-hero,
+.page.room-theme-glacier-blue .seat-direction-panel,
+.page.room-theme-glacier-blue .seat-grid-panel,
+.page.room-theme-glacier-blue .settings-row,
+.page.room-theme-glacier-blue .settlement-summary-card,
+.page.room-theme-glacier-blue .settlement-row,
+.page.room-theme-glacier-blue .settlement-matrix,
+.page.room-theme-glacier-blue .history-card,
+.page.room-theme-glacier-blue .history-card__matrix-row,
+.page.room-theme-glacier-blue .history-tab,
+.page.room-theme-glacier-blue .rules-card,
+.page.room-theme-glacier-blue .seat-direction__item,
+.page.room-theme-glacier-blue .seat-grid__item,
+.page.room-theme-glacier-blue .call-phase-panel__count,
+.page.room-theme-glacier-blue .call-phase-panel__point-option,
+.page.room-theme-glacier-blue .sheet-close--pill,
+.page.room-theme-glacier-blue .room-topbar__shortcut,
+.page.room-theme-glacier-blue .room-topbar__shortcut--ghost,
+.page.room-theme-glacier-blue .room-stage__rule-entry,
+.page.room-theme-glacier-blue .room-stage__waiting-entry,
+.page.room-theme-glacier-blue .room-stage__observer-card {
+  background:
+    radial-gradient(circle at 22% 0%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 44%),
+    linear-gradient(180deg, rgba(235, 255, 255, 0.098) 0%, rgba(235, 255, 255, 0.024) 100%);
+  border-color: rgba(216, 250, 255, 0.24);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.13),
+    0 14rpx 28rpx rgba(5, 23, 42, 0.18);
+}
+
+.page.room-theme-glacier-blue .settings-hero__desc,
+.page.room-theme-glacier-blue .seat-hero__desc,
+.page.room-theme-glacier-blue .settings-row__hint,
+.page.room-theme-glacier-blue .rules-card__item,
+.page.room-theme-glacier-blue .call-phase-panel__summary-text,
+.page.room-theme-glacier-blue .settlement-count-note,
+.page.room-theme-glacier-blue .history-card__summary,
+.page.room-theme-glacier-blue .history-card__matrix-label,
+.page.room-theme-glacier-blue .history-tab__text,
+.page.room-theme-glacier-blue .room-stage__observer-status {
+  color: rgba(229, 250, 255, 0.78);
+}
+
+.page.room-theme-glacier-blue .seat-direction__item,
+.page.room-theme-glacier-blue .seat-grid__item,
+.page.room-theme-glacier-blue .call-phase-panel__count,
+.page.room-theme-glacier-blue .call-phase-panel__point-option {
+  color: rgba(229, 250, 255, 0.8);
+}
+
+.page.room-theme-glacier-blue .seat-direction__item.is-active,
+.page.room-theme-glacier-blue .seat-grid__item.is-selected,
+.page.room-theme-glacier-blue .seat-grid__item.hint-selected,
+.page.room-theme-glacier-blue .call-phase-panel__count.is-active,
+.page.room-theme-glacier-blue .call-phase-panel__point-option.is-active,
+.page.room-theme-glacier-blue .call-phase-panel__value-box,
+.page.room-theme-glacier-blue .call-phase-panel__point-box,
+.page.room-theme-glacier-blue .history-tab.is-active,
+.page.room-theme-glacier-blue .settings-row__badge.is-on,
+.page.room-theme-glacier-blue .entry-consent__checkbox.is-checked {
+  background:
+    radial-gradient(circle at 28% 0%, rgba(255, 255, 255, 0.26) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, rgba(214, 252, 255, 0.32) 0%, rgba(85, 158, 196, 0.76) 46%, rgba(28, 78, 115, 0.96) 100%);
+  border-color: rgba(203, 248, 255, 0.62);
+  color: #d7fbff;
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.16),
+    0 0 0 1rpx rgba(245, 132, 98, 0.08),
+    0 16rpx 34rpx rgba(7, 38, 66, 0.2);
+}
+
+.page.room-theme-glacier-blue .seat-grid__item.hint-move-in,
+.page.room-theme-glacier-blue .seat-grid__item.hint-move-out,
+.page.room-theme-glacier-blue .seat-grid__item.hint-swap {
+  border-color: rgba(255, 178, 150, 0.48);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.12),
+    0 12rpx 24rpx rgba(245, 132, 98, 0.14);
+}
+
+.page.room-theme-glacier-blue .call-phase-panel__unit {
+  color: rgba(229, 250, 255, 0.76);
+}
+
+.page.room-theme-glacier-blue .call-phase-panel__btn--primary,
+.page.room-theme-glacier-blue .dock-btn--gold,
+.page.room-theme-glacier-blue .dock-btn--settlement {
+  background:
+    radial-gradient(circle at 26% 12%, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(180deg, rgba(255, 225, 214, 0.98) 0%, rgba(232, 111, 78, 0.96) 54%, rgba(126, 54, 78, 0.98) 100%);
+  border-color: rgba(255, 227, 216, 0.68);
+  box-shadow:
+    0 16rpx 34rpx rgba(216, 92, 62, 0.22),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.3),
+    inset 0 -10rpx 18rpx rgba(78, 36, 58, 0.16);
+}
+
+.page.room-theme-glacier-blue .dock-btn--ghost {
+  background:
+    radial-gradient(circle at 30% 12%, rgba(235, 255, 255, 0.22) 0%, rgba(235, 255, 255, 0) 40%),
+    linear-gradient(180deg, #357195 0%, #163f63 100%);
+  border-color: rgba(216, 250, 255, 0.38);
+}
+
+.page.room-theme-glacier-blue .call-phase-panel__btn-text,
+.page.room-theme-glacier-blue .dock-btn--gold .dock-btn__label,
+.page.room-theme-glacier-blue .dock-btn--settlement .dock-btn__label {
+  color: #51213a;
+  text-shadow: 0 1rpx 0 rgba(255, 240, 232, 0.3);
+}
+
+.page.room-theme-glacier-blue .dock-btn--ghost .dock-btn__label,
+.page.room-theme-glacier-blue .sheet-close--pill,
+.page.room-theme-glacier-blue .room-topbar__shortcut-text,
+.page.room-theme-glacier-blue .room-stage__rule-entry-text,
+.page.room-theme-glacier-blue .room-stage__waiting-entry-text {
+  color: #eaffff;
+  text-shadow: 0 1rpx 0 rgba(12, 54, 82, 0.4);
+}
+
+.page.room-theme-glacier-blue .room-fab:not(.room-fab--ruby-slice):not(.room-fab--ruby-open-slice):not(.room-fab--imperial-slice):not(.room-fab--glacier-slice) {
+  background:
+    radial-gradient(circle at 26% 12%, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(180deg, #d9fbff 0%, #73c1df 48%, #22577e 100%);
+  border-color: rgba(239, 255, 255, 0.86);
+  box-shadow:
+    0 16rpx 30rpx rgba(10, 48, 78, 0.26),
+    0 0 0 2rpx rgba(208, 250, 255, 0.16),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.46);
+}
+
+.page.room-theme-glacier-blue .room-fab-secondary--left:not(.room-fab-secondary--glacier-slice),
+.page.room-theme-glacier-blue .room-fab-secondary--right:not(.room-fab-secondary--glacier-slice) {
+  background:
+    radial-gradient(circle at 25% 12%, rgba(255, 255, 255, 0.52) 0%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(180deg, rgba(230, 254, 255, 0.98) 0%, rgba(101, 180, 209, 0.98) 52%, rgba(28, 75, 112, 0.98) 100%);
+  border-color: rgba(239, 255, 255, 0.78);
+}
+
+.page.room-theme-glacier-blue .room-topbar-menu-popover__item--danger {
+  background:
+    radial-gradient(circle at 22% 0%, rgba(255, 168, 142, 0.16) 0%, rgba(255, 168, 142, 0) 46%),
+    linear-gradient(180deg, rgba(111, 52, 78, 0.54) 0%, rgba(26, 35, 58, 0.48) 100%);
+  border-color: rgba(255, 184, 156, 0.24);
+}
+
+.page.room-theme-jade-green .call-phase-panel__count.is-disabled,
+.page.room-theme-jade-green .call-phase-panel__point-option.is-disabled,
+.page.room-theme-jade-green .call-phase-panel__point-box.is-disabled,
+.page.room-theme-jade-green .call-phase-panel__btn.is-disabled,
+.page.room-theme-jade-green .dock-btn--disabled,
+.page.room-theme-ruby-red .call-phase-panel__count.is-disabled,
+.page.room-theme-ruby-red .call-phase-panel__point-option.is-disabled,
+.page.room-theme-ruby-red .call-phase-panel__point-box.is-disabled,
+.page.room-theme-ruby-red .call-phase-panel__btn.is-disabled,
+.page.room-theme-ruby-red .dock-btn--disabled,
+.page.room-theme-imperial-red .call-phase-panel__count.is-disabled,
+.page.room-theme-imperial-red .call-phase-panel__point-option.is-disabled,
+.page.room-theme-imperial-red .call-phase-panel__point-box.is-disabled,
+.page.room-theme-imperial-red .call-phase-panel__btn.is-disabled,
+.page.room-theme-imperial-red .dock-btn--disabled,
+.page.room-theme-glacier-blue .call-phase-panel__count.is-disabled,
+.page.room-theme-glacier-blue .call-phase-panel__point-option.is-disabled,
+.page.room-theme-glacier-blue .call-phase-panel__point-box.is-disabled,
+.page.room-theme-glacier-blue .call-phase-panel__btn.is-disabled,
+.page.room-theme-glacier-blue .dock-btn--disabled {
+  opacity: 0.44;
+  filter: grayscale(0.12) saturate(0.74);
 }
