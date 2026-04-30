@@ -40,7 +40,7 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxml, /<text class="block-title">房间主题<\/text>/);
   assert.match(wxml, /class="theme-picker"/);
   assert.match(wxml, /class="theme-card theme-card--\{\{item\.id\}\} \{\{themePreviewId === item\.id \? 'is-active' : ''\}\}"/);
-  assert.match(wxml, /class="theme-card__check">已选<\/view>/);
+  assert.match(wxml, /class="theme-card__check \{\{themePreviewId === item\.id \? 'is-active' : ''\}\}">\{\{item\.badge\}\}<\/view>/);
   assert.match(wxml, /class="theme-card__preview"/);
   assert.match(wxml, /class="theme-card__title">\{\{item\.label\}\}<\/text>/);
   assert.match(wxml, /class="toggle-card__signal \{\{wildcardOneEnabled \? 'is-on' : 'is-off'\}\}"/);
@@ -70,8 +70,13 @@ test("create room page keeps only the fixed 8-seat room summary plus live config
   assert.match(wxss, /\.theme-picker\s*\{/);
   assert.match(wxss, /\.theme-picker\s*\{[\s\S]*display:\s*flex[\s\S]*align-items:\s*stretch/);
   assert.match(wxss, /\.theme-card\s*\{/);
-  assert.match(wxss, /\.theme-card\s*\{[\s\S]*flex:\s*1 1 0[\s\S]*flex-direction:\s*column/);
+  assert.match(wxss, /\.theme-card\s*\{[\s\S]*flex:\s*1 1 0[\s\S]*height:\s*198rpx[\s\S]*flex-direction:\s*column/);
+  assert.match(wxss, /\.theme-card\s*\{[\s\S]*justify-content:\s*flex-end/);
+  assert.match(wxss, /\.theme-card\.is-active\s*\{[\s\S]*transform:\s*translateY\(-4rpx\) scale\(1\.015\)/);
   assert.match(wxss, /\.theme-card__check\s*\{/);
+  assert.match(wxss, /\.theme-card__check\.is-active\s*\{/);
+  assert.match(wxss, /\.theme-card__preview\s*\{[\s\S]*position:\s*absolute[\s\S]*inset:\s*10rpx/);
+  assert.match(wxss, /\.theme-card__meta\s*\{[\s\S]*z-index:\s*1/);
   assert.match(wxss, /\.theme-card--jade-green \.theme-card__preview\s*\{/);
   assert.match(wxss, /\.theme-card--ruby-red \.theme-card__preview\s*\{/);
   assert.match(wxss, /\.theme-card--imperial-red \.theme-card__preview\s*\{/);

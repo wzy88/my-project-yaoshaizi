@@ -147,6 +147,7 @@ function syncLobbyTabBar(page) {
 Page({
   data: {
     timeText: "10:21",
+    homeLogoAsset: "/assets/home-logo.jpg",
     floatDiceAssets: LOBBY_FLOAT_DICE_ASSETS,
     createButtonDieAsset: LOBBY_CREATE_DIE_ASSET,
     devtoolsMode: false,

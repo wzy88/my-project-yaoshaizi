@@ -1,4 +1,4 @@
-<view class="page room-screen room-phase-{{phase}} {{roomThemeClass}} {{devtoolsMode ? 'is-perf-lite' : ''}}">
+<view class="page room-screen room-phase-{{phase}} {{roomThemeClass}} {{roomThemeReady ? 'is-theme-ready' : 'is-theme-pending'}} {{devtoolsMode ? 'is-perf-lite' : ''}}">
   <image wx:if="{{roomThemeAssets.pageBackgroundSrc}}" class="room-screen__theme-bg" src="{{roomThemeAssets.pageBackgroundSrc}}" mode="aspectFill"></image>
   <view class="room-screen__aurora"></view>
   <image class="room-screen__grain" src="/assets/figma-room-v2/4aa13b7c-1fb7-4d86-b2ae-da70ffc61b8f.svg" mode="aspectFill"></image>
@@ -176,7 +176,7 @@
           >
             <image wx:if="{{primaryActionText === '叫牌' && roomThemeAssets.primaryButtonSrc}}" class="room-fab__skin" src="{{roomThemeAssets.primaryButtonSrc}}" mode="scaleToFill"></image>
             <image class="room-fab__icon-image" src="{{roomThemeAssets.primaryIconSrc}}" mode="aspectFit"></image>
-            <text wx:if="{{phase === 'rolling' && canPrimaryAction && !selfHasDice}}" class="room-fab__label">摇一摇</text>
+            <text wx:if="{{phase === 'rolling' && canPrimaryAction && !selfHasDice}}" class="room-fab__label">摇骰</text>
             <text wx:else class="room-fab__label {{primaryActionText && primaryActionText.length > 3 ? 'is-compact' : ''}}">{{primaryActionText}}</text>
           </view>
         </view>
@@ -235,10 +235,10 @@
           <block wx:for="{{callCountOptions}}" wx:key="value">
             <view
               id="call-count-option-{{item.value}}"
-              class="call-phase-panel__count {{item.value === callCount ? 'is-active' : ''}} {{item.isTail ? 'is-tail' : ''}} {{callForcedOpen ? 'is-disabled' : ''}}"
+              class="call-phase-panel__count {{item.value === callCount ? 'is-active' : ''}} {{item.isTail ? 'is-tail' : ''}} {{callForcedOpen || item.disabled ? 'is-disabled' : ''}}"
               data-value="{{item.value}}"
               bindtap="onSelectCallCountOption"
-              hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__count--pressing'}}"
+              hover-class="{{callForcedOpen || item.disabled ? 'none' : 'call-phase-panel__count--pressing'}}"
               hover-start-time="0"
               hover-stay-time="60"
             >
@@ -253,10 +253,10 @@
         <view wx:if="{{callSelectorMode === 'point'}}" class="call-phase-panel__points">
           <block wx:for="{{callPointOptionItems}}" wx:key="value">
             <view
-              class="call-phase-panel__point-option {{item.value === callPoint ? 'is-active' : ''}} {{callForcedOpen ? 'is-disabled' : ''}}"
+              class="call-phase-panel__point-option {{item.value === callPoint ? 'is-active' : ''}} {{callForcedOpen || item.disabled ? 'is-disabled' : ''}}"
               data-value="{{item.value}}"
               bindtap="onSelectCallPointOption"
-              hover-class="{{callForcedOpen ? 'none' : 'call-phase-panel__point-option--pressing'}}"
+              hover-class="{{callForcedOpen || item.disabled ? 'none' : 'call-phase-panel__point-option--pressing'}}"
               hover-start-time="0"
               hover-stay-time="60"
             >
@@ -295,13 +295,13 @@
               </block>
             </view>
             <view
-              class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen || !callCountTouched || !callPointTouched ? 'is-disabled' : ''}}"
+              class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen || !callCountTouched || !callPointTouched || !callSelectionLegal ? 'is-disabled' : ''}}"
               bindtap="makeCallWithInput"
-              hover-class="{{callForcedOpen || !callCountTouched || !callPointTouched ? 'none' : 'call-phase-panel__btn--pressing'}}"
+              hover-class="{{callForcedOpen || !callCountTouched || !callPointTouched || !callSelectionLegal ? 'none' : 'call-phase-panel__btn--pressing'}}"
               hover-start-time="0"
               hover-stay-time="60"
             >
-              <text class="call-phase-panel__btn-text">{{callForcedOpen ? '请开牌' : (callCountTouched && callPointTouched ? ('叫 ' + callCount + ' 个 ' + callPoint) : '继续选择')}}</text>
+              <text class="call-phase-panel__btn-text">{{callForcedOpen ? '请开牌' : (!callSelectionLegal ? '需大于上手' : (callCountTouched && callPointTouched ? ('叫 ' + callCount + ' 个 ' + callPoint) : '继续选择'))}}</text>
             </view>
           </view>
         </view>

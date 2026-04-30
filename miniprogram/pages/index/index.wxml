@@ -1,53 +1,58 @@
 <view class="entry-page {{devtoolsMode ? 'is-perf-lite' : ''}}">
-  <view class="entry-page__aurora entry-page__aurora--top"></view>
-  <view class="entry-page__aurora entry-page__aurora--bottom"></view>
-  <view class="entry-page__stars">
-    <view class="entry-page__star entry-page__star--1"></view>
-    <view class="entry-page__star entry-page__star--2"></view>
-    <view class="entry-page__star entry-page__star--3"></view>
-    <view class="entry-page__star entry-page__star--4"></view>
-  </view>
+  <view class="entry-bg entry-bg--ink"></view>
+  <view class="entry-bg entry-bg--beam entry-bg--beam-a"></view>
+  <view class="entry-bg entry-bg--beam entry-bg--beam-b"></view>
+  <view class="entry-bg entry-bg--glow entry-bg--glow-a"></view>
+  <view class="entry-bg entry-bg--glow entry-bg--glow-b"></view>
 
   <view class="status-row">
     <text class="status-time">{{timeText}}</text>
   </view>
 
-  <view class="hero-card">
-    <view class="logo-row">
-      <image class="dice dice--left" src="{{heroDiceAssets[0]}}" mode="aspectFit"></image>
-      <image class="dice dice--center" src="{{heroDiceAssets[1]}}" mode="aspectFit"></image>
-      <image class="dice dice--right" src="{{heroDiceAssets[2]}}" mode="aspectFit"></image>
+  <view class="home-shell">
+    <view class="brand-hero">
+      <image class="brand-hero__logo" src="{{homeLogoAsset}}" mode="aspectFit"></image>
     </view>
 
-    <text class="title">摇骰子</text>
-    <text class="sub">在线组局 · 直接开玩</text>
-    <text class="hero-tag">{{profileTitle || '准备开局'}}</text>
-    <text class="desc">先看看大厅、最近对局和开局入口，确认想玩之后再登录创建房间或加入房间。</text>
-
-    <view class="benefit-list">
-      <view class="benefit-item">
-        <text class="benefit-dot"></text>
-        <text class="benefit-text">先浏览大厅和玩法入口，不强制一进来就登录</text>
+    <view class="create-card">
+      <view class="create-card__shine create-card__shine--left"></view>
+      <view class="create-card__shine create-card__shine--right"></view>
+      <view class="create-card__copy">
+        <text class="create-card__title">创建房间</text>
+        <text class="create-card__sub">邀请好友，一起满上！</text>
+        <button class="create-card__btn" bindtap="goLobby">
+          <image class="create-card__btn-icon" src="{{heroDiceAssets[0]}}" mode="aspectFit"></image>
+          <text class="create-card__btn-text">创建新房间</text>
+        </button>
       </view>
-      <view class="benefit-item">
-        <text class="benefit-dot"></text>
-        <text class="benefit-text">需要创建房间或加入房间时，再自主选择微信登录</text>
-      </view>
-      <view class="benefit-item">
-        <text class="benefit-dot"></text>
-        <text class="benefit-text">房间支持一键分享给好友或群，方便线下一起玩</text>
+      <view class="dice-cup" aria-hidden="true">
+        <view class="dice-cup__body">
+          <view class="dice-cup__ring dice-cup__ring--top"></view>
+          <view class="dice-cup__mark"></view>
+          <view class="dice-cup__ring dice-cup__ring--bottom"></view>
+        </view>
+        <view class="dice-cup__light"></view>
+        <image class="card-die card-die--one" src="{{heroDiceAssets[0]}}" mode="aspectFit"></image>
+        <image class="card-die card-die--two" src="{{heroDiceAssets[1]}}" mode="aspectFit"></image>
+        <image class="card-die card-die--three" src="{{heroDiceAssets[2]}}" mode="aspectFit"></image>
       </view>
     </view>
-  </view>
 
-  <view class="action-panel">
-    <button class="wx-btn" bindtap="goLobby">
-      <text class="wx-btn__label">先进入大厅</text>
-    </button>
-    <text class="login-hint">{{loginHintText}}</text>
-    <view wx:if="{{connectionHintText}}" class="connection-panel">
-      <text class="connection-panel__text">{{connectionHintText}}</text>
+    <view class="quick-row">
+      <button class="quick-btn quick-btn--primary" bindtap="goLobby">
+        <text class="quick-btn__text">进入大厅</text>
+      </button>
+      <button class="quick-btn quick-btn--ghost" bindtap="goLobby">
+        <text class="quick-btn__text">加入房间</text>
+      </button>
     </view>
-    <text class="agreement">进入前可先查看 <text class="link" bindtap="openTermsPage">用户协议</text> 与 <text class="link" bindtap="openPrivacyPage">隐私政策</text></text>
+
+    <view class="hint-panel">
+      <text class="login-hint">{{loginHintText}}</text>
+      <view wx:if="{{connectionHintText}}" class="connection-panel">
+        <text class="connection-panel__text">{{connectionHintText}}</text>
+      </view>
+      <text class="agreement">进入前可先查看 <text class="link" bindtap="openTermsPage">用户协议</text> 与 <text class="link" bindtap="openPrivacyPage">隐私政策</text></text>
+    </view>
   </view>
 </view>

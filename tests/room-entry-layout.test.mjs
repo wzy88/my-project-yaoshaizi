@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const roomWxmlPath = path.join(process.cwd(), "miniprogram/pages/room/room.wxml");
+const roomJsPath = path.join(process.cwd(), "miniprogram/pages/room/room.js");
 const roomWxssPath = path.join(process.cwd(), "miniprogram/pages/room/room.wxss");
 const roomJsonPath = path.join(process.cwd(), "miniprogram/pages/room/room.json");
 
@@ -22,6 +23,17 @@ test("room page disables page-level scrolling while leaving internal panels to m
   assert.match(wxss, /\.page\s*\{[\s\S]*min-height:\s*100%/);
   assert.match(wxss, /\.page\.room-screen\s+\.room-shell\s*\{[\s\S]*height:\s*100%/);
   assert.match(wxss, /\.page\.room-screen\s+\.room-shell\s*\{[\s\S]*overflow:\s*hidden/);
+});
+
+test("room page hides room visuals until the initial theme is resolved", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  const js = fs.readFileSync(roomJsPath, "utf8");
+
+  assert.match(wxml, /roomThemeReady \? 'is-theme-ready' : 'is-theme-pending'/);
+  assert.match(wxss, /\.page\.room-screen\.is-theme-pending \.room-shell,[\s\S]*opacity:\s*0/);
+  assert.match(js, /resolveInitialRoomThemeForLoad\(options, cached\)/);
+  assert.match(js, /roomThemeReady:\s*true,[\s\S]*buildRoomThemePresentation\(initialRoomThemeId\)/);
 });
 
 test("room shell keeps the room id centered while moving invite outside and rules onto the table", () => {
@@ -76,6 +88,9 @@ test("room shell supports experimental room theme classes without changing the d
   assert.match(script, /buildRoomShareEntryUrl\(roomId,\s*themeId\)/);
   assert.match(wxss, /\.page\.room-theme-imperial-red \.room-stage__table-frame\s*\{/);
   assert.match(wxss, /\.page\.room-theme-imperial-red \.ghost-cup \.figma-cup__body\s*\{/);
+  assert.match(wxss, /@keyframes imperial-red-bubble-sheen/);
+  assert.match(wxss, /\.page\.room-theme-imperial-red \.seat__bubble\.latest::before\s*\{[\s\S]*animation:\s*imperial-red-bubble-sheen/);
+  assert.match(wxss, /\.page\.room-theme-imperial-red \.room-fab\.room-fab--imperial-slice\.room-fab--pressing,[\s\S]*box-shadow:\s*none/);
   assert.match(wxss, /\.page\.room-theme-ruby-red \.room-stage__table-frame\s*\{/);
   assert.match(wxss, /\.page\.room-theme-ruby-red \.seat__bubble\s*\{/);
   assert.doesNotMatch(wxss, /\.page\.room-theme-sapphire-blue /);
@@ -255,7 +270,9 @@ test("settlement dialog uses a bounded sheet with an internal player list scroll
   assert.match(wxml, /<scroll-view class="settlement-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">/);
   assert.match(wxss, /\.room-sheet--settlement\s*\{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column[\s\S]*max-height:\s*82vh/);
   assert.match(wxss, /\.sheet-body--settlement\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
-  assert.match(wxss, /\.settlement-scroll\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0/);
+  assert.match(wxss, /\.settlement-scroll\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0[\s\S]*overflow:\s*hidden/);
+  assert.match(wxss, /\.settlement-scroll \.settlement-list\s*\{[\s\S]*padding-bottom:\s*12rpx/);
+  assert.match(wxss, /\.settlement-matrix\s*\{[\s\S]*flex:\s*0 0 auto[\s\S]*margin-top:\s*4rpx/);
 });
 
 test("settlement dialog compresses row density for crowded eight-player results", () => {

@@ -22,6 +22,7 @@ function buildThemeOptions() {
   return ROOM_THEME_IDS.map((id) => ({
     id,
     label: getRoomThemeLabel(id),
+    badge: id === "jade-green" ? "默认" : "限免",
     caption: id === "jade-green"
       ? "青玉微雾"
       : (id === "ruby-red" ? "玄金夜色" : "绛金宫阙"),

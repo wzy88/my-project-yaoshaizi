@@ -32,7 +32,7 @@
                 data-theme-id="{{item.id}}"
                 bindtap="onSelectTheme"
               >
-                <view wx:if="{{themePreviewId === item.id}}" class="theme-card__check">已选</view>
+                <view class="theme-card__check {{themePreviewId === item.id ? 'is-active' : ''}}">{{item.badge}}</view>
                 <view class="theme-card__preview"></view>
                 <view class="theme-card__meta">
                   <text class="theme-card__title">{{item.label}}</text>

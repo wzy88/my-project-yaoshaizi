@@ -95,6 +95,7 @@ function buildConnectionState() {
 Page({
   data: {
     timeText: "09:41",
+    homeLogoAsset: "/assets/home-logo.jpg",
     heroDiceAssets: HOME_HERO_DICE_ASSETS,
     devtoolsMode: false,
     loginBusy: false,

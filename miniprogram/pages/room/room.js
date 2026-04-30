@@ -331,6 +331,56 @@ function buildCallSelectionSummary(countTouched, pointTouched, count, point) {
   return `准备叫 ${count} 个 ${point}`;
 }
 
+function isCallHigherClient(lastCall, nextCount, nextPoint) {
+  if (!lastCall) {
+    return true;
+  }
+  if (nextCount > Number(lastCall.count)) {
+    return true;
+  }
+  if (nextCount === Number(lastCall.count) && nextPoint > Number(lastCall.point)) {
+    return true;
+  }
+  return false;
+}
+
+function isCallSelectionLegalClient(lastCall, nextCount, nextPoint, minOpeningCount = 1) {
+  if (!Number.isInteger(nextCount) || nextCount <= 0 || !Number.isInteger(nextPoint) || nextPoint < 1 || nextPoint > 6) {
+    return false;
+  }
+  if (!lastCall) {
+    return nextCount >= Math.max(1, Number(minOpeningCount) || 1);
+  }
+  return isCallHigherClient(lastCall, nextCount, nextPoint);
+}
+
+function getLegalCallPointForCount(lastCall, nextCount, minOpeningCount = 1, preferredPoint = 0) {
+  const count = Number(nextCount);
+  if (!Number.isInteger(count) || count <= 0) {
+    return 0;
+  }
+
+  const preferred = Number(preferredPoint);
+  if (
+    Number.isInteger(preferred)
+    && isCallSelectionLegalClient(lastCall, count, preferred, minOpeningCount)
+  ) {
+    return preferred;
+  }
+
+  for (let point = 1; point <= 6; point += 1) {
+    if (isCallSelectionLegalClient(lastCall, count, point, minOpeningCount)) {
+      return point;
+    }
+  }
+
+  return 0;
+}
+
+function canCallCountClient(lastCall, nextCount, minOpeningCount = 1) {
+  return getLegalCallPointForCount(lastCall, nextCount, minOpeningCount) > 0;
+}
+
 function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPlayerId, roomThemeId = DEFAULT_ROOM_THEME_ID }) {
   const result = openResult && typeof openResult === "object" ? openResult : null;
   const first = result && Array.isArray(result.targets) ? result.targets[0] : null;
@@ -583,10 +633,11 @@ function buildGhostSeats(playersDecorated) {
     }));
 }
 
-function buildCallPointOptionItems(themeId, options) {
+function buildCallPointOptionItems(themeId, options, disabledValues) {
   return (Array.isArray(options) ? options : []).map((value) => ({
     value: String(value),
-    asset: getRoomDieAsset(value, themeId)
+    asset: getRoomDieAsset(value, themeId),
+    disabled: typeof disabledValues === "function" ? Boolean(disabledValues(Number(value))) : false
   }));
 }
 
@@ -1489,6 +1540,7 @@ Page({
     createMinOpeningCount: "5",
     createTestMode: false,
     createRoomThemeId: DEFAULT_ROOM_THEME_ID,
+    roomThemeReady: false,
     roomThemeId: DEFAULT_ROOM_THEME_ID,
     roomThemeClass: buildRoomThemeClass(DEFAULT_ROOM_THEME_ID),
     roomThemeAssets: getRoomThemeAssets(DEFAULT_ROOM_THEME_ID),
@@ -1551,6 +1603,7 @@ Page({
     callPanelExpanded: false,
     callCountTouched: false,
     callPointTouched: false,
+    callSelectionLegal: true,
     callSelectionSummaryText: buildCallSelectionSummary(false, false, 3, 6),
     historyVisible: false,
     historyItems: [],
@@ -1642,9 +1695,17 @@ Page({
 	    this.leaveFinalized = false;
 	    this.socketSeq = 0;
 	    this.activeSocketId = 0;
+    const forceNew = String(options.forceNew || "") === "1";
+    if (forceNew) {
+      wx.removeStorageSync(SESSION_KEY);
+    }
+    const cached = wx.getStorageSync(SESSION_KEY);
+    const initialRoomThemeId = this.resolveInitialRoomThemeForLoad(options, cached);
 	    this.devtoolsMode = isDevtoolsPlatform();
 	    this.setData({
       devtoolsMode: this.devtoolsMode,
+      roomThemeReady: true,
+      ...buildRoomThemePresentation(initialRoomThemeId),
       ...buildRoomSafeAreaStyles()
     });
     this.ensureShareMenuVisible();
@@ -1831,9 +1892,11 @@ Page({
             this.setData({
               callCount: String(parsed.count),
               callPoint: String(parsed.point),
-              callCountOptions: this.buildCallCountOptions(parsed.count),
+              callCountOptions: this.buildCallCountOptions(parsed.count, this.getMaxCallCount(), parsed.point),
+              callPointOptionItems: this.buildCallPointOptionItemsForSelection(parsed.count),
               callCountTouched: true,
               callPointTouched: true,
+              callSelectionLegal: this.isCallSelectionLegal(parsed.count, parsed.point),
               callSelectionSummaryText: buildCallSelectionSummary(true, true, parsed.count, parsed.point)
             });
 
@@ -1885,11 +1948,6 @@ Page({
       });
     }
 
-    const forceNew = String(options.forceNew || "") === "1";
-    if (forceNew) {
-      wx.removeStorageSync(SESSION_KEY);
-    }
-
     const profile = getStoredWechatProfile();
     const cachedNickname = profile.nickname;
     const cachedAvatarUrl = normalizeRoomAvatarAsset(profile.avatarUrl, 0);
@@ -1906,7 +1964,6 @@ Page({
       selfAvatarUrl: cachedAvatarUrl
     });
 
-    const cached = wx.getStorageSync(SESSION_KEY);
     const cachedRoomId = normalizeRoomId(cached && cached.roomId);
     const optionRoomId = normalizeRoomId(options.roomId);
     const shouldResumeSession = Boolean(
@@ -2373,9 +2430,16 @@ Page({
     }
     const max = this.getMaxCallCount();
     const next = this.clampNumber(Number(event.detail.value), 1, max);
+    const nextPoint = this.getLegalCallPointForCount(next, this.data.callPoint);
+    if (!nextPoint) {
+      return;
+    }
     this.setData({
       callCount: String(next),
-      callCountOptions: this.buildCallCountOptions(next, max)
+      callPoint: String(nextPoint),
+      callCountOptions: this.buildCallCountOptions(next, max),
+      callPointOptionItems: this.buildCallPointOptionItemsForSelection(next),
+      callSelectionLegal: this.isCallSelectionLegal(next, nextPoint)
     });
   },
 
@@ -2384,7 +2448,14 @@ Page({
       return;
     }
     const next = this.clampNumber(Number(event.detail.value), 1, 6);
-    this.setData({ callPoint: String(next) });
+    if (!this.isCallSelectionLegal(this.data.callCount, next)) {
+      return;
+    }
+    this.setData({
+      callPoint: String(next),
+      callCountOptions: this.buildCallCountOptions(this.data.callCount, this.getMaxCallCount(), next),
+      callSelectionLegal: this.isCallSelectionLegal(this.data.callCount, next)
+    });
   },
 
   onSelectCallCountOption(event) {
@@ -2394,13 +2465,20 @@ Page({
     const value = Number(event.currentTarget.dataset.value);
     const max = this.getMaxCallCount();
     const next = this.clampNumber(value, 1, max);
+    const nextPoint = this.getLegalCallPointForCount(next, this.data.callPoint);
+    if (!nextPoint) {
+      return;
+    }
     this.setData({
       callSelectorMode: "point",
       callPanelExpanded: true,
       callCount: String(next),
+      callPoint: String(nextPoint),
       callCountOptions: this.buildCallCountOptions(next, max),
+      callPointOptionItems: this.buildCallPointOptionItemsForSelection(next),
       callCountTouched: true,
-      callSelectionSummaryText: buildCallSelectionSummary(true, this.data.callPointTouched, next, this.data.callPoint)
+      callSelectionLegal: this.isCallSelectionLegal(next, nextPoint),
+      callSelectionSummaryText: buildCallSelectionSummary(true, this.data.callPointTouched, next, nextPoint)
     });
   },
 
@@ -2410,11 +2488,16 @@ Page({
     }
     const value = Number(event.currentTarget.dataset.value);
     const next = this.clampNumber(value, 1, 6);
+    if (!this.isCallSelectionLegal(this.data.callCount, next)) {
+      return;
+    }
     this.setData({
       callSelectorMode: "point",
       callPanelExpanded: true,
       callPoint: String(next),
+      callCountOptions: this.buildCallCountOptions(this.data.callCount, this.getMaxCallCount(), next),
       callPointTouched: true,
+      callSelectionLegal: this.isCallSelectionLegal(this.data.callCount, next),
       callSelectionSummaryText: buildCallSelectionSummary(this.data.callCountTouched, true, this.data.callCount, next)
     });
   },
@@ -3588,6 +3671,10 @@ Page({
       wx.showToast({ title: "叫牌格式错误", icon: "none" });
       return;
     }
+    if (!this.isCallSelectionLegal(count, point)) {
+      wx.showToast({ title: "叫牌必须严格大于上一手", icon: "none" });
+      return;
+    }
 
     this.playSfx("primary");
     this.sendEvent("call:make", {
@@ -3602,6 +3689,7 @@ Page({
       callPanelVisible: false,
       callCountTouched: false,
       callPointTouched: false,
+      callSelectionLegal: true,
       callSelectionSummaryText: buildCallSelectionSummary(false, false, count, point)
     });
   },
@@ -3625,7 +3713,9 @@ Page({
         this.setData({
           callCount: String(parsed.count),
           callPoint: String(parsed.point),
-          callCountOptions: this.buildCallCountOptions(parsed.count)
+          callCountOptions: this.buildCallCountOptions(parsed.count, this.getMaxCallCount(), parsed.point),
+          callPointOptionItems: this.buildCallPointOptionItemsForSelection(parsed.count),
+          callSelectionLegal: this.isCallSelectionLegal(parsed.count, parsed.point)
         });
       }
     });
@@ -3774,7 +3864,7 @@ Page({
   },
 
   onSeatingSelectDirection(event) {
-    if (!(this.data.phase === "ready" && this.data.selfIsOwner && this.data.round === 0)) {
+    if (!((this.data.phase === "ready" || this.data.phase === "ended") && this.data.selfIsOwner)) {
       wx.showToast({ title: "当前不可修改方向", icon: "none" });
       return;
     }
@@ -4117,6 +4207,40 @@ Page({
     }
     const cache = readRoomThemeCache();
     return parseOptionalRoomThemeId(cache[normalizedRoomId]);
+  },
+
+  resolveInitialRoomThemeForLoad(options = {}, cachedSession = null) {
+    const mode = String(options.mode || "");
+    if (mode === "create") {
+      return normalizeRoomThemeId(options.themeId);
+    }
+
+    if (mode === "join") {
+      const roomId = normalizeRoomId(safeDecodeComponent(options.roomId).trim());
+      const queryThemeId = parseOptionalRoomThemeId(options.themeId);
+      if (queryThemeId) {
+        return queryThemeId;
+      }
+
+      const cachedThemeForRoom = roomId ? this.getCachedRoomTheme(roomId) : "";
+      if (cachedThemeForRoom) {
+        return cachedThemeForRoom;
+      }
+    }
+
+    const cached = cachedSession && typeof cachedSession === "object" ? cachedSession : null;
+    const cachedThemeId = parseOptionalRoomThemeId(cached && cached.themeId);
+    if (!cachedThemeId) {
+      return DEFAULT_ROOM_THEME_ID;
+    }
+
+    const cachedRoomId = normalizeRoomId(cached && cached.roomId);
+    const optionRoomId = normalizeRoomId(options.roomId);
+    if (String(options.resume || "") === "1" || !optionRoomId || optionRoomId === cachedRoomId) {
+      return cachedThemeId;
+    }
+
+    return DEFAULT_ROOM_THEME_ID;
   },
 
   resolveRoomThemeId(roomId, incomingThemeId = "", provisionalThemeId = "") {
@@ -4764,9 +4888,8 @@ Page({
           : this.clampNumber(Number(this.data.callPoint), 1, 6);
         const nextCallCount = String(nextCallCountNum);
         const nextCallPoint = String(nextCallPointNum);
-        const callCountOptions = this.buildCallCountOptions(nextCallCountNum, maxCallCount);
-        const callPointOptionItems = buildCallPointOptionItems(roomThemeId, ["1", "2", "3", "4", "5", "6"]);
         const callForcedOpen = Boolean(isMyCallingTurn && suggestedCall.forcedOpen);
+        const callCountOptions = this.buildCallCountOptions(nextCallCountNum, maxCallCount, nextCallPointNum, callForcedOpen);
         const callPanelVisible = isMyCallingTurn ? Boolean(this.data.callPanelVisible) : false;
         const callPanelExpanded = isMyCallingTurn ? Boolean(this.data.callPanelExpanded) : false;
         const canOpenAction = lastCallIsOpenableTarget;
@@ -4787,6 +4910,13 @@ Page({
         const callSelectionSummaryText = callForcedOpen
           ? "已到上限，请直接开牌"
           : buildCallSelectionSummary(callCountTouched, callPointTouched, nextCallCount, nextCallPoint);
+        const callSelectionLegal = callForcedOpen
+          ? false
+          : isCallSelectionLegalClient(lastCallObj, nextCallCountNum, nextCallPointNum, minOpeningCount);
+        const callPointOptionItems = buildCallPointOptionItems(roomThemeId, ["1", "2", "3", "4", "5", "6"], (pointValue) => (
+          callForcedOpen
+          || !isCallSelectionLegalClient(lastCallObj, nextCallCountNum, Number(pointValue), minOpeningCount)
+        ));
 
         const settlementVisible = Boolean(this.data.settlementVisible) && phase === "ended";
         if (!settlementVisible && this.data.settlementVisible) {
@@ -4809,7 +4939,7 @@ Page({
           canPrimaryAction = startActionEnabled;
         } else if (phase === "rolling") {
           if (!hasDice) {
-            primaryActionText = "摇一摇";
+            primaryActionText = "摇骰";
             canPrimaryAction = true;
           } else if (!selfRollLocked) {
             primaryActionText = "OK";
@@ -4902,6 +5032,7 @@ Page({
           callPanelVisible,
           callCountTouched,
           callPointTouched,
+          callSelectionLegal,
           callSelectionSummaryText,
           canOpenAction,
           showQuickOpenAction,
@@ -5487,6 +5618,7 @@ Page({
       callSelectorMode: "count",
       callCountTouched: nextCountTouched,
       callPointTouched: nextPointTouched,
+      callSelectionLegal: this.isCallSelectionLegal(this.data.callCount, this.data.callPoint),
       callSelectionSummaryText: buildCallSelectionSummary(nextCountTouched, nextPointTouched, this.data.callCount, this.data.callPoint)
     });
   },
@@ -5574,28 +5706,72 @@ Page({
     return Math.max(min, Math.min(max, num));
   },
 
-  buildCallCountOptions(currentValue, maxValue = this.getMaxCallCount()) {
+  buildCallCountOptions(currentValue, maxValue = this.getMaxCallCount(), pointValue = this.data.callPoint, forcedOpenOverride = this.data.callForcedOpen) {
     const max = Math.max(1, Number(maxValue) || 1);
     const configMin = this.data.roomConfig && Number.isInteger(this.data.roomConfig.minOpeningCount)
       ? this.data.roomConfig.minOpeningCount
       : 1;
-    return buildCallCountOptionItems(currentValue, max, configMin);
+    return buildCallCountOptionItems(currentValue, max, configMin).map((item) => ({
+      ...item,
+      disabled: Boolean(forcedOpenOverride)
+        || !canCallCountClient(this.data.lastCallObj, Number(item.value), configMin)
+    }));
   },
 
-	  getMaxCallCount() {
-	    const playerCount = Array.isArray(this.data.playersRaw) ? this.data.playersRaw.length : 0;
-	    const dicePerPlayer = this.data.roomConfig && typeof this.data.roomConfig.dicePerPlayer === "number"
-	      ? this.data.roomConfig.dicePerPlayer
-	      : 5;
-	    return Math.max(1, playerCount * dicePerPlayer);
-	  },
+  getMaxCallCount() {
+    const playerCount = Array.isArray(this.data.playersRaw) ? this.data.playersRaw.length : 0;
+    const dicePerPlayer = this.data.roomConfig && typeof this.data.roomConfig.dicePerPlayer === "number"
+      ? this.data.roomConfig.dicePerPlayer
+      : 5;
+    return Math.max(1, playerCount * dicePerPlayer);
+  },
+
+  getMinOpeningCount() {
+    return this.data.roomConfig && Number.isInteger(this.data.roomConfig.minOpeningCount)
+      ? this.data.roomConfig.minOpeningCount
+      : 1;
+  },
+
+  isCallSelectionLegal(count = this.data.callCount, point = this.data.callPoint) {
+    return isCallSelectionLegalClient(
+      this.data.lastCallObj,
+      Number(count),
+      Number(point),
+      this.getMinOpeningCount()
+    );
+  },
+
+  getLegalCallPointForCount(count, preferredPoint = this.data.callPoint) {
+    return getLegalCallPointForCount(
+      this.data.lastCallObj,
+      Number(count),
+      this.getMinOpeningCount(),
+      Number(preferredPoint)
+    );
+  },
+
+  buildCallPointOptionItemsForSelection(countValue = this.data.callCount) {
+    const count = this.clampNumber(Number(countValue), 1, this.getMaxCallCount());
+    const minOpeningCount = this.getMinOpeningCount();
+    return buildCallPointOptionItems(this.data.roomThemeId, this.data.callPointOptions, (pointValue) => (
+      Boolean(this.data.callForcedOpen)
+      || !isCallSelectionLegalClient(this.data.lastCallObj, count, Number(pointValue), minOpeningCount)
+    ));
+  },
 
   incCallCount() {
     const max = this.getMaxCallCount();
     const next = this.clampNumber(Number(this.data.callCount) + 1, 1, max);
+    const nextPoint = this.getLegalCallPointForCount(next, this.data.callPoint);
+    if (!nextPoint) {
+      return;
+    }
     this.setData({
       callCount: String(next),
-      callCountOptions: this.buildCallCountOptions(next, max)
+      callPoint: String(nextPoint),
+      callCountOptions: this.buildCallCountOptions(next, max),
+      callPointOptionItems: this.buildCallPointOptionItemsForSelection(next),
+      callSelectionLegal: this.isCallSelectionLegal(next, nextPoint)
     });
   },
 
@@ -5603,22 +5779,37 @@ Page({
     const max = this.getMaxCallCount();
     const min = 1;
     const next = this.clampNumber(Number(this.data.callCount) - 1, min, max);
+    const nextPoint = this.getLegalCallPointForCount(next, this.data.callPoint);
+    if (!nextPoint) {
+      return;
+    }
     this.setData({
       callCount: String(next),
-      callCountOptions: this.buildCallCountOptions(next, max)
+      callPoint: String(nextPoint),
+      callCountOptions: this.buildCallCountOptions(next, max),
+      callPointOptionItems: this.buildCallPointOptionItemsForSelection(next),
+      callSelectionLegal: this.isCallSelectionLegal(next, nextPoint)
     });
   },
 
   incCallPoint() {
     const current = this.clampNumber(Number(this.data.callPoint), 1, 6);
     const next = current >= 6 ? 1 : current + 1;
-    this.setData({ callPoint: String(next) });
+    this.setData({
+      callPoint: String(next),
+      callCountOptions: this.buildCallCountOptions(this.data.callCount, this.getMaxCallCount(), next),
+      callSelectionLegal: this.isCallSelectionLegal(this.data.callCount, next)
+    });
   },
 
   decCallPoint() {
     const current = this.clampNumber(Number(this.data.callPoint), 1, 6);
     const next = current <= 1 ? 6 : current - 1;
-    this.setData({ callPoint: String(next) });
+    this.setData({
+      callPoint: String(next),
+      callCountOptions: this.buildCallCountOptions(this.data.callCount, this.getMaxCallCount(), next),
+      callSelectionLegal: this.isCallSelectionLegal(this.data.callCount, next)
+    });
   },
 
 	  applyMinLegalCall() {
@@ -5633,7 +5824,9 @@ Page({
       this.setData({
         callCount: String(base),
         callPoint: String(this.clampNumber(Number(this.data.callPoint), 1, 6)),
-        callCountOptions: this.buildCallCountOptions(base, max)
+        callCountOptions: this.buildCallCountOptions(base, max),
+        callPointOptionItems: this.buildCallPointOptionItemsForSelection(base),
+        callSelectionLegal: this.isCallSelectionLegal(base, this.clampNumber(Number(this.data.callPoint), 1, 6))
       });
       return;
     }
@@ -5664,7 +5857,9 @@ Page({
     this.setData({
       callCount: String(nextCount),
       callPoint: String(nextPoint),
-      callCountOptions: this.buildCallCountOptions(nextCount, max)
+      callCountOptions: this.buildCallCountOptions(nextCount, max),
+      callPointOptionItems: this.buildCallPointOptionItemsForSelection(nextCount),
+      callSelectionLegal: this.isCallSelectionLegal(nextCount, nextPoint)
     });
   },
 
@@ -5748,11 +5943,13 @@ Page({
       callCountOptions: buildCallCountOptionItems(3, 8, 1),
       maxCallCount: 1,
       callPointOptions: ["1", "2", "3", "4", "5", "6"],
+      callPointOptionItems: buildCallPointOptionItems(DEFAULT_ROOM_THEME_ID, ["1", "2", "3", "4", "5", "6"]),
       callForcedOpen: false,
       callSelectorMode: "",
       callPanelExpanded: false,
       callCountTouched: false,
       callPointTouched: false,
+      callSelectionLegal: true,
       callSelectionSummaryText: buildCallSelectionSummary(false, false, 3, 6),
       callPanelVisible: false,
       canOpenAction: false,
@@ -5933,11 +6130,13 @@ Page({
       callCount: "3",
       callPoint: "6",
       callCountOptions: buildCallCountOptionItems(3, 8, 1),
+      callPointOptionItems: buildCallPointOptionItems(DEFAULT_ROOM_THEME_ID, ["1", "2", "3", "4", "5", "6"]),
       callForcedOpen: false,
       callSelectorMode: "",
       callPanelExpanded: false,
       callCountTouched: false,
       callPointTouched: false,
+      callSelectionLegal: true,
       callSelectionSummaryText: buildCallSelectionSummary(false, false, 3, 6),
       callPanelVisible: false,
       canOpenAction: false,

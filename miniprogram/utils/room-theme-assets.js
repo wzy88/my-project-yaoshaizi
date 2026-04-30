@@ -14,7 +14,7 @@ const ROOM_THEME_ASSET_MAP = {
     selfCupTextureSrc: "",
     tableclothSrc: "",
     primaryButtonClass: "",
-    secondaryButtonClass: ""
+    secondaryButtonClass: "room-fab-secondary--jade-open"
   },
   "ruby-red": {
     menuIconSrc: "/assets/room-themes/ruby-red-menu-btn-black.png",
@@ -23,7 +23,7 @@ const ROOM_THEME_ASSET_MAP = {
     openButtonSrc: "/assets/room-themes/ruby-red-open-btn-black.png",
     secondaryIconSrc: "",
     pageBackgroundSrc: "/assets/room-themes/ruby-red-bg-black.jpg",
-    bubbleSkinSrc: "/assets/room-themes/ruby-red-bubble-black.png",
+    bubbleSkinSrc: "",
     cupSkinSrc: "/assets/room-themes/ruby-red-cup-black.png",
     selfCupTextureSrc: "/assets/room-themes/ruby-red-bg-black.jpg",
     tableclothSrc: "/assets/room-themes/ruby-red-tablecloth-black-v2.jpg",

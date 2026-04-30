@@ -3148,6 +3148,49 @@ test("room page: seating direction change keeps haptic but stays audio silent", 
   }
 });
 
+test("room page: seating direction can still be updated after settlement", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sent = [];
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.haptic = () => {};
+    page.setData({
+      phase: "ended",
+      round: 3,
+      selfIsOwner: true,
+      roomConfig: {
+        direction: "cw"
+      }
+    });
+
+    page.onSeatingSelectDirection({
+      currentTarget: {
+        dataset: {
+          dir: "ccw"
+        }
+      }
+    });
+
+    assert.deepEqual(sent, [
+      {
+        event: "room:config:update",
+        payload: { direction: "ccw" }
+      }
+    ]);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: seating panel label shows only the nickname without the raw player id", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -4668,6 +4711,120 @@ test("room page: submitting a manual call from the panel uses the bundled primar
     assert.deepEqual(sfxCalls, ["primary"]);
     assert.deepEqual(sent, [{ event: "call:make", payload: { count: 4, point: 5 } }]);
     assert.equal(page.data.callPanelVisible, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: manual call options block selections below the previous hand", () => {
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sent = [];
+    page.haptic = () => {};
+    page.playSfx = () => {};
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.setData({
+      phase: "calling",
+      currentPlayerId: "player-a",
+      playerId: "player-a",
+      selfIsWaiting: false,
+      callForcedOpen: false,
+      callPanelVisible: true,
+      callPanelExpanded: true,
+      callCount: "4",
+      callPoint: "5",
+      callCountTouched: true,
+      callPointTouched: true,
+      lastCallObj: { count: 4, point: 5, by: "other", ts: 101 },
+      roomConfig: { minOpeningCount: 3, dicePerPlayer: 5, direction: "cw" },
+      playersRaw: [
+        { id: "player-a", seatIndex: 1, diceCupStatus: "closed" },
+        { id: "player-b", seatIndex: 2, diceCupStatus: "closed" }
+      ],
+      callPointOptions: ["1", "2", "3", "4", "5", "6"]
+    });
+
+    page.onSelectCallPointOption({
+      currentTarget: {
+        dataset: {
+          value: "4"
+        }
+      }
+    });
+    assert.equal(page.data.callPoint, "5");
+
+    page.setData({
+      callCount: "4",
+      callPoint: "4",
+      callSelectionLegal: page.isCallSelectionLegal(4, 4)
+    });
+    page.makeCallWithInput();
+
+    assert.deepEqual(sent, []);
+    assert.equal(toasts.at(-1), "叫牌必须严格大于上一手");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: call count options stay enabled when another point makes that count legal", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({
+      phase: "calling",
+      currentPlayerId: "player-a",
+      playerId: "player-a",
+      selfIsWaiting: false,
+      callForcedOpen: false,
+      callPanelVisible: true,
+      callPanelExpanded: true,
+      callCount: "8",
+      callPoint: "5",
+      callCountTouched: true,
+      callPointTouched: true,
+      lastCallObj: { count: 7, point: 5, by: "other", ts: 101 },
+      roomConfig: { minOpeningCount: 3, dicePerPlayer: 5, direction: "cw" },
+      playersRaw: [
+        { id: "player-a", seatIndex: 1, diceCupStatus: "closed" },
+        { id: "player-b", seatIndex: 2, diceCupStatus: "closed" }
+      ],
+      callPointOptions: ["1", "2", "3", "4", "5", "6"]
+    });
+
+    page.setData({
+      callCountOptions: page.buildCallCountOptions(8, 10, 5)
+    });
+
+    assert.equal(page.data.callCountOptions.find((item) => item.value === "6").disabled, true);
+    assert.equal(page.data.callCountOptions.find((item) => item.value === "7").disabled, false);
+
+    page.onSelectCallCountOption({
+      currentTarget: {
+        dataset: {
+          value: "7"
+        }
+      }
+    });
+
+    assert.equal(page.data.callCount, "7");
+    assert.equal(page.data.callPoint, "6");
+    assert.equal(page.data.callSelectionLegal, true);
   } finally {
     cleanup();
   }

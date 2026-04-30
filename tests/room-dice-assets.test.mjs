@@ -22,7 +22,7 @@ function resolveMiniprogramAssetPath(asset) {
 }
 
 function countVisiblePips(svgSource) {
-  return [...String(svgSource || "").matchAll(/fill="(?:var\(--fill-0,\s*)?#(?:1A1A2E|CC2020|55766D|1C1A20|1F2E58|C92A2A|C99729|423730|C8A04A|893F2E)\)?"|fill="#(?:55766D|1C1A20|1F2E58|C92A2A|C99729|423730|C8A04A|893F2E)"/g)].length;
+  return [...String(svgSource || "").matchAll(/fill="(?:var\(--fill-0,\s*)?#(?:1A1A2E|CC2020|55766D|1C1A20|1F2E58|C92A2A|C99729|423730|C8A04A|893F2E|D4333D|3658A4|252936)\)?"|fill="#(?:55766D|1C1A20|1F2E58|C92A2A|C99729|423730|C8A04A|893F2E|D4333D|3658A4|252936)"/g)].length;
 }
 
 test("shared dice assets: all stage dice map to complete dice bodies", () => {
@@ -62,6 +62,11 @@ test("shared dice assets: themed self dice resolve to the premium room assets", 
     assert.equal(asset, expectedAsset);
     assert.match(svg, bodyColorPattern);
     assert.equal(countVisiblePips(svg), 3, `${themeId} should render 3 visible pip(s)`);
+    if (themeId === "imperial-red") {
+      assert.match(svg, /fill="#C92A2A"/);
+      assert.match(svg, /fill="#1F2E58"/);
+      assert.doesNotMatch(svg, /fill="#C99729"/);
+    }
   }
 
   assert.equal(diceAssets.getSelfDieAsset(3, "unsupported-theme"), diceAssets.DICE_FACE_ASSETS[3]);

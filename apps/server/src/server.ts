@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 
 import { WebSocketServer } from "ws";
 
-import { PORT_RETRY_LIMIT, SERVER_HOST, SERVER_PORT, WS_PATH } from "./config.js";
+import { CALL_TIMEOUT_MS, PORT_RETRY_LIMIT, ROLL_TIMEOUT_MS, SERVER_HOST, SERVER_PORT, WS_PATH } from "./config.js";
 import { AccountStore } from "./engine/account-store.js";
 import { RoomService } from "./engine/room-service.js";
 import { resolveWechatIdentity } from "./services/wechat-session-resolver.js";
@@ -69,6 +69,8 @@ export function createServer() {
     console.log(`[dice-server] http listening on http://${SERVER_HOST}:${port}`);
     // eslint-disable-next-line no-console
     console.log(`[dice-server] ws listening on ws://${SERVER_HOST}:${port}${WS_PATH}`);
+    // eslint-disable-next-line no-console
+    console.log(`[dice-server] timeouts roll=${ROLL_TIMEOUT_MS}ms call=${CALL_TIMEOUT_MS}ms`);
 
     if (SERVER_HOST === "127.0.0.1" || SERVER_HOST === "localhost") {
       // eslint-disable-next-line no-console

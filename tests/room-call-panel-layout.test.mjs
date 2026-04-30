@@ -18,8 +18,8 @@ test("room call panel switches between count and point selectors", () => {
   assert.match(roomWxml, /wx:if="\{\{callSelectorMode === 'point'\}\}" class="call-phase-panel__points"/);
   assert.match(roomWxml, /class="call-phase-panel__value-box"[\s\S]*hover-class="call-phase-panel__box--pressing"/);
   assert.match(roomWxml, /class="call-phase-panel__point-box \{\{callForcedOpen \? 'is-disabled' : ''\}\}"[\s\S]*hover-class="\{\{callForcedOpen \? 'none' : 'call-phase-panel__box--pressing'\}\}"/);
-  assert.match(roomWxml, /class="call-phase-panel__count \{\{item\.value === callCount \? 'is-active' : ''\}\} \{\{item\.isTail \? 'is-tail' : ''\}\} \{\{callForcedOpen \? 'is-disabled' : ''\}\}"[\s\S]*hover-class="\{\{callForcedOpen \? 'none' : 'call-phase-panel__count--pressing'\}\}"/);
-  assert.match(roomWxml, /class="call-phase-panel__point-option \{\{item\.value === callPoint \? 'is-active' : ''\}\} \{\{callForcedOpen \? 'is-disabled' : ''\}\}"[\s\S]*hover-class="\{\{callForcedOpen \? 'none' : 'call-phase-panel__point-option--pressing'\}\}"/);
+  assert.match(roomWxml, /class="call-phase-panel__count \{\{item\.value === callCount \? 'is-active' : ''\}\} \{\{item\.isTail \? 'is-tail' : ''\}\} \{\{callForcedOpen \|\| item\.disabled \? 'is-disabled' : ''\}\}"[\s\S]*hover-class="\{\{callForcedOpen \|\| item\.disabled \? 'none' : 'call-phase-panel__count--pressing'\}\}"/);
+  assert.match(roomWxml, /class="call-phase-panel__point-option \{\{item\.value === callPoint \? 'is-active' : ''\}\} \{\{callForcedOpen \|\| item\.disabled \? 'is-disabled' : ''\}\}"[\s\S]*hover-class="\{\{callForcedOpen \|\| item\.disabled \? 'none' : 'call-phase-panel__point-option--pressing'\}\}"/);
   assert.match(roomWxml, /bindtap="onSelectCallPointOption"/);
   assert.match(roomWxml, /item\.value === callPoint/);
   assert.doesNotMatch(roomWxml, /bindtap="onTapCallPointPicker"/);
@@ -27,12 +27,13 @@ test("room call panel switches between count and point selectors", () => {
   assert.match(roomJs, /callSelectorMode: isMyCallingTurn \? \(this\.data\.callSelectorMode \|\| "count"\) : ""/);
   assert.match(
     roomJs,
-    /function buildCallPointOptionItems\(themeId,\s*options\)\s*\{\s*return \(Array\.isArray\(options\) \? options : \[\]\)\.map\(\(value\) => \(\{\s*value:\s*String\(value\),[\s\S]*asset:\s*getRoomDieAsset\(value,\s*themeId\)/
+    /function buildCallPointOptionItems\(themeId,\s*options,\s*disabledValues\)\s*\{\s*return \(Array\.isArray\(options\) \? options : \[\]\)\.map\(\(value\) => \(\{\s*value:\s*String\(value\),[\s\S]*asset:\s*getRoomDieAsset\(value,\s*themeId\)/
   );
   assert.match(
     roomJs,
     /function buildCallCountOptionItems\(currentValue, maxValue = 1, minValue = 1\)\s*\{[\s\S]*for \(let value = min; value <= max; value \+= 1\)/
   );
+  assert.match(roomJs, /function canCallCountClient\(lastCall, nextCount, minOpeningCount = 1\)/);
 });
 
 test("room call panel opens manually during calling and supports overlay close", () => {
