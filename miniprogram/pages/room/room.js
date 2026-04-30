@@ -2945,6 +2945,7 @@ Page({
       });
 
       wx.cloud.connectContainer({
+        config: containerConfig.envId ? { env: containerConfig.envId } : {},
         service: containerConfig.service,
         path: containerConfig.wsPath
       }).then((res) => {

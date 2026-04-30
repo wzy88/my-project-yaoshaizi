@@ -746,6 +746,9 @@ test("room page: cloud container config bypasses loopback ws validation on mobil
     assert.deepEqual(cloudCalls[1], {
       type: "connect",
       options: {
+        config: {
+          env: "dice-test-123"
+        },
         service: "express-rw1k",
         path: "/ws"
       }
@@ -812,6 +815,9 @@ test("room page: cloud container config falls back to app global data when page 
     assert.deepEqual(cloudCalls[1], {
       type: "connect",
       options: {
+        config: {
+          env: "dice-test-123"
+        },
         service: "express-rw1k",
         path: "/ws"
       }

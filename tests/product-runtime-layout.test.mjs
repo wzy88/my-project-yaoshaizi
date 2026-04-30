@@ -26,7 +26,7 @@ test("runtime backend target is defined in the internal config module instead of
   assert.match(source, /FIXED_RUNTIME_CONNECTION/);
   assert.match(source, /固定运行时连接目标/);
   assert.match(source, /clearLegacyRuntimeConnectionStorage/);
-  assert.match(source, /envId:\s*"prod-5gy76rw610720f84"/);
+  assert.match(source, /envId:\s*"test-5gz3z9msd3e7502f"/);
   assert.match(source, /service:\s*"express-rw1k"/);
   assert.match(source, /wsPath:\s*"\/ws"/);
 });
