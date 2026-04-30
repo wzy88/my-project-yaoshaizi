@@ -10,6 +10,25 @@ const ROOM_THEME_LABELS: Record<RoomThemeId, string> = {
   "glacier-blue": "霁雪"
 };
 
+const ROOM_THEME_ALIASES: Record<string, RoomThemeId> = {
+  green: "jade-green",
+  "jade-green": "jade-green",
+  "青岚": "jade-green",
+  black: "ruby-red",
+  "黑": "ruby-red",
+  "ruby-red": "ruby-red",
+  "玄曜": "ruby-red",
+  red: "imperial-red",
+  "红": "imperial-red",
+  "imperial-red": "imperial-red",
+  "绛华": "imperial-red",
+  white: "glacier-blue",
+  "白": "glacier-blue",
+  blue: "glacier-blue",
+  "glacier-blue": "glacier-blue",
+  "霁雪": "glacier-blue"
+};
+
 const ROOM_THEME_VERSIONS: Record<RoomThemeId, string> = {
   "jade-green": "2026.05.01.1",
   "ruby-red": "2026.05.01.1",
@@ -118,8 +137,9 @@ const THEME_CATALOG: Record<RoomThemeId, ThemeCatalogEntry> = {
 };
 
 export function normalizeRoomThemeId(input: unknown): RoomThemeId {
-  const value = String(input || "").trim() as RoomThemeId;
-  return ROOM_THEME_IDS.includes(value) ? value : DEFAULT_ROOM_THEME_ID;
+  const value = String(input || "").trim();
+  const aliased = ROOM_THEME_ALIASES[value] || ROOM_THEME_ALIASES[value.toLowerCase()];
+  return aliased || DEFAULT_ROOM_THEME_ID;
 }
 
 function maybeRemoteAsset(themeId: RoomThemeId, src: string): string {

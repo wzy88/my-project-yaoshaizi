@@ -19,7 +19,7 @@ const {
 const { SELF_DICE_PLACEHOLDER, getDieAsset, getSelfDieAsset, getRoomDieAsset } = require("../../utils/dice-assets");
 const {
   DEFAULT_ROOM_THEME_ID,
-  ROOM_THEME_IDS,
+  parseRoomThemeId,
   normalizeRoomThemeId,
   buildRoomThemeClass
 } = require("../../utils/room-themes");
@@ -770,11 +770,7 @@ function safeDecodeComponent(raw) {
 }
 
 function parseOptionalRoomThemeId(raw) {
-  const value = String(raw || "").trim();
-  if (!value) {
-    return "";
-  }
-  return ROOM_THEME_IDS.includes(value) ? value : "";
+  return parseRoomThemeId(raw);
 }
 
 function readRoomThemeCache() {

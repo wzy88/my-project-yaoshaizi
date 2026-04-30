@@ -14,6 +14,10 @@ const {
   normalizeRoomThemeManifest,
   registerRoomThemeManifest
 } = require("../miniprogram/utils/room-theme-loader.js");
+const {
+  normalizeRoomThemeId: normalizeMiniappRoomThemeId,
+  parseRoomThemeId
+} = require("../miniprogram/utils/room-themes.js");
 const { getRoomThemeAssets } = require("../miniprogram/utils/room-theme-assets.js");
 const { getSelfDieAsset } = require("../miniprogram/utils/dice-assets.js");
 
@@ -33,6 +37,34 @@ test("server room theme catalog exposes a complete manifest for remote loading",
   const all = listRoomThemeManifests();
   assert.equal(all.length, 4);
   assert.ok(all.every((item) => item.assets.dice["6"]));
+});
+
+test("room theme aliases normalize black, white, and red before falling back to green", () => {
+  const aliases = [
+    ["black", "ruby-red"],
+    ["黑", "ruby-red"],
+    ["玄曜", "ruby-red"],
+    ["white", "glacier-blue"],
+    ["白", "glacier-blue"],
+    ["霁雪", "glacier-blue"],
+    ["red", "imperial-red"],
+    ["红", "imperial-red"],
+    ["绛华", "imperial-red"]
+  ];
+
+  assert.equal(getRoomThemeManifest("black").id, "ruby-red");
+  assert.equal(getRoomThemeManifest("white").id, "glacier-blue");
+  assert.equal(getRoomThemeManifest("red").id, "imperial-red");
+  assert.equal(normalizeMiniappRoomThemeId("black"), "ruby-red");
+  assert.equal(normalizeMiniappRoomThemeId("white"), "glacier-blue");
+  assert.equal(normalizeMiniappRoomThemeId("red"), "imperial-red");
+
+  for (const [raw, expected] of aliases) {
+    assert.equal(parseRoomThemeId(raw), expected);
+  }
+
+  assert.equal(parseRoomThemeId("unknown-theme"), "");
+  assert.equal(normalizeMiniappRoomThemeId("unknown-theme"), "jade-green");
 });
 
 test("miniapp theme loader can register server-provided assets over bundled fallback", () => {

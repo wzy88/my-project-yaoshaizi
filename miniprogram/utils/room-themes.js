@@ -14,9 +14,35 @@ const ROOM_THEME_LABELS = {
   "ruby-red": "玄曜"
 };
 
-function normalizeRoomThemeId(raw) {
+const ROOM_THEME_ALIASES = {
+  green: "jade-green",
+  "jade-green": "jade-green",
+  "青岚": "jade-green",
+  black: "ruby-red",
+  "黑": "ruby-red",
+  "ruby-red": "ruby-red",
+  "玄曜": "ruby-red",
+  red: "imperial-red",
+  "红": "imperial-red",
+  "imperial-red": "imperial-red",
+  "绛华": "imperial-red",
+  white: "glacier-blue",
+  "白": "glacier-blue",
+  blue: "glacier-blue",
+  "glacier-blue": "glacier-blue",
+  "霁雪": "glacier-blue"
+};
+
+function parseRoomThemeId(raw) {
   const value = String(raw || "").trim();
-  return ROOM_THEME_IDS.includes(value) ? value : DEFAULT_ROOM_THEME_ID;
+  if (!value) {
+    return "";
+  }
+  return ROOM_THEME_ALIASES[value] || ROOM_THEME_ALIASES[value.toLowerCase()] || "";
+}
+
+function normalizeRoomThemeId(raw) {
+  return parseRoomThemeId(raw) || DEFAULT_ROOM_THEME_ID;
 }
 
 function pickRandomRoomThemeId() {
@@ -37,6 +63,8 @@ module.exports = {
   DEFAULT_ROOM_THEME_ID,
   ROOM_THEME_IDS,
   ROOM_THEME_LABELS,
+  ROOM_THEME_ALIASES,
+  parseRoomThemeId,
   normalizeRoomThemeId,
   pickRandomRoomThemeId,
   buildRoomThemeClass,

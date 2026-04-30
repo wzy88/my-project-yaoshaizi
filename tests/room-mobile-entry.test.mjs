@@ -1131,6 +1131,35 @@ test("room page: mode create keeps the selected theme through room state sync", 
   }
 });
 
+test("room page: mode create accepts color aliases before sending room config", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({
+      mode: "create",
+      direction: "cw",
+      wildcardOneEnabled: "1",
+      dicePerPlayer: "5",
+      minOpeningCount: "5",
+      themeId: "red"
+    });
+
+    const config = page.buildCreateConfigOrToast();
+    assert.equal(page.data.createRoomThemeId, "imperial-red");
+    assert.equal(page.data.roomThemeId, "imperial-red");
+    assert.equal(config.themeId, "imperial-red");
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: create payload keeps each selected premium theme when remote manifest falls back to green", async () => {
   const sentPackets = [];
   const requestedThemeIds = [];
@@ -1301,6 +1330,50 @@ test("room page: mode join applies the server room theme even when query and cac
     assert.equal(page.data.roomThemeId, "ruby-red");
     assert.equal(page.data.roomThemeClass, "room-theme-ruby-red");
     assert.equal(storageState[ROOM_THEME_CACHE_KEY]["778899"], "ruby-red");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: mode join canonicalizes server color aliases before rendering", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({
+      mode: "join",
+      roomId: "778899",
+      themeId: "jade-green"
+    });
+    page.setData({ playerId: "P2" });
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...buildRoomStatePayload({
+          currentPlayerId: "P1",
+          lastCall: null
+        }),
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false,
+          themeId: "white"
+        }
+      }
+    }));
+
+    assert.equal(page.data.roomThemeId, "glacier-blue");
+    assert.equal(page.data.roomThemeClass, "room-theme-glacier-blue");
   } finally {
     cleanup();
   }
