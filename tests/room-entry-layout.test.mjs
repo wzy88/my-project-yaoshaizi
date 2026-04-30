@@ -159,7 +159,7 @@ test("room shell lifts the playfield and removes the heavy bottom mask", () => {
   assert.match(source, /\.room-playfield\s*\{[\s\S]*translateY\(-48rpx\)/);
   assert.match(source, /\.room-playfield\s*\{[\s\S]*transform-origin:\s*top center/);
   assert.match(source, /\.room-stage__table\s*\{[\s\S]*top:\s*152rpx/);
-  assert.match(source, /\.room-stage__table\s*\{[\s\S]*height:\s*1448rpx/);
+  assert.match(source, /\.room-stage__table\s*\{[\s\S]*height:\s*1288rpx/);
   assert.match(source, /\.room-shell__bottom-fade\s*\{[\s\S]*background:\s*none/);
   assert.match(source, /\.room-shell__bottom-fade\s*\{[\s\S]*pointer-events:\s*none/);
 });
@@ -242,11 +242,11 @@ test("room theme details keep seat color, bubble tail, and button geometry consi
   }
 
   assert.match(qaSection, /\.seat-stage-cup\.is-lit\s*\{[\s\S]*drop-shadow\(0 0 18rpx var\(--seat-cup-tone\)\)/);
-  assert.match(qaSection, /\.seat-stage-cup\.is-seat-tone-2\s*\{[\s\S]*--seat-cup-hue:\s*172deg/);
-  assert.match(qaSection, /\.seat-stage-cup\.is-seat-tone-6\s*\{[\s\S]*--seat-cup-hue:\s*246deg/);
-  assert.match(qaSection, /non-black themes must keep per-seat lit-cup colors above theme cup skins[\s\S]*\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit,[\s\S]*\.page\.room-theme-imperial-red \.seat-stage-cup\.is-lit,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit\s*\{[\s\S]*drop-shadow\(0 0 22rpx var\(--seat-cup-tone\)\)/);
-  assert.match(qaSection, /\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit \.figma-cup,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit \.figma-cup\s*\{[\s\S]*hue-rotate\(var\(--seat-cup-hue\)\)/);
-  assert.match(qaSection, /\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit \.figma-cup__skin,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit \.figma-cup__skin\s*\{[\s\S]*drop-shadow\(0 0 12rpx var\(--seat-cup-tone\)\)/);
+  assert.match(qaSection, /non-black lit cups reuse the black-room cup color treatment[\s\S]*\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit,[\s\S]*\.page\.room-theme-imperial-red \.seat-stage-cup\.is-lit,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit\s*\{[\s\S]*brightness\(1\.5\)[\s\S]*drop-shadow\(0 0 24rpx rgba\(255, 222, 150, 0\.34\)\)/);
+  assert.match(qaSection, /\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit \.figma-cup__skin,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit \.figma-cup__skin\s*\{[\s\S]*display:\s*none/);
+  assert.match(qaSection, /\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit \.figma-cup__body,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit \.figma-cup__body\s*\{[\s\S]*width:\s*46rpx[\s\S]*height:\s*64rpx/);
+  assert.match(qaSection, /\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit\.seat-stage-cup--slot-upper-left \.figma-cup__body,[\s\S]*rgb\(245, 216, 96\)/);
+  assert.match(qaSection, /\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit\.seat-stage-cup--slot-mid-right \.figma-cup__body,[\s\S]*rgb\(58, 56, 72\)/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__bubble::after,[\s\S]*rgba\(221, 250, 255, 0\.98\)/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__bubble\.latest::after,[\s\S]*rgba\(242, 128, 96, 0\.98\)/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__name,[\s\S]*color:\s*#123b5e/);
@@ -257,11 +257,11 @@ test("room theme details keep seat color, bubble tail, and button geometry consi
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.seat__bubble--slot-lower-right::after\s*\{[\s\S]*right:\s*-8rpx[\s\S]*top:\s*50%[\s\S]*transform:\s*translateY\(-50%\)/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-self__bubble::after\s*\{[\s\S]*left:\s*-10rpx[\s\S]*top:\s*28rpx[\s\S]*transform:\s*rotate\(-45deg\)/);
 
-  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*bottom:\s*auto[\s\S]*width:\s*194rpx[\s\S]*height:\s*84rpx[\s\S]*border-radius:\s*999rpx/);
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*bottom:\s*auto[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx[\s\S]*border-radius:\s*999rpx/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab\.room-fab--glacier-slice \.room-fab__skin\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*transform:\s*none/);
-  assert.match(qaSection, /imperial call button uses a taller exported slice[\s\S]*\.page\.room-theme-imperial-red \.room-fab\.room-fab--imperial-slice\s*\{[\s\S]*top:\s*22rpx[\s\S]*width:\s*210rpx[\s\S]*height:\s*112rpx/);
-  assert.match(qaSection, /preserve the imperial slice aspect ratio[\s\S]*\.page\.room-theme-imperial-red \.room-fab\.room-fab--imperial-slice \.room-fab__skin\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*transform:\s*none/);
-  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*bottom:\s*auto[\s\S]*width:\s*160rpx[\s\S]*height:\s*84rpx/);
+  assert.match(qaSection, /black room call button uses native dark-gold chrome[\s\S]*\.page\.room-theme-ruby-red \.room-fab\.room-fab--ruby-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
+  assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab\.room-fab--ruby-slice \.room-fab__skin\s*\{[\s\S]*display:\s*none/);
+  assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice\s*\{[\s\S]*top:\s*36rpx[\s\S]*bottom:\s*auto[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx/);
   assert.match(qaSection, /\.page\.room-theme-glacier-blue \.room-fab-secondary\.room-fab-secondary--glacier-slice \.room-fab-secondary__skin\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%[\s\S]*transform:\s*none/);
   assert.match(qaSection, /\.page\.room-theme-ruby-red \.room-fab-secondary\.room-fab-secondary--ruby-slice,[\s\S]*height:\s*84rpx/);
 });

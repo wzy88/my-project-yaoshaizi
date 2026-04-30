@@ -55,7 +55,8 @@ test("room call panel opens manually during calling and supports overlay close",
   assert.match(roomWxml, /class="room-fab \{\{phase === 'rolling' && secondaryActionKind === 'reroll' \? 'room-fab--left room-fab--paired' : ''\}\} \{\{canPrimaryAction \? '' : 'is-disabled'\}\} \{\{primaryActionText === '叫牌' \? roomThemeAssets\.primaryButtonClass : ''\}\} \{\{roomThemeId === 'ruby-red' && primaryActionText && primaryActionText !== '叫牌' && primaryActionText !== '开牌' \? 'room-fab--ruby-open-slice' : ''\}\}"[\s\S]*hover-class="\{\{canPrimaryAction \? 'room-fab--pressing' : 'none'\}\}"/);
   assert.match(roomWxml, /<image wx:if="\{\{secondaryActionKind === 'open' && secondaryActionText === '开牌' && roomThemeAssets\.openButtonSrc\}\}" class="room-fab-secondary__skin"/);
   assert.match(roomWxml, /<image wx:if="\{\{primaryActionText === '叫牌' && roomThemeAssets\.primaryButtonSrc\}\}" class="room-fab__skin"/);
-  assert.match(roomWxss, /\.room-fab\s*\{[\s\S]*right:\s*18rpx[\s\S]*top:\s*36rpx[\s\S]*width:\s*194rpx[\s\S]*height:\s*84rpx[\s\S]*border-radius:\s*999rpx[\s\S]*flex-direction:\s*row/);
+  assert.match(roomWxss, /\.room-fab\s*\{[\s\S]*right:\s*18rpx[\s\S]*top:\s*36rpx[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx[\s\S]*border-radius:\s*999rpx[\s\S]*flex-direction:\s*row/);
+  assert.match(roomWxss, /\.room-fab\.room-fab--paired\s*\{[\s\S]*width:\s*176rpx[\s\S]*height:\s*84rpx[\s\S]*padding:\s*0 20rpx/);
   assert.match(roomWxss, /\.room-fab-secondary\s*\{/);
   assert.match(roomWxss, /\.room-fab-secondary\s*\{[\s\S]*right:\s*74rpx[\s\S]*top:\s*-96rpx[\s\S]*width:\s*82rpx[\s\S]*height:\s*82rpx[\s\S]*border-radius:\s*50%/);
   assert.match(roomWxss, /\.room-fab-secondary--pressing\s*\{/);

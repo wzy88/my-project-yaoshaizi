@@ -5074,7 +5074,7 @@ button.room-topbar-menu-popover__item::after {
   top: 152rpx;
   left: 24rpx;
   right: 24rpx;
-  height: 1448rpx;
+  height: 1288rpx;
 }
 
 .room-stage__halo,
@@ -5924,9 +5924,9 @@ button.room-topbar-menu-popover__item::after {
   top: 36rpx;
   bottom: auto;
   z-index: 2;
-  width: 194rpx;
+  width: 176rpx;
   height: 84rpx;
-  padding: 0 24rpx 0 18rpx;
+  padding: 0 20rpx;
   box-sizing: border-box;
   border-radius: 999rpx;
   display: flex;
@@ -6054,9 +6054,9 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .room-fab.room-fab--paired {
-  width: 160rpx;
+  width: 176rpx;
   height: 84rpx;
-  padding: 0 18rpx;
+  padding: 0 20rpx;
 }
 
 .room-fab.room-fab--paired.room-fab--left {
@@ -6908,9 +6908,9 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-ruby-red .room-fab.room-fab--ruby-slice {
-  width: 210rpx;
-  height: 116rpx;
-  padding: 0;
+  width: 176rpx;
+  height: 84rpx;
+  padding: 0 20rpx;
   background: transparent;
   border-color: transparent;
   box-shadow: none;
@@ -6918,7 +6918,7 @@ button.room-topbar-menu-popover__item::after {
 
 .page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__icon-image,
 .page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__label {
-  opacity: 0;
+  opacity: 1;
 }
 
 .page.room-theme-ruby-red .room-fab.room-fab--ruby-open-slice {
@@ -7748,10 +7748,10 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice {
-  top: 42rpx;
-  width: 160rpx;
+  top: 36rpx;
+  width: 176rpx;
   height: 84rpx;
-  padding: 0;
+  padding: 0 20rpx;
   border-radius: 999rpx;
   background: transparent;
   border-color: transparent;
@@ -7761,32 +7761,32 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .page.room-theme-imperial-red .room-fab.room-fab--imperial-slice {
-  width: 210rpx;
-  height: 116rpx;
-  padding: 0;
+  width: 176rpx;
+  height: 84rpx;
+  padding: 0 20rpx;
   background: transparent;
   border-color: transparent;
   box-shadow: none;
-  border-radius: 58rpx;
+  border-radius: 999rpx;
   filter: drop-shadow(0 12rpx 24rpx rgba(214, 196, 122, 0.22));
   overflow: hidden;
 }
 
 .page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__skin {
-  left: 50%;
-  top: 47%;
-  width: 210rpx;
-  height: 112rpx;
-  transform: translate(-50%, -50%);
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
   z-index: 0;
 }
 
 .page.room-theme-imperial-red .room-fab-secondary.room-fab-secondary--imperial-slice .room-fab-secondary__skin {
-  left: 50%;
-  top: 50%;
-  width: 160rpx;
-  height: 84rpx;
-  transform: translate(-50%, -50%);
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
   z-index: 0;
 }
 
@@ -8452,9 +8452,9 @@ button.room-topbar__shortcut::after {
   right: auto;
   top: 36rpx;
   bottom: auto;
-  width: 160rpx;
+  width: 176rpx;
   height: 84rpx;
-  padding: 0 18rpx;
+  padding: 0 20rpx;
   border-radius: 999rpx;
   background:
     radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 34%),
@@ -8468,9 +8468,9 @@ button.room-topbar__shortcut::after {
   right: 24rpx;
   top: 36rpx;
   bottom: auto;
-  width: 160rpx;
+  width: 176rpx;
   height: 84rpx;
-  padding: 0 18rpx;
+  padding: 0 20rpx;
   border-radius: 999rpx;
   background:
     radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 34%),
@@ -10146,23 +10146,23 @@ button.room-topbar__shortcut::after {
 }
 
 .page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice {
-  width: 210rpx;
-  height: 116rpx;
-  padding: 0;
+  width: 176rpx;
+  height: 84rpx;
+  padding: 0 20rpx;
   background: transparent;
   border-color: transparent;
   box-shadow: none;
-  border-radius: 58rpx;
+  border-radius: 999rpx;
   filter: drop-shadow(0 12rpx 24rpx rgba(108, 221, 244, 0.18));
   overflow: hidden;
 }
 
 .page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__skin {
-  left: 50%;
-  top: 47%;
-  width: 210rpx;
-  height: 112rpx;
-  transform: translate(-50%, -50%);
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
   z-index: 0;
 }
 
@@ -10194,8 +10194,8 @@ button.room-topbar__shortcut::after {
 .page.room-theme-glacier-blue .room-fab-secondary--left,
 .page.room-theme-glacier-blue .room-fab-secondary--right,
 .page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice {
-  top: 42rpx;
-  width: 160rpx;
+  top: 36rpx;
+  width: 176rpx;
   height: 84rpx;
   background:
     radial-gradient(circle at 25% 12%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 40%),
@@ -10216,11 +10216,11 @@ button.room-topbar__shortcut::after {
 }
 
 .page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice .room-fab-secondary__skin {
-  left: 50%;
-  top: 50%;
-  width: 160rpx;
-  height: 84rpx;
-  transform: translate(-50%, -50%);
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
   z-index: 0;
 }
 
@@ -11663,10 +11663,10 @@ button.room-topbar__shortcut::after {
   right: 18rpx;
   top: 36rpx;
   bottom: auto;
-  width: 194rpx;
+  width: 176rpx;
   height: 84rpx;
   border-radius: 999rpx;
-  padding: 0 24rpx 0 18rpx;
+  padding: 0 20rpx;
   flex-direction: row;
   gap: 10rpx;
 }
@@ -11690,10 +11690,10 @@ button.room-topbar__shortcut::after {
 .page.room-theme-glacier-blue .room-fab-secondary.room-fab-secondary--glacier-slice {
   top: 36rpx;
   bottom: auto;
-  width: 160rpx;
+  width: 176rpx;
   height: 84rpx;
   border-radius: 999rpx;
-  padding: 0 18rpx;
+  padding: 0 20rpx;
 }
 
 .page.room-theme-ruby-red .room-fab-secondary.room-fab-secondary--ruby-slice .room-fab-secondary__skin,
@@ -11709,11 +11709,9 @@ button.room-topbar__shortcut::after {
   z-index: 0;
 }
 
-.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__icon-image,
 .page.room-theme-ruby-red .room-fab.room-fab--ruby-open-slice .room-fab__icon-image,
 .page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__icon-image,
 .page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__icon-image,
-.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__label,
 .page.room-theme-ruby-red .room-fab.room-fab--ruby-open-slice .room-fab__label,
 .page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__label,
 .page.room-theme-glacier-blue .room-fab.room-fab--glacier-slice .room-fab__label,
@@ -11726,25 +11724,58 @@ button.room-topbar__shortcut::after {
   opacity: 1;
 }
 
-/* theme QA locks: imperial call button uses a taller exported slice */
-.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice {
-  right: 10rpx;
-  top: 22rpx;
+/* theme QA locks: black room call button uses native dark-gold chrome instead of the old red slice */
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice {
+  right: 18rpx;
+  top: 36rpx;
   bottom: auto;
-  width: 210rpx;
-  height: 112rpx;
-  border-radius: 58rpx;
-  padding: 0;
+  width: 176rpx;
+  height: 84rpx;
+  border-radius: 999rpx;
+  padding: 0 20rpx;
+  flex-direction: row;
+  gap: 8rpx;
+  background:
+    radial-gradient(circle at 34% 12%, rgba(255, 244, 202, 0.34) 0%, rgba(255, 244, 202, 0) 38%),
+    linear-gradient(180deg, #342719 0%, #17130f 52%, #070607 100%);
+  border: 2rpx solid rgba(225, 178, 82, 0.86);
+  box-shadow:
+    0 12rpx 24rpx rgba(0, 0, 0, 0.38),
+    inset 0 2rpx 0 rgba(255, 236, 184, 0.2),
+    inset 0 -5rpx 0 rgba(0, 0, 0, 0.24);
+  filter: none;
+  overflow: hidden;
 }
 
-/* theme QA locks: preserve the imperial slice aspect ratio after shared geometry locks */
-.page.room-theme-imperial-red .room-fab.room-fab--imperial-slice .room-fab__skin {
-  inset: 0;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  transform: none;
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__skin {
+  display: none;
+}
+
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__icon-image,
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__label {
+  position: relative;
+  z-index: 1;
+  opacity: 1;
+}
+
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__icon-image {
+  width: 32rpx;
+  height: 32rpx;
+  filter:
+    drop-shadow(0 1rpx 1rpx rgba(0, 0, 0, 0.42))
+    drop-shadow(0 0 5rpx rgba(236, 197, 101, 0.18));
+}
+
+.page.room-theme-ruby-red .room-fab.room-fab--ruby-slice .room-fab__label {
+  width: auto;
+  max-width: 86rpx;
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 1;
+  color: #f2d28c;
+  text-shadow:
+    0 1rpx 0 rgba(0, 0, 0, 0.78),
+    0 0 8rpx rgba(235, 194, 106, 0.16);
 }
 
 /* theme QA locks: lit cups are seat-colored in every room theme */
@@ -11794,76 +11825,124 @@ button.room-topbar__shortcut::after {
     0 0 16rpx var(--seat-cup-tone);
 }
 
-.seat-stage-cup.is-seat-tone-1 { --seat-cup-tone: rgba(246, 203, 74, 0.56); --seat-cup-tone-strong: rgba(246, 203, 74, 0.9); --seat-cup-tone-soft: rgba(246, 203, 74, 0.2); --seat-cup-hue: 0deg; }
-.seat-stage-cup.is-seat-tone-2 { --seat-cup-tone: rgba(90, 206, 255, 0.54); --seat-cup-tone-strong: rgba(90, 206, 255, 0.88); --seat-cup-tone-soft: rgba(90, 206, 255, 0.2); --seat-cup-hue: 172deg; }
-.seat-stage-cup.is-seat-tone-3 { --seat-cup-tone: rgba(255, 116, 185, 0.5); --seat-cup-tone-strong: rgba(255, 116, 185, 0.84); --seat-cup-tone-soft: rgba(255, 116, 185, 0.18); --seat-cup-hue: 304deg; }
-.seat-stage-cup.is-seat-tone-4 { --seat-cup-tone: rgba(116, 236, 154, 0.52); --seat-cup-tone-strong: rgba(116, 236, 154, 0.86); --seat-cup-tone-soft: rgba(116, 236, 154, 0.2); --seat-cup-hue: 104deg; }
-.seat-stage-cup.is-seat-tone-5 { --seat-cup-tone: rgba(255, 144, 88, 0.52); --seat-cup-tone-strong: rgba(255, 144, 88, 0.86); --seat-cup-tone-soft: rgba(255, 144, 88, 0.2); --seat-cup-hue: 28deg; }
-.seat-stage-cup.is-seat-tone-6 { --seat-cup-tone: rgba(180, 143, 255, 0.5); --seat-cup-tone-strong: rgba(180, 143, 255, 0.84); --seat-cup-tone-soft: rgba(180, 143, 255, 0.18); --seat-cup-hue: 246deg; }
-.seat-stage-cup.is-seat-tone-7 { --seat-cup-tone: rgba(109, 232, 221, 0.52); --seat-cup-tone-strong: rgba(109, 232, 221, 0.86); --seat-cup-tone-soft: rgba(109, 232, 221, 0.2); --seat-cup-hue: 146deg; }
-.seat-stage-cup.is-seat-tone-8 { --seat-cup-tone: rgba(239, 248, 255, 0.54); --seat-cup-tone-strong: rgba(239, 248, 255, 0.88); --seat-cup-tone-soft: rgba(239, 248, 255, 0.2); --seat-cup-hue: 198deg; }
+.seat-stage-cup.is-seat-tone-1 { --seat-cup-tone: rgba(246, 203, 74, 0.56); --seat-cup-tone-strong: rgba(246, 203, 74, 0.9); --seat-cup-tone-soft: rgba(246, 203, 74, 0.2); }
+.seat-stage-cup.is-seat-tone-2 { --seat-cup-tone: rgba(90, 206, 255, 0.54); --seat-cup-tone-strong: rgba(90, 206, 255, 0.88); --seat-cup-tone-soft: rgba(90, 206, 255, 0.2); }
+.seat-stage-cup.is-seat-tone-3 { --seat-cup-tone: rgba(255, 116, 185, 0.5); --seat-cup-tone-strong: rgba(255, 116, 185, 0.84); --seat-cup-tone-soft: rgba(255, 116, 185, 0.18); }
+.seat-stage-cup.is-seat-tone-4 { --seat-cup-tone: rgba(116, 236, 154, 0.52); --seat-cup-tone-strong: rgba(116, 236, 154, 0.86); --seat-cup-tone-soft: rgba(116, 236, 154, 0.2); }
+.seat-stage-cup.is-seat-tone-5 { --seat-cup-tone: rgba(255, 144, 88, 0.52); --seat-cup-tone-strong: rgba(255, 144, 88, 0.86); --seat-cup-tone-soft: rgba(255, 144, 88, 0.2); }
+.seat-stage-cup.is-seat-tone-6 { --seat-cup-tone: rgba(180, 143, 255, 0.5); --seat-cup-tone-strong: rgba(180, 143, 255, 0.84); --seat-cup-tone-soft: rgba(180, 143, 255, 0.18); }
+.seat-stage-cup.is-seat-tone-7 { --seat-cup-tone: rgba(109, 232, 221, 0.52); --seat-cup-tone-strong: rgba(109, 232, 221, 0.86); --seat-cup-tone-soft: rgba(109, 232, 221, 0.2); }
+.seat-stage-cup.is-seat-tone-8 { --seat-cup-tone: rgba(239, 248, 255, 0.54); --seat-cup-tone-strong: rgba(239, 248, 255, 0.88); --seat-cup-tone-soft: rgba(239, 248, 255, 0.2); }
 
-/* theme QA locks: non-black themes must keep per-seat lit-cup colors above theme cup skins */
+/* theme QA locks: non-black lit cups reuse the black-room cup color treatment */
 .page.room-theme-jade-green .seat-stage-cup.is-lit,
 .page.room-theme-imperial-red .seat-stage-cup.is-lit,
 .page.room-theme-glacier-blue .seat-stage-cup.is-lit {
   filter:
-    brightness(1.16)
-    contrast(1.1)
-    saturate(1.24)
-    drop-shadow(0 10rpx 20rpx rgba(0, 0, 0, 0.22))
-    drop-shadow(0 0 22rpx var(--seat-cup-tone))
-    drop-shadow(0 0 10rpx var(--seat-cup-tone-strong));
-}
-
-.page.room-theme-jade-green .seat-stage-cup.is-lit::after,
-.page.room-theme-imperial-red .seat-stage-cup.is-lit::after,
-.page.room-theme-glacier-blue .seat-stage-cup.is-lit::after {
-  z-index: 0;
-  width: 128rpx;
-  height: 148rpx;
-  opacity: 0.95;
-}
-
-.page.room-theme-jade-green .seat-stage-cup.is-lit .figma-cup,
-.page.room-theme-imperial-red .seat-stage-cup.is-lit .figma-cup,
-.page.room-theme-glacier-blue .seat-stage-cup.is-lit .figma-cup {
-  z-index: 1;
-  filter:
-    hue-rotate(var(--seat-cup-hue))
-    brightness(1.12)
-    contrast(1.08)
+    brightness(1.5)
+    contrast(1.18)
     saturate(1.18)
-    drop-shadow(0 0 12rpx var(--seat-cup-tone));
+    drop-shadow(0 10rpx 20rpx rgba(0, 0, 0, 0.26))
+    drop-shadow(0 0 24rpx rgba(255, 222, 150, 0.34))
+    drop-shadow(0 0 10rpx rgba(180, 54, 38, 0.16));
 }
 
 .page.room-theme-jade-green .seat-stage-cup.is-lit .figma-cup__skin,
 .page.room-theme-imperial-red .seat-stage-cup.is-lit .figma-cup__skin,
 .page.room-theme-glacier-blue .seat-stage-cup.is-lit .figma-cup__skin {
-  filter:
-    hue-rotate(var(--seat-cup-hue))
-    brightness(1.14)
-    contrast(1.08)
-    saturate(1.22)
-    drop-shadow(0 0 12rpx var(--seat-cup-tone));
+  display: none;
 }
 
 .page.room-theme-jade-green .seat-stage-cup.is-lit .figma-cup__rim,
 .page.room-theme-imperial-red .seat-stage-cup.is-lit .figma-cup__rim,
 .page.room-theme-glacier-blue .seat-stage-cup.is-lit .figma-cup__rim {
-  box-shadow:
-    0 2rpx 7rpx rgba(0, 0, 0, 0.2),
-    0 0 14rpx var(--seat-cup-tone-strong);
+  display: none;
 }
 
 .page.room-theme-jade-green .seat-stage-cup.is-lit .figma-cup__body,
 .page.room-theme-imperial-red .seat-stage-cup.is-lit .figma-cup__body,
 .page.room-theme-glacier-blue .seat-stage-cup.is-lit .figma-cup__body {
-  border-color: var(--seat-cup-tone-strong);
+  display: block;
+  top: 8rpx;
+  width: 46rpx;
+  height: 64rpx;
+  opacity: 0.98;
+  border: 1rpx solid rgba(255, 236, 194, 0.34);
+  border-radius: 10rpx 10rpx 14rpx 14rpx;
   box-shadow:
-    inset 2rpx 0 12rpx rgba(255, 255, 255, 0.36),
-    inset -2rpx 0 10rpx rgba(0, 0, 0, 0.22),
-    0 0 18rpx var(--seat-cup-tone);
+    inset 0 8rpx 16rpx rgba(255, 230, 164, 0.18),
+    inset 2rpx 0 12rpx rgba(255, 245, 220, 0.22),
+    inset -2rpx 0 8rpx rgba(0, 0, 0, 0.3),
+    0 4rpx 12rpx rgba(0, 0, 0, 0.18),
+    0 0 16rpx rgba(255, 218, 138, 0.2);
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit .figma-cup__shine,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit .figma-cup__shine,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit .figma-cup__shine {
+  display: block;
+  left: 18rpx;
+  top: 14rpx;
+  width: 10rpx;
+  height: 34rpx;
+  opacity: 0.82;
+  background: linear-gradient(180deg, rgba(255, 248, 226, 0.72) 0%, rgba(255, 217, 136, 0.14) 100%);
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit.seat-stage-cup--slot-top .figma-cup__body,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit.seat-stage-cup--slot-top .figma-cup__body,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit.seat-stage-cup--slot-top .figma-cup__body {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.7) 22%, rgba(214, 236, 255, 0.62) 52%, rgba(136, 196, 241, 0.46) 80%, rgba(55, 87, 120, 0.34) 100%),
+    linear-gradient(180deg, rgba(226, 242, 255, 0.84) 0%, rgba(184, 214, 238, 0.74) 30%, rgba(132, 176, 216, 0.64) 64%, rgba(88, 128, 166, 0.56) 100%);
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit.seat-stage-cup--slot-upper-left .figma-cup__body,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit.seat-stage-cup--slot-upper-left .figma-cup__body,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit.seat-stage-cup--slot-upper-left .figma-cup__body {
+  background:
+    linear-gradient(90deg, rgba(255, 240, 180, 0.3) 0%, rgba(250, 228, 132, 0.45) 20%, rgba(233, 195, 73, 0.4) 50%, rgba(184, 144, 42, 0.3) 80%, rgba(154, 117, 32, 0.35) 100%),
+    linear-gradient(180deg, rgb(245, 216, 96) 0%, rgb(233, 195, 73) 15%, rgb(212, 168, 48) 40%, rgb(184, 144, 42) 72%, rgb(154, 117, 32) 100%);
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit.seat-stage-cup--slot-upper-right .figma-cup__body,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit.seat-stage-cup--slot-upper-right .figma-cup__body,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit.seat-stage-cup--slot-upper-right .figma-cup__body {
+  background:
+    linear-gradient(90deg, rgba(255, 200, 180, 0.25) 0%, rgba(240, 160, 140, 0.35) 20%, rgba(220, 130, 110, 0.3) 50%, rgba(180, 100, 85, 0.25) 78%, rgba(100, 50, 45, 0.4) 100%),
+    linear-gradient(180deg, rgb(216, 128, 112) 0%, rgb(200, 104, 88) 18%, rgb(176, 85, 69) 42%, rgb(152, 72, 56) 70%, rgb(128, 56, 48) 100%);
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit.seat-stage-cup--slot-mid-left .figma-cup__body,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit.seat-stage-cup--slot-mid-left .figma-cup__body,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit.seat-stage-cup--slot-mid-left .figma-cup__body {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.15) 0%, rgba(240, 245, 250, 0.25) 20%, rgba(220, 230, 235, 0.2) 50%, rgba(200, 210, 220, 0.15) 80%, rgba(160, 170, 180, 0.25) 100%),
+    linear-gradient(180deg, rgb(248, 248, 250) 0%, rgb(229, 232, 235) 14%, rgb(208, 213, 218) 40%, rgb(184, 190, 197) 70%, rgb(144, 153, 160) 100%);
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit.seat-stage-cup--slot-mid-right .figma-cup__body,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit.seat-stage-cup--slot-mid-right .figma-cup__body,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit.seat-stage-cup--slot-mid-right .figma-cup__body {
+  background:
+    linear-gradient(90deg, rgba(80, 70, 90, 0.3) 0%, rgba(60, 55, 70, 0.4) 24%, rgba(40, 38, 50, 0.35) 50%, rgba(25, 23, 35, 0.3) 78%, rgba(15, 13, 20, 0.45) 100%),
+    linear-gradient(180deg, rgb(58, 56, 72) 0%, rgb(46, 45, 56) 18%, rgb(34, 33, 40) 40%, rgb(24, 23, 30) 72%, rgb(14, 13, 18) 100%);
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit.seat-stage-cup--slot-lower-left .figma-cup__body,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit.seat-stage-cup--slot-lower-left .figma-cup__body,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit.seat-stage-cup--slot-lower-left .figma-cup__body {
+  background:
+    linear-gradient(90deg, rgba(200, 255, 220, 0.2) 0%, rgba(150, 240, 180, 0.35) 22%, rgba(100, 220, 150, 0.3) 50%, rgba(60, 180, 110, 0.25) 78%, rgba(30, 120, 70, 0.35) 100%),
+    linear-gradient(180deg, rgb(144, 216, 176) 0%, rgb(112, 200, 152) 15%, rgb(80, 176, 128) 35%, rgb(64, 152, 112) 65%, rgb(48, 128, 88) 100%);
+}
+
+.page.room-theme-jade-green .seat-stage-cup.is-lit.seat-stage-cup--slot-lower-right .figma-cup__body,
+.page.room-theme-imperial-red .seat-stage-cup.is-lit.seat-stage-cup--slot-lower-right .figma-cup__body,
+.page.room-theme-glacier-blue .seat-stage-cup.is-lit.seat-stage-cup--slot-lower-right .figma-cup__body {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.4) 0%, rgba(230, 240, 250, 0.5) 20%, rgba(180, 190, 200, 0.4) 50%, rgba(140, 150, 160, 0.3) 80%, rgba(80, 90, 100, 0.4) 100%),
+    linear-gradient(180deg, rgb(232, 232, 240) 0%, rgb(200, 208, 216) 10%, rgb(160, 168, 176) 30%, rgb(128, 136, 144) 60%, rgb(96, 104, 112) 100%);
 }
 
 /* theme QA locks: call bubbles and tail dots must render above table seats/cups */
