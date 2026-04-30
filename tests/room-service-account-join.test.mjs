@@ -139,3 +139,52 @@ test("room service: same account can still restore an offline participant", asyn
   assert.equal(restoredState.players[0].onlineStatus, "online");
   assert.equal(restoredState.players[0].accountId, "acct-shared");
 });
+
+test("room service: resume token rejoin restores the same player without duplicating around waiting users", async () => {
+  const accountStore = createAccountStore();
+  const service = new RoomService(accountStore);
+  const ownerSocket = createSocket("mobile");
+  const guestSocket = createSocket("guest");
+  const waitingSocket = createSocket("waiting");
+  const resumeSocket = createSocket("resume");
+
+  await service.handleRoomCreate(ownerSocket, createRoomPayload("ruby-red"), "create-1");
+  const createAck = getAck(ownerSocket, "create-1");
+
+  await service.handleRoomJoin(guestSocket, {
+    roomId: createAck.roomId,
+    nickname: "二号玩家",
+    avatar: ""
+  }, "join-guest");
+
+  service.handleGameStart(ownerSocket, "start-1");
+
+  await service.handleRoomJoin(waitingSocket, {
+    roomId: createAck.roomId,
+    nickname: "等待玩家",
+    avatar: ""
+  }, "join-waiting");
+
+  const beforeDisconnect = getRoomState(ownerSocket);
+  assert.equal(beforeDisconnect.players.length, 2);
+  assert.equal(beforeDisconnect.waitingPlayers.length, 1);
+
+  service.handleSocketDisconnected(ownerSocket);
+
+  service.handleRoomRejoin(resumeSocket, {
+    roomId: createAck.roomId,
+    playerId: createAck.playerId,
+    resumeToken: createAck.resumeToken
+  }, "rejoin-1");
+
+  const rejoinAck = getAck(resumeSocket, "rejoin-1");
+  assert.equal(rejoinAck.ok, true);
+  assert.equal(rejoinAck.playerId, createAck.playerId);
+  assert.equal(rejoinAck.themeId, "ruby-red");
+
+  const afterRejoin = getRoomState(resumeSocket);
+  assert.equal(afterRejoin.players.length, 2);
+  assert.equal(afterRejoin.waitingPlayers.length, 1);
+  assert.equal(afterRejoin.players.filter((player) => player.id === createAck.playerId).length, 1);
+  assert.equal(afterRejoin.players.find((player) => player.id === createAck.playerId).onlineStatus, "online");
+});
