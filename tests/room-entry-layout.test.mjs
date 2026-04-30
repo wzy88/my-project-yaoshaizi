@@ -242,8 +242,15 @@ test("room theme details keep seat color, bubble tail, and button geometry consi
     assert.match(wxss, new RegExp(`\\.seat-stage-cup\\.is-seat-tone-${seatIndex}\\s*\\{`));
   }
 
-  assert.match(qaSection, /\.seat-stage-cup\.is-lit\s*\{[\s\S]*drop-shadow\(0 0 18rpx var\(--seat-cup-tone\)\)/);
-  assert.match(qaSection, /non-black lit cups reuse the black-room cup color treatment[\s\S]*\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit,[\s\S]*\.page\.room-theme-imperial-red \.seat-stage-cup\.is-lit,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit\s*\{[\s\S]*brightness\(1\.5\)[\s\S]*drop-shadow\(0 0 24rpx rgba\(255, 222, 150, 0\.34\)\)/);
+  assert.match(qaSection, /\.seat-stage-cup\.is-lit\s*\{[\s\S]*brightness\(1\.08\)[\s\S]*saturate\(1\.16\);/);
+  assert.doesNotMatch(qaSection, /\.seat-stage-cup\.is-lit::after/);
+  assert.doesNotMatch(qaSection, /drop-shadow\(0 0 18rpx var\(--seat-cup-tone\)\)/);
+  assert.match(qaSection, /non-black lit cups reuse the black-room cup color treatment[\s\S]*\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit,[\s\S]*\.page\.room-theme-imperial-red \.seat-stage-cup\.is-lit,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit\s*\{[\s\S]*brightness\(1\.5\)[\s\S]*saturate\(1\.18\);/);
+  assert.doesNotMatch(qaSection, /drop-shadow\(0 0 24rpx rgba\(255, 222, 150, 0\.34\)\)/);
+  assert.doesNotMatch(qaSection, /0 0 16rpx rgba\(255, 218, 138, 0\.2\)/);
+  assert.doesNotMatch(wxss, /drop-shadow\(0 0 24rpx rgba\(255, 222, 150, 0\.34\)\)/);
+  assert.doesNotMatch(wxss, /drop-shadow\(0 0 20rpx rgba\(241, 207, 118, 0\.26\)\)/);
+  assert.doesNotMatch(wxss, /0 0 16rpx rgba\(255, 218, 138, 0\.2\)/);
   assert.match(qaSection, /\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit \.figma-cup__skin,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit \.figma-cup__skin\s*\{[\s\S]*display:\s*none/);
   assert.match(qaSection, /\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit \.figma-cup__body,[\s\S]*\.page\.room-theme-glacier-blue \.seat-stage-cup\.is-lit \.figma-cup__body\s*\{[\s\S]*width:\s*46rpx[\s\S]*height:\s*64rpx/);
   assert.match(qaSection, /\.page\.room-theme-jade-green \.seat-stage-cup\.is-lit\.seat-stage-cup--slot-upper-left \.figma-cup__body,[\s\S]*rgb\(245, 216, 96\)/);

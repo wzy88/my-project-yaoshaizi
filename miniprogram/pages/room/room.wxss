@@ -7243,10 +7243,7 @@ button.room-topbar-menu-popover__item::after {
   filter:
     brightness(1.5)
     contrast(1.18)
-    saturate(1.18)
-    drop-shadow(0 10rpx 20rpx rgba(0, 0, 0, 0.26))
-    drop-shadow(0 0 24rpx rgba(255, 222, 150, 0.34))
-    drop-shadow(0 0 10rpx rgba(180, 54, 38, 0.16));
+    saturate(1.18);
 }
 
 .page.room-theme-ruby-red .seat-stage-cup.is-occupied {
@@ -7341,8 +7338,7 @@ button.room-topbar-menu-popover__item::after {
     inset 0 8rpx 16rpx rgba(255, 230, 164, 0.18),
     inset 2rpx 0 12rpx rgba(255, 245, 220, 0.22),
     inset -2rpx 0 8rpx rgba(0, 0, 0, 0.3),
-    0 4rpx 12rpx rgba(0, 0, 0, 0.18),
-    0 0 16rpx rgba(255, 218, 138, 0.2);
+    0 4rpx 12rpx rgba(0, 0, 0, 0.18);
 }
 
 .page.room-theme-ruby-red .seat-stage-cup .figma-cup__shine {
@@ -8058,9 +8054,7 @@ button.room-topbar-menu-popover__item::after {
   filter:
     brightness(1.18)
     contrast(1.12)
-    saturate(1.12)
-    drop-shadow(0 12rpx 22rpx rgba(214, 196, 122, 0.18))
-    drop-shadow(0 0 20rpx rgba(241, 207, 118, 0.26));
+    saturate(1.12);
 }
 
 .page.room-theme-imperial-red .seat-stage-cup.is-occupied {
@@ -11915,44 +11909,23 @@ button.room-topbar__shortcut::after {
   --seat-cup-tone-soft: rgba(244, 205, 88, 0.2);
   filter:
     brightness(1.08)
-    saturate(1.16)
-    drop-shadow(0 10rpx 20rpx rgba(0, 0, 0, 0.24))
-    drop-shadow(0 0 18rpx var(--seat-cup-tone));
-}
-
-.seat-stage-cup.is-lit::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 112rpx;
-  height: 132rpx;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%, var(--seat-cup-tone) 0%, var(--seat-cup-tone-soft) 34%, rgba(255, 255, 255, 0) 66%);
-  pointer-events: none;
-  z-index: -1;
+    saturate(1.16);
 }
 
 .seat-stage-cup.is-lit .figma-cup__skin {
   filter:
     brightness(1.08)
-    saturate(1.12)
-    drop-shadow(0 0 10rpx var(--seat-cup-tone));
+    saturate(1.12);
 }
 
 .seat-stage-cup.is-lit .figma-cup__rim {
-  box-shadow:
-    0 2rpx 7rpx rgba(0, 0, 0, 0.2),
-    0 0 12rpx var(--seat-cup-tone);
+  box-shadow: 0 2rpx 7rpx rgba(0, 0, 0, 0.2);
 }
 
 .seat-stage-cup.is-lit .figma-cup__body {
   box-shadow:
     inset 2rpx 0 12rpx rgba(255, 255, 255, 0.34),
-    inset -2rpx 0 10rpx rgba(0, 0, 0, 0.22),
-    0 0 16rpx var(--seat-cup-tone);
+    inset -2rpx 0 10rpx rgba(0, 0, 0, 0.22);
 }
 
 .seat-stage-cup.is-seat-tone-1 { --seat-cup-tone: rgba(246, 203, 74, 0.56); --seat-cup-tone-strong: rgba(246, 203, 74, 0.9); --seat-cup-tone-soft: rgba(246, 203, 74, 0.2); }
@@ -11971,10 +11944,7 @@ button.room-topbar__shortcut::after {
   filter:
     brightness(1.5)
     contrast(1.18)
-    saturate(1.18)
-    drop-shadow(0 10rpx 20rpx rgba(0, 0, 0, 0.26))
-    drop-shadow(0 0 24rpx rgba(255, 222, 150, 0.34))
-    drop-shadow(0 0 10rpx rgba(180, 54, 38, 0.16));
+    saturate(1.18);
 }
 
 .page.room-theme-jade-green .seat-stage-cup.is-lit .figma-cup__skin,
@@ -12003,8 +11973,7 @@ button.room-topbar__shortcut::after {
     inset 0 8rpx 16rpx rgba(255, 230, 164, 0.18),
     inset 2rpx 0 12rpx rgba(255, 245, 220, 0.22),
     inset -2rpx 0 8rpx rgba(0, 0, 0, 0.3),
-    0 4rpx 12rpx rgba(0, 0, 0, 0.18),
-    0 0 16rpx rgba(255, 218, 138, 0.2);
+    0 4rpx 12rpx rgba(0, 0, 0, 0.18);
 }
 
 .page.room-theme-jade-green .seat-stage-cup.is-lit .figma-cup__shine,
