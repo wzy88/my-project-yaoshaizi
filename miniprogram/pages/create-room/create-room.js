@@ -71,7 +71,16 @@ Page({
   },
 
   onSelectTheme(event) {
-    const themeId = normalizeRoomThemeId(event.currentTarget.dataset.themeId);
+    const rawThemeId = event.currentTarget.dataset.themeId;
+    const themeId = normalizeRoomThemeId(rawThemeId);
+    try {
+      console.log(`[dice-miniapp] create-room:theme_select ${JSON.stringify({
+        rawThemeId: String(rawThemeId || ""),
+        themeId
+      })}`);
+    } catch (error) {
+      // ignore debug logging failure
+    }
     if (themeId === this.data.themePreviewId) {
       return;
     }
@@ -93,9 +102,21 @@ Page({
     const dicePerPlayer = 5;
     const minOpeningCount = 5;
     const themeId = normalizeRoomThemeId(this.data.themePreviewId || DEFAULT_ROOM_THEME_ID);
+    const url = `/pages/room/room?mode=create&forceNew=1&nickname=${encodeURIComponent(this.data.nickname || "")}&direction=${direction}&wildcardOneEnabled=${this.data.wildcardOneEnabled ? "1" : "0"}&dicePerPlayer=${dicePerPlayer}&minOpeningCount=${minOpeningCount}&testMode=0&themeId=${themeId}`;
+
+    try {
+      console.log(`[dice-miniapp] create-room:navigate ${JSON.stringify({
+        themePreviewId: this.data.themePreviewId,
+        themeId,
+        themePreviewLabel: this.data.themePreviewLabel,
+        url
+      })}`);
+    } catch (error) {
+      // ignore debug logging failure
+    }
 
     wx.navigateTo({
-      url: `/pages/room/room?mode=create&forceNew=1&nickname=${encodeURIComponent(this.data.nickname || "")}&direction=${direction}&wildcardOneEnabled=${this.data.wildcardOneEnabled ? "1" : "0"}&dicePerPlayer=${dicePerPlayer}&minOpeningCount=${minOpeningCount}&testMode=0&themeId=${themeId}`
+      url
     });
   },
 
