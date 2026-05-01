@@ -30,6 +30,7 @@ test("server room theme catalog exposes a complete manifest for remote loading",
   assert.equal(manifest.className, "room-theme-ruby-red");
   assert.equal(manifest.assets.pageBackgroundSrc, "/pages/room/assets/room-themes/ruby-red-bg-black.jpg");
   assert.equal(manifest.assets.primaryButtonClass, "room-fab--ruby-slice");
+  assert.equal(manifest.assets.primaryButtonSrc, "");
   assert.equal(manifest.assets.openButtonSrc, "");
   assert.equal(manifest.assets.dice["3"], "/pages/room/assets/room-themes/ruby-red-die-face-3.svg");
   assert.ok(manifest.criticalAssets.includes(manifest.assets.pageBackgroundSrc));
@@ -38,7 +39,16 @@ test("server room theme catalog exposes a complete manifest for remote loading",
   const all = listRoomThemeManifests();
   assert.equal(all.length, 4);
   assert.ok(all.every((item) => item.assets.dice["6"]));
+  for (const theme of all) {
+    assert.equal(theme.assets.primaryButtonSrc, "");
+    assert.equal(theme.assets.openButtonSrc, "");
+  }
+  assert.equal(getRoomThemeAssets("ruby-red").primaryButtonSrc, "");
   assert.equal(getRoomThemeAssets("ruby-red").openButtonSrc, "");
+  assert.equal(getRoomThemeAssets("imperial-red").primaryButtonSrc, "");
+  assert.equal(getRoomThemeAssets("imperial-red").openButtonSrc, "");
+  assert.equal(getRoomThemeAssets("glacier-blue").primaryButtonSrc, "");
+  assert.equal(getRoomThemeAssets("glacier-blue").openButtonSrc, "");
 });
 
 test("room theme aliases normalize black, white, and red before falling back to green", () => {

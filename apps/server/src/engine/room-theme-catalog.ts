@@ -32,8 +32,8 @@ const ROOM_THEME_ALIASES: Record<string, RoomThemeId> = {
 const ROOM_THEME_VERSIONS: Record<RoomThemeId, string> = {
   "jade-green": "2026.05.01.1",
   "ruby-red": "2026.05.01.2",
-  "imperial-red": "2026.05.01.1",
-  "glacier-blue": "2026.05.01.1"
+  "imperial-red": "2026.05.01.2",
+  "glacier-blue": "2026.05.01.2"
 };
 
 const BUNDLED_THEME_ASSET_ROOT = "/pages/room/assets/room-themes";
@@ -72,7 +72,7 @@ const THEME_CATALOG: Record<RoomThemeId, ThemeCatalogEntry> = {
     assets: {
       menuIconSrc: `${BUNDLED_THEME_ASSET_ROOT}/ruby-red-menu-btn-black.png`,
       primaryIconSrc: `${BUNDLED_THEME_ASSET_ROOT}/ruby-red-die-black.svg`,
-      primaryButtonSrc: `${BUNDLED_THEME_ASSET_ROOT}/ruby-red-call-btn-black.png`,
+      primaryButtonSrc: "",
       openButtonSrc: "",
       secondaryIconSrc: "",
       pageBackgroundSrc: `${BUNDLED_THEME_ASSET_ROOT}/ruby-red-bg-black.jpg`,
@@ -94,8 +94,8 @@ const THEME_CATALOG: Record<RoomThemeId, ThemeCatalogEntry> = {
     assets: {
       menuIconSrc: `${BUNDLED_THEME_ASSET_ROOT}/imperial-red-menu-btn.png`,
       primaryIconSrc: `${BUNDLED_THEME_ASSET_ROOT}/imperial-red-die.png`,
-      primaryButtonSrc: `${BUNDLED_THEME_ASSET_ROOT}/imperial-red-call-btn-jade.svg`,
-      openButtonSrc: `${BUNDLED_THEME_ASSET_ROOT}/imperial-red-open-btn-jade.svg`,
+      primaryButtonSrc: "",
+      openButtonSrc: "",
       secondaryIconSrc: "",
       pageBackgroundSrc: `${BUNDLED_THEME_ASSET_ROOT}/imperial-red-bg-palace-v5.svg`,
       bubbleSkinSrc: "",
@@ -116,8 +116,8 @@ const THEME_CATALOG: Record<RoomThemeId, ThemeCatalogEntry> = {
     assets: {
       menuIconSrc: `${BUNDLED_THEME_ASSET_ROOT}/glacier-blue-menu-btn.svg`,
       primaryIconSrc: `${BUNDLED_THEME_ASSET_ROOT}/glacier-blue-die.svg`,
-      primaryButtonSrc: `${BUNDLED_THEME_ASSET_ROOT}/glacier-blue-call-btn.svg`,
-      openButtonSrc: `${BUNDLED_THEME_ASSET_ROOT}/glacier-blue-open-btn.svg`,
+      primaryButtonSrc: "",
+      openButtonSrc: "",
       secondaryIconSrc: "",
       pageBackgroundSrc: `${BUNDLED_THEME_ASSET_ROOT}/glacier-blue-bg-v1.svg`,
       bubbleSkinSrc: "",

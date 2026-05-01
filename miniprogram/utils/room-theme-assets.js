@@ -20,7 +20,7 @@ const ROOM_THEME_ASSET_MAP = {
   "ruby-red": {
     menuIconSrc: "/pages/room/assets/room-themes/ruby-red-menu-btn-black.png",
     primaryIconSrc: "/pages/room/assets/room-themes/ruby-red-die-black.svg",
-    primaryButtonSrc: "/pages/room/assets/room-themes/ruby-red-call-btn-black.png",
+    primaryButtonSrc: "",
     openButtonSrc: "",
     secondaryIconSrc: "",
     pageBackgroundSrc: "/pages/room/assets/room-themes/ruby-red-bg-black.jpg",
@@ -34,8 +34,8 @@ const ROOM_THEME_ASSET_MAP = {
   "imperial-red": {
     menuIconSrc: "/pages/room/assets/room-themes/imperial-red-menu-btn.png",
     primaryIconSrc: "/pages/room/assets/room-themes/imperial-red-die.png",
-    primaryButtonSrc: "/pages/room/assets/room-themes/imperial-red-call-btn-jade.svg",
-    openButtonSrc: "/pages/room/assets/room-themes/imperial-red-open-btn-jade.svg",
+    primaryButtonSrc: "",
+    openButtonSrc: "",
     secondaryIconSrc: "",
     pageBackgroundSrc: "/pages/room/assets/room-themes/imperial-red-bg-palace-v5.svg",
     bubbleSkinSrc: "",
@@ -48,8 +48,8 @@ const ROOM_THEME_ASSET_MAP = {
   "glacier-blue": {
     menuIconSrc: "/pages/room/assets/room-themes/glacier-blue-menu-btn.svg",
     primaryIconSrc: "/pages/room/assets/room-themes/glacier-blue-die.svg",
-    primaryButtonSrc: "/pages/room/assets/room-themes/glacier-blue-call-btn.svg",
-    openButtonSrc: "/pages/room/assets/room-themes/glacier-blue-open-btn.svg",
+    primaryButtonSrc: "",
+    openButtonSrc: "",
     secondaryIconSrc: "",
     pageBackgroundSrc: "/pages/room/assets/room-themes/glacier-blue-bg-v1.svg",
     bubbleSkinSrc: "",
