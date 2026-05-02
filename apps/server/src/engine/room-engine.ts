@@ -510,6 +510,10 @@ export class RoomEngine {
       throw new GameError(ErrorCode.INVALID_PHASE, "当前阶段无法开始游戏");
     }
 
+    if (this.getOnlineWaitingPlayerCount() > 0) {
+      throw new GameError(ErrorCode.BAD_REQUEST, "请先安排等待玩家入座");
+    }
+
     const maxCount = this.getMaxCallCount();
     if (this.config.minOpeningCount > maxCount) {
       throw new GameError(ErrorCode.INVALID_CONFIG, "起叫最小数量超过当前总骰子数");

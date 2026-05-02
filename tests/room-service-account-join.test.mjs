@@ -69,7 +69,7 @@ function createRoomPayload(themeId = "ruby-red") {
   };
 }
 
-test("room service: same online account joining does not steal the existing room socket", async () => {
+test("room service: same online account joining reuses the existing player socket", async () => {
   const accountStore = createAccountStore();
   const service = new RoomService(accountStore);
   const ownerSocket = createSocket("mobile");
@@ -92,8 +92,8 @@ test("room service: same online account joining does not steal the existing room
   assert.equal(joinAck.ok, true);
   assert.equal(joinAck.roomId, createAck.roomId);
   assert.equal(joinAck.themeId, "ruby-red");
-  assert.notEqual(joinAck.playerId, createAck.playerId);
-  assert.equal(ownerSocket.closeCount, 0);
+  assert.equal(joinAck.playerId, createAck.playerId);
+  assert.equal(ownerSocket.closeCount, 1);
 
   const ownerState = getRoomState(ownerSocket);
   const joinState = getRoomState(joinSocket);
@@ -101,12 +101,12 @@ test("room service: same online account joining does not steal the existing room
   assert.equal(joinState.roomId, createAck.roomId);
   assert.equal(ownerState.config.themeId, "ruby-red");
   assert.equal(joinState.config.themeId, "ruby-red");
-  assert.equal(ownerState.players.length, 2);
-  assert.equal(joinState.players.length, 2);
+  assert.equal(ownerState.players.length, 1);
+  assert.equal(joinState.players.length, 1);
 
   const joined = joinState.players.find((player) => player.id === joinAck.playerId);
   assert.equal(joined.nickname, "调试器玩家");
-  assert.equal(joined.accountId, undefined);
+  assert.equal(joined.accountId, "acct-shared");
 });
 
 test("room service: same account can still restore an offline participant", async () => {

@@ -38,6 +38,20 @@ test("room engine: startGame requires >=2 players and enters rolling", () => {
   assert.equal(engine.getState().phase, "rolling");
 });
 
+test("room engine: startGame requires seating online waiting players first", () => {
+  const engine = createEngine();
+  engine.addWaitingPlayer({ id: "W_READY", nickname: "waiting", avatar: "" });
+
+  assert.throws(
+    () => engine.startGame("P_OWNER"),
+    (err) => err && err.code === ErrorCode.BAD_REQUEST && /请先安排等待玩家入座/.test(err.message)
+  );
+
+  engine.setPlayerOnlineStatus("W_READY", "offline");
+  engine.startGame("P_OWNER");
+  assert.equal(engine.getState().phase, "rolling");
+});
+
 test("room engine: theme config is normalized with a safe default", () => {
   const defaultThemeEngine = createEngine();
   assert.equal(defaultThemeEngine.getState().config.themeId, "jade-green");

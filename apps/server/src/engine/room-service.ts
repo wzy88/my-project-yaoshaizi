@@ -414,7 +414,7 @@ export class RoomService {
     const boundAccount = await this.resolveBoundAccount(payload);
 
     const restoredParticipant = boundAccount
-      ? this.findOfflineRoomParticipantByAccountId(room, boundAccount.accountId)
+      ? this.findRoomParticipantByAccountId(room, boundAccount.accountId)
       : null;
     if (restoredParticipant) {
       const restoredPlayerId = restoredParticipant.id;
@@ -1053,7 +1053,7 @@ export class RoomService {
     ));
   }
 
-  private findOfflineRoomParticipantByAccountId(room: RoomEngine, accountId: string): { id: string; kind: "player" | "waiting" } | null {
+  private findRoomParticipantByAccountId(room: RoomEngine, accountId: string): { id: string; kind: "player" | "waiting" } | null {
     const normalizedAccountId = String(accountId || "").trim();
     if (!normalizedAccountId) {
       return null;
@@ -1061,7 +1061,7 @@ export class RoomService {
 
     const state = room.getState();
     const active = state.players.find((player) => (
-      player.accountId === normalizedAccountId && player.onlineStatus === "offline"
+      player.accountId === normalizedAccountId
     ));
     if (active) {
       return {
@@ -1071,7 +1071,7 @@ export class RoomService {
     }
 
     const waiting = state.waitingPlayers.find((player) => (
-      player.accountId === normalizedAccountId && player.onlineStatus === "offline"
+      player.accountId === normalizedAccountId
     ));
     if (waiting) {
       return {
