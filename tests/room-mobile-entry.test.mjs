@@ -5070,6 +5070,96 @@ test("room page: offline waiting players do not block the owner start control", 
   }
 });
 
+test("room page: waiting admit only offers empty seats and sends the picked empty slot", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sent = [];
+    let sheetCount = 0;
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.showActionSheetSafe = ({ itemList = [], success }) => {
+      sheetCount += 1;
+      if (sheetCount === 1) {
+        assert.match(itemList[0], /等待者/);
+        success({ tapIndex: 0 });
+        return;
+      }
+      assert.deepEqual(itemList, ["3号 空", "4号 空", "5号 空", "6号 空", "7号 空", "8号 空"]);
+      success({ tapIndex: 1 });
+    };
+    page.setData({
+      playersRaw: [
+        { id: "P1", nickname: "房主", avatar: "", isOwner: true, seatIndex: 1 },
+        { id: "P2", nickname: "玩家二", avatar: "", isOwner: false, seatIndex: 2 }
+      ],
+      waitingPlayersRaw: [
+        { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online" }
+      ]
+    });
+
+    page.openWaitingAdmitFlow();
+
+    assert.deepEqual(sent, [
+      {
+        event: "room:waiting:admit",
+        payload: { playerId: "W1", seatIndex: 4 }
+      }
+    ]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: waiting admit blocks occupied seats locally with a clear hint", () => {
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sent = [];
+    const originalShowModal = globalThis.wx.showModal;
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.showActionSheetSafe = ({ success }) => {
+      success({ tapIndex: 0 });
+    };
+    globalThis.wx.showModal = (options = {}) => {
+      if (options && typeof options.success === "function") {
+        options.success({ confirm: true, cancel: false, content: "1" });
+      }
+    };
+    page.setData({
+      playersRaw: [
+        { id: "P1", nickname: "房主", avatar: "", isOwner: true, seatIndex: 1 }
+      ],
+      waitingPlayersRaw: [
+        { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online" }
+      ]
+    });
+
+    page.openWaitingAdmitFlow();
+
+    assert.deepEqual(sent, []);
+    assert.equal(toasts.includes("只能选择空座位，请先调座"), true);
+    globalThis.wx.showModal = originalShowModal;
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: ended room state lets owner start when the loser starter is offline", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {

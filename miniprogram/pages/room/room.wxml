@@ -313,6 +313,15 @@
               </block>
             </view>
             <view
+              wx:if="{{!callForcedOpen}}"
+              class="call-phase-panel__voice-chip {{!callVoiceReady ? 'is-disabled' : ''}} {{recording || voiceRecognizing ? 'is-active' : ''}}"
+              catchtouchstart="onVoiceTouchStart"
+              catchtouchend="onVoiceTouchEnd"
+              catchtouchcancel="onVoiceTouchCancel"
+            >
+              <text class="call-phase-panel__voice-chip-text">{{recording ? '松开' : (voiceRecognizing ? '识别' : '语音') }}</text>
+            </view>
+            <view
               class="call-phase-panel__btn call-phase-panel__btn--primary {{callForcedOpen || !callCountTouched || !callPointTouched || !callSelectionLegal ? 'is-disabled' : ''}}"
               bindtap="makeCallWithInput"
               hover-class="{{callForcedOpen || !callCountTouched || !callPointTouched || !callSelectionLegal ? 'none' : 'call-phase-panel__btn--pressing'}}"

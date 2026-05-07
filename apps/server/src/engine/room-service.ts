@@ -2,9 +2,11 @@ import {
   CLIENT_EVENTS,
   ErrorCode,
   GameError,
+  isCallHigher,
   type ClientEventName,
   type ClientEventMap,
   type ClientMessage,
+  type RoomStateDTO,
   type ServerEventMap,
   type ServerMessage
 } from "@dice/shared";
@@ -24,6 +26,7 @@ import { RoomEngine } from "./room-engine.js";
 import { getRoomThemeManifest } from "./room-theme-catalog.js";
 import { VoiceStore } from "./voice-store.js";
 import { ChatStore } from "./chat-store.js";
+import { TencentAsrService, type VoiceTranscriber } from "../services/tencent-asr-service.js";
 
 function safeDecodeURIComponent(raw: unknown): string {
   const value = String(raw ?? "");
@@ -49,6 +52,184 @@ function buildCallTurnKey(state: ReturnType<RoomEngine["getState"]>): string {
   return `${state.round}:${state.phase}:${state.currentPlayerId || "-"}:${state.lastCall ? state.lastCall.ts : 0}`;
 }
 
+const MIN_VOICE_DURATION_MS = 300;
+const MAX_CALL_VOICE_DURATION_MS = 5000;
+const VOICE_MIN_INTERVAL_MS = 3000;
+const VOICE_MAX_ATTEMPTS_PER_TURN = 3;
+const VOICE_MAX_INVALID_ATTEMPTS_PER_TURN = 3;
+const VOICE_MAX_ATTEMPTS_PER_MINUTE = 8;
+const VOICE_WINDOW_MS = 60000;
+
+interface VoiceTurnGuard {
+  turnKey: string;
+  attemptsUsed: number;
+  invalidStreak: number;
+  locked: boolean;
+  lastAttemptAt: number;
+  recentAttemptTimestamps: number[];
+}
+
+function parseVoiceCallInput(input: unknown): { count: number; point: number } | null {
+  const raw = String(input || "").trim();
+  if (!raw) return null;
+
+  const normalized = raw
+    .replace(/[，,。.!！?？、]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const compact = normalized
+    .replace(/\s/g, "")
+    .replace(/第/g, "")
+    .replace(/局/g, "")
+    .replace(/点数/g, "点")
+    .replace(/颗/g, "个")
+    .replace(/枚/g, "个")
+    .replace(/只/g, "个");
+
+  const parseChineseNumber = (token: unknown): number => {
+    const t = String(token || "").trim();
+    if (!t) return Number.NaN;
+    if (/^\d+$/.test(t)) return Number(t);
+
+    const map: Record<string, number> = {
+      零: 0,
+      〇: 0,
+      一: 1,
+      壹: 1,
+      幺: 1,
+      二: 2,
+      贰: 2,
+      两: 2,
+      三: 3,
+      叁: 3,
+      四: 4,
+      肆: 4,
+      五: 5,
+      伍: 5,
+      六: 6,
+      陆: 6,
+      溜: 6,
+      七: 7,
+      柒: 7,
+      八: 8,
+      捌: 8,
+      九: 9,
+      玖: 9
+    };
+
+    let str = t.replace(/点/g, "").replace(/个/g, "");
+    if (!str) return Number.NaN;
+
+    str = str.replace(/拾/g, "十");
+
+    if (str === "十") return 10;
+    if (str.length === 1 && map[str] != null) return map[str];
+
+    const tenIndex = str.indexOf("十");
+    if (tenIndex >= 0) {
+      const left = str.slice(0, tenIndex);
+      const right = str.slice(tenIndex + 1);
+      const tens = left ? (Object.prototype.hasOwnProperty.call(map, left) ? map[left] : Number.NaN) : 1;
+      const ones = right ? (Object.prototype.hasOwnProperty.call(map, right) ? map[right] : Number.NaN) : 0;
+      if (!Number.isFinite(tens) || !Number.isFinite(ones)) return Number.NaN;
+      return tens * 10 + ones;
+    }
+
+    if ([...str].every((ch) => map[ch] != null)) {
+      const digits = [...str].map((ch) => map[ch]);
+      return Number(digits.map(String).join(""));
+    }
+
+    return Number.NaN;
+  };
+
+  const parsePoint = (token: unknown): number => {
+    const t = String(token || "").trim();
+    if (!t) return Number.NaN;
+    if (/^[1-6]$/.test(t)) return Number(t);
+
+    const map: Record<string, number> = {
+      一: 1,
+      壹: 1,
+      幺: 1,
+      二: 2,
+      贰: 2,
+      两: 2,
+      三: 3,
+      叁: 3,
+      四: 4,
+      肆: 4,
+      五: 5,
+      伍: 5,
+      六: 6,
+      陆: 6,
+      溜: 6
+    };
+
+    return map[t] ?? Number.NaN;
+  };
+
+  const tryBuild = (countToken: unknown, pointToken: unknown): { count: number; point: number } | null => {
+    const count = parseChineseNumber(countToken);
+    const point = parsePoint(pointToken);
+    if (!Number.isInteger(count) || count <= 0) return null;
+    if (!Number.isInteger(point) || point < 1 || point > 6) return null;
+    return { count, point };
+  };
+
+  const m1 = compact.match(/^([0-9一二三四五六七八九十两幺零〇壹贰叁肆伍陆柒捌玖拾溜]+)个([0-9一二三四五六两幺壹贰叁肆伍陆溜])点?$/);
+  if (m1) return tryBuild(m1[1], m1[2]);
+
+  const m2 = normalized.match(/^([0-9]+|[一二三四五六七八九十两幺零〇壹贰叁肆伍陆柒捌玖拾溜]+)\s+([1-6]|[一二三四五六两幺壹贰叁肆伍陆溜])$/);
+  if (m2) return tryBuild(m2[1], m2[2]);
+
+  const m3 = compact.match(/([0-9一二三四五六七八九十两幺零〇壹贰叁肆伍陆柒捌玖拾溜]+)个?([0-9一二三四五六两幺壹贰叁肆伍陆溜])点?$/);
+  if (m3) {
+    const built = tryBuild(m3[1], m3[2]);
+    if (built) return built;
+  }
+
+  if (/^[一二三四五六两幺壹贰叁肆伍陆溜][一二三四五六两幺壹贰叁肆伍陆溜]$/.test(compact)) {
+    return tryBuild(compact[0], compact[1]);
+  }
+
+  return null;
+}
+
+function getVoiceMaxCallCount(state: RoomStateDTO): number {
+  return Math.max(0, (Number(state.config?.dicePerPlayer) || 0) * (Array.isArray(state.players) ? state.players.length : 0));
+}
+
+function isVoiceCallLegalForState(state: RoomStateDTO, count: number, point: number): boolean {
+  if (!Number.isInteger(count) || count <= 0 || !Number.isInteger(point) || point < 1 || point > 6) {
+    return false;
+  }
+
+  if (state.phase !== "calling" || !state.currentPlayerId) {
+    return false;
+  }
+
+  const maxCount = getVoiceMaxCallCount(state);
+  if (!maxCount || count > maxCount) {
+    return false;
+  }
+
+  if (state.lastCall && state.lastCall.count > maxCount) {
+    return false;
+  }
+
+  if (state.lastCall && state.lastCall.count === maxCount && state.lastCall.point === 6) {
+    return false;
+  }
+
+  if (!state.lastCall && count < (Number(state.config?.minOpeningCount) || 0)) {
+    return false;
+  }
+
+  return isCallHigher(state.lastCall, count, point);
+}
+
 interface BoundAccountIdentity {
   accountId: string;
   accountDisplayId: string;
@@ -65,13 +246,16 @@ export class RoomService {
   private turnTimers = new Map<string, NodeJS.Timeout>();
   private turnTimerKeys = new Map<string, string>();
   private turnDeadlineTsByRoom = new Map<string, number>();
+  private voiceTurnGuards = new Map<string, VoiceTurnGuard>();
   private readonly accountStore: AccountStore;
   private historyStore = new HistoryStore();
   private voiceStore = new VoiceStore();
   private chatStore = new ChatStore();
+  private readonly voiceTranscriber: VoiceTranscriber;
 
-  constructor(accountStore = new AccountStore()) {
+  constructor(accountStore = new AccountStore(), voiceTranscriber: VoiceTranscriber = new TencentAsrService()) {
     this.accountStore = accountStore;
+    this.voiceTranscriber = voiceTranscriber;
   }
 
   hasRoom(roomId: string): boolean {
@@ -865,6 +1049,8 @@ export class RoomService {
   ): Promise<void> {
     const { room, session } = this.getRoomAndSession(ws);
     this.ensureActivePlayer(room, session.playerId);
+    const state = room.getState();
+    const turnKey = buildCallTurnKey(state);
 
     if (!payload || typeof payload.base64 !== "string" || !payload.base64.length) {
       throw new GameError(ErrorCode.BAD_REQUEST, "语音内容为空");
@@ -877,6 +1063,8 @@ export class RoomService {
     if (!Number.isFinite(payload.durationMs) || payload.durationMs <= 0) {
       throw new GameError(ErrorCode.BAD_REQUEST, "语音时长非法");
     }
+
+    this.assertVoiceUploadAllowed(state, session.roomId, session.playerId, payload);
 
     const voiceMeta = await this.voiceStore.saveVoice({
       roomId: session.roomId,
@@ -893,6 +1081,7 @@ export class RoomService {
     });
 
     this.broadcastRoom(session.roomId, "voice:uploaded", voiceMeta);
+    void this.transcribeUploadedVoice(session.roomId, session.playerId, voiceMeta.fileId, payload, state, turnKey);
   }
 
   private async handleVoiceList(
@@ -936,6 +1125,136 @@ export class RoomService {
     });
 
     this.send(ws, "voice:fetched", voice);
+  }
+
+  private async transcribeUploadedVoice(
+    roomId: string,
+    playerId: string,
+    fileId: string,
+    payload: ClientEventMap["voice:upload"],
+    stateAtUpload: RoomStateDTO,
+    turnKey: string
+  ): Promise<void> {
+    const guardKey = this.playerKey(roomId, playerId);
+
+    if (!this.voiceTranscriber.isEnabled()) {
+      const guard = this.voiceTurnGuards.get(guardKey);
+      this.sendToPlayer(roomId, playerId, "voice:transcribed", {
+        roomId,
+        playerId,
+        fileId,
+        clientRequestId: payload.clientRequestId,
+        ok: false,
+        reason: "语音识别服务未配置",
+        attemptsRemaining: guard ? Math.max(0, VOICE_MAX_ATTEMPTS_PER_TURN - guard.attemptsUsed) : VOICE_MAX_ATTEMPTS_PER_TURN,
+        invalidStreak: guard?.invalidStreak || 0,
+        disabledForTurn: Boolean(guard?.locked),
+        serverTs: Date.now()
+      });
+      return;
+    }
+
+    try {
+      const text = await this.voiceTranscriber.transcribe({
+        fileName: payload.fileName,
+        mimeType: payload.mimeType,
+        base64: payload.base64
+      });
+      const transcript = String(text || "").trim();
+      const parsed = parseVoiceCallInput(transcript);
+      const guard = this.voiceTurnGuards.get(guardKey);
+
+      if (!parsed) {
+        const nextInvalidStreak = guard && guard.turnKey === turnKey ? guard.invalidStreak + 1 : 1;
+        if (guard && guard.turnKey === turnKey) {
+          guard.invalidStreak = nextInvalidStreak;
+          guard.locked = nextInvalidStreak >= VOICE_MAX_INVALID_ATTEMPTS_PER_TURN;
+          this.voiceTurnGuards.set(guardKey, guard);
+        }
+
+        this.sendToPlayer(roomId, playerId, "voice:transcribed", {
+          roomId,
+          playerId,
+          fileId,
+          clientRequestId: payload.clientRequestId,
+          ok: false,
+          text: transcript,
+          reason: guard?.locked
+            ? "连续3次未识别到有效叫牌，本轮请直接手动叫牌"
+            : "没识别到有效叫牌，请直接说“六个四”这种格式",
+          attemptsRemaining: guard ? Math.max(0, VOICE_MAX_ATTEMPTS_PER_TURN - guard.attemptsUsed) : 0,
+          invalidStreak: guard?.invalidStreak || nextInvalidStreak,
+          disabledForTurn: Boolean(guard?.locked),
+          serverTs: Date.now()
+        });
+        return;
+      }
+
+      if (!isVoiceCallLegalForState(stateAtUpload, parsed.count, parsed.point)) {
+        const nextInvalidStreak = guard && guard.turnKey === turnKey ? guard.invalidStreak + 1 : 1;
+        if (guard && guard.turnKey === turnKey) {
+          guard.invalidStreak = nextInvalidStreak;
+          guard.locked = nextInvalidStreak >= VOICE_MAX_INVALID_ATTEMPTS_PER_TURN;
+          this.voiceTurnGuards.set(guardKey, guard);
+        }
+
+        this.sendToPlayer(roomId, playerId, "voice:transcribed", {
+          roomId,
+          playerId,
+          fileId,
+          clientRequestId: payload.clientRequestId,
+          ok: false,
+          text: transcript,
+          reason: guard?.locked
+            ? "连续3次无效叫牌，本轮请直接手动叫牌"
+            : "识别到了，但这手叫牌不合法，请按大于上一手的格式说",
+          attemptsRemaining: guard ? Math.max(0, VOICE_MAX_ATTEMPTS_PER_TURN - guard.attemptsUsed) : 0,
+          invalidStreak: guard?.invalidStreak || nextInvalidStreak,
+          disabledForTurn: Boolean(guard?.locked),
+          serverTs: Date.now()
+        });
+        return;
+      }
+
+      if (guard && guard.turnKey === turnKey) {
+        guard.invalidStreak = 0;
+        guard.locked = false;
+        this.voiceTurnGuards.set(guardKey, guard);
+      }
+
+      this.sendToPlayer(roomId, playerId, "voice:transcribed", {
+        roomId,
+        playerId,
+        fileId,
+        clientRequestId: payload.clientRequestId,
+        ok: true,
+        text: transcript,
+        count: parsed.count,
+        point: parsed.point,
+        attemptsRemaining: guard ? Math.max(0, VOICE_MAX_ATTEMPTS_PER_TURN - guard.attemptsUsed) : 0,
+        invalidStreak: 0,
+        disabledForTurn: false,
+        serverTs: Date.now()
+      });
+    } catch (error) {
+      const guard = this.voiceTurnGuards.get(guardKey);
+      const reason = error instanceof Error && error.message
+        ? error.message
+        : "语音识别失败，请重试";
+
+      this.sendToPlayer(roomId, playerId, "voice:transcribed", {
+        roomId,
+        playerId,
+        fileId,
+        clientRequestId: payload.clientRequestId,
+        ok: false,
+        reason,
+        attemptsRemaining: guard ? Math.max(0, VOICE_MAX_ATTEMPTS_PER_TURN - guard.attemptsUsed) : VOICE_MAX_ATTEMPTS_PER_TURN,
+        invalidStreak: guard?.invalidStreak || 0,
+        disabledForTurn: Boolean(guard?.locked),
+        serverTs: Date.now()
+      });
+    }
   }
 
   private handleHeartbeat(
@@ -1312,6 +1631,7 @@ export class RoomService {
 
     this.clearReconnectTimer(roomId, playerId);
     this.playerResumeTokens.delete(this.playerKey(roomId, playerId));
+    this.voiceTurnGuards.delete(this.playerKey(roomId, playerId));
 
     const stateBeforeRemoval = room.getState();
     const shouldAutoAdvanceLeavingTurn = Boolean(
@@ -1374,7 +1694,76 @@ export class RoomService {
     }
     this.turnTimerKeys.delete(roomId);
     this.turnDeadlineTsByRoom.delete(roomId);
+    for (const key of this.voiceTurnGuards.keys()) {
+      if (key.startsWith(`${roomId}:`)) {
+        this.voiceTurnGuards.delete(key);
+      }
+    }
     this.chatStore.clearRoom(roomId);
+  }
+
+  private assertVoiceUploadAllowed(
+    state: RoomStateDTO,
+    roomId: string,
+    playerId: string,
+    payload: ClientEventMap["voice:upload"]
+  ): void {
+    if (state.phase !== "calling") {
+      throw new GameError(ErrorCode.INVALID_PHASE, "叫牌阶段才能使用语音");
+    }
+
+    if (String(state.currentPlayerId || "") !== String(playerId || "")) {
+      throw new GameError(ErrorCode.NOT_YOUR_TURN, "仅轮到你叫牌时可语音");
+    }
+
+    const durationMs = Number(payload.durationMs || 0);
+    if (!Number.isFinite(durationMs) || durationMs < MIN_VOICE_DURATION_MS) {
+      throw new GameError(ErrorCode.BAD_REQUEST, "录音太短，请重说");
+    }
+
+    if (durationMs > MAX_CALL_VOICE_DURATION_MS) {
+      throw new GameError(ErrorCode.BAD_REQUEST, "语音请控制在5秒内");
+    }
+
+    const now = Date.now();
+    const key = this.playerKey(roomId, playerId);
+    const turnKey = buildCallTurnKey(state);
+    const existing = this.voiceTurnGuards.get(key);
+    const guard: VoiceTurnGuard = existing && existing.turnKey === turnKey
+      ? existing
+      : {
+        turnKey,
+        attemptsUsed: 0,
+        invalidStreak: 0,
+        locked: false,
+        lastAttemptAt: 0,
+        recentAttemptTimestamps: existing?.recentAttemptTimestamps || []
+      };
+
+    guard.recentAttemptTimestamps = guard.recentAttemptTimestamps.filter((ts) => now - ts < VOICE_WINDOW_MS);
+
+    if (guard.locked || guard.invalidStreak >= VOICE_MAX_INVALID_ATTEMPTS_PER_TURN) {
+      throw new GameError(ErrorCode.LOCKED, "连续3次无效叫牌，本轮请直接手动叫牌");
+    }
+
+    if (guard.attemptsUsed >= VOICE_MAX_ATTEMPTS_PER_TURN) {
+      throw new GameError(ErrorCode.LOCKED, "本轮语音最多尝试3次，请直接手动叫牌");
+    }
+
+    const elapsedMs = now - Number(guard.lastAttemptAt || 0);
+    if (guard.lastAttemptAt > 0 && elapsedMs < VOICE_MIN_INTERVAL_MS) {
+      const waitSec = Math.max(1, Math.ceil((VOICE_MIN_INTERVAL_MS - elapsedMs) / 1000));
+      throw new GameError(ErrorCode.LOCKED, `语音过于频繁，请${waitSec}秒后再试`);
+    }
+
+    if (guard.recentAttemptTimestamps.length >= VOICE_MAX_ATTEMPTS_PER_MINUTE) {
+      throw new GameError(ErrorCode.LOCKED, "语音次数过多，请稍后再试");
+    }
+
+    guard.attemptsUsed += 1;
+    guard.lastAttemptAt = now;
+    guard.recentAttemptTimestamps.push(now);
+    this.voiceTurnGuards.set(key, guard);
   }
 
   private createOrRefreshResumeToken(roomId: string, playerId: string): string {

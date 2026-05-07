@@ -20,6 +20,16 @@ export const WECHAT_CODE2SESSION_URL = String(
   process.env.WECHAT_CODE2SESSION_URL || "https://api.weixin.qq.com/sns/jscode2session"
 ).trim();
 export const WECHAT_AUTH_MOCK = process.env.WECHAT_AUTH_MOCK === "1";
+export const TENCENT_ASR_SECRET_ID = String(
+  process.env.TENCENT_ASR_SECRET_ID || process.env.TENCENTCLOUD_SECRET_ID || ""
+).trim();
+export const TENCENT_ASR_SECRET_KEY = String(
+  process.env.TENCENT_ASR_SECRET_KEY || process.env.TENCENTCLOUD_SECRET_KEY || ""
+).trim();
+export const TENCENT_ASR_REGION = String(process.env.TENCENT_ASR_REGION || "ap-shanghai").trim() || "ap-shanghai";
+export const TENCENT_ASR_ENGINE_MODEL_TYPE = String(
+  process.env.TENCENT_ASR_ENGINE_MODEL_TYPE || "16k_zh"
+).trim() || "16k_zh";
 
 export const ROLL_TIMEOUT_MS = Number(process.env.ROLL_TIMEOUT_MS || 15000);
 // 叫牌倒计时是产品规则，不允许云托管环境变量把线上改回 18 秒。

@@ -39,6 +39,7 @@ export const SERVER_EVENTS: ServerEventName[] = [
   "voice:uploaded",
   "voice:list",
   "voice:fetched",
+  "voice:transcribed",
   "chat:new",
   "chat:list",
   "system:error"

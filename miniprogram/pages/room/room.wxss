@@ -6083,6 +6083,7 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .call-phase-panel {
+  position: relative;
   width: 100%;
   padding: 24rpx 24rpx calc(92rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
@@ -6225,10 +6226,6 @@ button.room-topbar-menu-popover__item::after {
 
 .call-phase-panel__actions {
   margin-top: 14rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10rpx;
 }
 
 .call-phase-panel__actions-row {
@@ -6287,11 +6284,43 @@ button.room-topbar-menu-popover__item::after {
 }
 
 .call-phase-panel__btn--primary {
-  flex: 1;
-  min-width: 188rpx;
+  flex: 0 0 250rpx;
+  min-width: 250rpx;
   border: 1.23rpx solid #ffe088;
   background: radial-gradient(circle at 50% 10%, #f5e060 0%, #e9c349 35%, #bf9b23 70%, #a07c18 100%);
   box-shadow: 0 8rpx 40rpx rgba(233, 195, 73, 0.38);
+}
+
+.call-phase-panel__voice-chip {
+  flex: 0 0 92rpx;
+  width: 92rpx;
+  height: 92rpx;
+  border-radius: 22rpx;
+  box-sizing: border-box;
+  border: 1.23rpx solid rgba(237, 226, 194, 0.28);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 56%),
+    linear-gradient(180deg, rgba(26, 34, 47, 0.96) 0%, rgba(13, 18, 28, 0.98) 100%);
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.08), 0 8rpx 28rpx rgba(3, 8, 16, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 80ms ease-out, box-shadow 80ms ease-out, opacity 80ms ease-out, filter 80ms ease-out;
+}
+
+.call-phase-panel__voice-chip.is-active {
+  border-color: rgba(255, 182, 116, 0.66);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 222, 173, 0.26) 0%, rgba(255, 222, 173, 0) 58%),
+    linear-gradient(180deg, rgba(118, 49, 23, 0.98) 0%, rgba(86, 28, 18, 0.98) 100%);
+  box-shadow: 0 10rpx 36rpx rgba(164, 71, 34, 0.28);
+  animation: call-voice-recording-pulse 1.2s ease-in-out infinite;
+}
+
+.call-phase-panel__voice-chip.is-disabled {
+  opacity: 0.54;
+  border-color: rgba(237, 226, 194, 0.16);
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.04);
 }
 
 .call-phase-panel__btn.is-disabled {
@@ -6304,6 +6333,26 @@ button.room-topbar-menu-popover__item::after {
   font-weight: 800;
   letter-spacing: 1rpx;
   color: #1a0c00;
+}
+
+.call-phase-panel__voice-chip-text {
+  font-size: 26rpx;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: 1rpx;
+  color: #f4ecda;
+}
+
+@keyframes call-voice-recording-pulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    filter: saturate(1);
+  }
+  50% {
+    transform: translateY(-1rpx) scale(1.012);
+    filter: saturate(1.06);
+  }
 }
 
 .call-phase-panel__count--pressing,
@@ -10925,6 +10974,27 @@ button.room-topbar__shortcut::after {
     inset 0 -9rpx 18rpx rgba(78, 51, 16, 0.18);
 }
 
+.page.room-theme-jade-green .call-phase-panel__voice-chip {
+  background:
+    radial-gradient(circle at 24% 10%, rgba(245, 241, 214, 0.14) 0%, rgba(245, 241, 214, 0) 40%),
+    linear-gradient(180deg, rgba(38, 79, 63, 0.96) 0%, rgba(16, 42, 35, 0.98) 100%);
+  border-color: rgba(200, 168, 105, 0.34);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 239, 0.08),
+    0 10rpx 24rpx rgba(5, 28, 23, 0.24);
+}
+
+.page.room-theme-jade-green .call-phase-panel__voice-chip.is-active {
+  background:
+    radial-gradient(circle at 26% 10%, rgba(255, 244, 205, 0.26) 0%, rgba(255, 244, 205, 0) 40%),
+    linear-gradient(180deg, rgba(96, 121, 71, 0.98) 0%, rgba(34, 78, 58, 0.98) 100%);
+  border-color: rgba(231, 205, 132, 0.58);
+  box-shadow:
+    0 14rpx 30rpx rgba(25, 84, 63, 0.22),
+    0 0 20rpx rgba(214, 194, 124, 0.12),
+    inset 0 1rpx 0 rgba(255, 255, 239, 0.14);
+}
+
 .page.room-theme-jade-green .dock-btn--ghost {
   background:
     radial-gradient(circle at 30% 12%, rgba(231, 255, 238, 0.16) 0%, rgba(231, 255, 238, 0) 40%),
@@ -10937,6 +11007,11 @@ button.room-topbar__shortcut::after {
 .page.room-theme-jade-green .dock-btn--settlement .dock-btn__label {
   color: #1e1708;
   text-shadow: 0 1rpx 0 rgba(255, 246, 205, 0.26);
+}
+
+.page.room-theme-jade-green .call-phase-panel__voice-chip-text {
+  color: #eef4dd;
+  text-shadow: 0 1rpx 0 rgba(6, 25, 21, 0.42);
 }
 
 .page.room-theme-jade-green .dock-btn--ghost .dock-btn__label,
@@ -11141,6 +11216,27 @@ button.room-topbar__shortcut::after {
     inset 0 -10rpx 18rpx rgba(54, 34, 8, 0.18);
 }
 
+.page.room-theme-ruby-red .call-phase-panel__voice-chip {
+  background:
+    radial-gradient(circle at 22% 8%, rgba(255, 235, 170, 0.12) 0%, rgba(255, 235, 170, 0) 38%),
+    linear-gradient(180deg, rgba(52, 34, 26, 0.98) 0%, rgba(13, 10, 12, 0.99) 100%);
+  border-color: rgba(245, 216, 143, 0.32);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 236, 194, 0.08),
+    0 10rpx 26rpx rgba(0, 0, 0, 0.28);
+}
+
+.page.room-theme-ruby-red .call-phase-panel__voice-chip.is-active {
+  background:
+    radial-gradient(circle at 24% 8%, rgba(255, 235, 170, 0.18) 0%, rgba(255, 235, 170, 0) 36%),
+    linear-gradient(180deg, rgba(122, 34, 28, 0.98) 0%, rgba(62, 12, 15, 0.99) 100%);
+  border-color: rgba(245, 216, 143, 0.54);
+  box-shadow:
+    0 14rpx 30rpx rgba(92, 17, 13, 0.28),
+    0 0 18rpx rgba(145, 30, 24, 0.18),
+    inset 0 1rpx 0 rgba(255, 236, 194, 0.12);
+}
+
 .page.room-theme-ruby-red .dock-btn--ghost {
   background:
     radial-gradient(circle at 30% 12%, rgba(255, 230, 170, 0.12) 0%, rgba(255, 230, 170, 0) 40%),
@@ -11153,6 +11249,11 @@ button.room-topbar__shortcut::after {
 .page.room-theme-ruby-red .dock-btn--settlement .dock-btn__label {
   color: #221506;
   text-shadow: 0 1rpx 0 rgba(255, 240, 190, 0.3);
+}
+
+.page.room-theme-ruby-red .call-phase-panel__voice-chip-text {
+  color: #fff0d7;
+  text-shadow: 0 1rpx 0 rgba(18, 8, 9, 0.46);
 }
 
 .page.room-theme-ruby-red .dock-btn--ghost .dock-btn__label,
@@ -11361,6 +11462,27 @@ button.room-topbar__shortcut::after {
     inset 0 -10rpx 18rpx rgba(82, 41, 10, 0.18);
 }
 
+.page.room-theme-imperial-red .call-phase-panel__voice-chip {
+  background:
+    radial-gradient(circle at 22% 10%, rgba(255, 238, 185, 0.14) 0%, rgba(255, 238, 185, 0) 38%),
+    linear-gradient(180deg, rgba(102, 31, 34, 0.98) 0%, rgba(46, 15, 19, 0.99) 100%);
+  border-color: rgba(248, 221, 177, 0.36);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 238, 174, 0.09),
+    0 10rpx 26rpx rgba(74, 10, 12, 0.26);
+}
+
+.page.room-theme-imperial-red .call-phase-panel__voice-chip.is-active {
+  background:
+    radial-gradient(circle at 24% 8%, rgba(255, 248, 220, 0.22) 0%, rgba(255, 248, 220, 0) 36%),
+    linear-gradient(135deg, rgba(139, 156, 88, 0.88) 0%, rgba(100, 52, 24, 0.96) 52%, rgba(83, 20, 21, 0.99) 100%);
+  border-color: rgba(255, 228, 159, 0.6);
+  box-shadow:
+    0 14rpx 30rpx rgba(95, 20, 18, 0.26),
+    0 0 20rpx rgba(255, 216, 128, 0.16),
+    inset 0 1rpx 0 rgba(255, 238, 174, 0.14);
+}
+
 .page.room-theme-imperial-red .dock-btn--ghost {
   background:
     radial-gradient(circle at 30% 12%, rgba(255, 238, 185, 0.14) 0%, rgba(255, 238, 185, 0) 40%),
@@ -11373,6 +11495,11 @@ button.room-topbar__shortcut::after {
 .page.room-theme-imperial-red .dock-btn--settlement .dock-btn__label {
   color: #321506;
   text-shadow: 0 1rpx 0 rgba(255, 240, 190, 0.32);
+}
+
+.page.room-theme-imperial-red .call-phase-panel__voice-chip-text {
+  color: #fff0d4;
+  text-shadow: 0 1rpx 0 rgba(68, 15, 11, 0.44);
 }
 
 .page.room-theme-imperial-red .dock-btn--ghost .dock-btn__label,
@@ -11580,6 +11707,27 @@ button.room-topbar__shortcut::after {
     inset 0 -10rpx 18rpx rgba(78, 36, 58, 0.16);
 }
 
+.page.room-theme-glacier-blue .call-phase-panel__voice-chip {
+  background:
+    radial-gradient(circle at 24% 8%, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(180deg, rgba(55, 113, 149, 0.96) 0%, rgba(18, 63, 99, 0.98) 100%);
+  border-color: rgba(216, 250, 255, 0.4);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.14),
+    0 10rpx 24rpx rgba(5, 23, 42, 0.22);
+}
+
+.page.room-theme-glacier-blue .call-phase-panel__voice-chip.is-active {
+  background:
+    radial-gradient(circle at 24% 8%, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 38%),
+    linear-gradient(180deg, rgba(255, 222, 214, 0.98) 0%, rgba(235, 120, 88, 0.98) 56%, rgba(116, 53, 76, 0.99) 100%);
+  border-color: rgba(255, 227, 216, 0.66);
+  box-shadow:
+    0 14rpx 30rpx rgba(216, 92, 62, 0.24),
+    0 0 18rpx rgba(255, 198, 184, 0.18),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.18);
+}
+
 .page.room-theme-glacier-blue .dock-btn--ghost {
   background:
     radial-gradient(circle at 30% 12%, rgba(235, 255, 255, 0.22) 0%, rgba(235, 255, 255, 0) 40%),
@@ -11592,6 +11740,11 @@ button.room-topbar__shortcut::after {
 .page.room-theme-glacier-blue .dock-btn--settlement .dock-btn__label {
   color: #51213a;
   text-shadow: 0 1rpx 0 rgba(255, 240, 232, 0.3);
+}
+
+.page.room-theme-glacier-blue .call-phase-panel__voice-chip-text {
+  color: #effcff;
+  text-shadow: 0 1rpx 0 rgba(12, 54, 82, 0.42);
 }
 
 .page.room-theme-glacier-blue .dock-btn--ghost .dock-btn__label,

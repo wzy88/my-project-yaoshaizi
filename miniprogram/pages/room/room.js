@@ -65,6 +65,9 @@ const ROOM_AUDIO_STOP_RATIOS = {};
 const ROOM_PLAYFIELD_LIFT_RPX = 48;
 const ROOM_STAGE_HEIGHT_RPX = 1608;
 const ROOM_STAGE_MIN_SCALE = 0.9;
+const DEFAULT_CALL_VOICE_TIP_TEXT = "按住说，识别后再确认";
+const MAX_CALL_VOICE_DURATION_MS = 5000;
+const VOICE_RECOGNITION_WAIT_MS = 3000;
 const ROOM_RULE_SECTIONS = [
   {
     title: "基础玩法",
@@ -1025,6 +1028,26 @@ function buildSeatRows(playersRaw, maxSeats = 8, selectedSeatIndex = 0) {
   });
 }
 
+function buildEmptySeatOptions(playersRaw, maxSeats = 8) {
+  const players = Array.isArray(playersRaw) ? playersRaw : [];
+  const occupiedSeats = new Set(
+    players
+      .map((player) => Number(player && player.seatIndex))
+      .filter((seatIndex) => Number.isInteger(seatIndex) && seatIndex >= 1 && seatIndex <= maxSeats)
+  );
+
+  return Array.from({ length: maxSeats }, (_, index) => {
+    const seatIndex = index + 1;
+    if (occupiedSeats.has(seatIndex)) {
+      return null;
+    }
+    return {
+      seatIndex,
+      label: `${seatIndex}号 空`
+    };
+  }).filter(Boolean);
+}
+
 function parseCallInput(input) {
   const raw = String(input || "").trim();
   if (!raw) return null;
@@ -1625,7 +1648,9 @@ Page({
     myDiceJustRevealed: false,
     myDiceCovered: false,
     recording: false,
-    voiceTipText: "按住语音键说话，松开发送",
+    callVoiceReady: false,
+    voiceRecognizing: false,
+    voiceTipText: DEFAULT_CALL_VOICE_TIP_TEXT,
     callCount: "3",
     callPoint: "6",
     callCountOptions: buildCallCountOptionItems(3, 8, 1),
@@ -1767,9 +1792,14 @@ Page({
 	    const turnAlertSfxEnabled = storedTurnAlertSfx === "" || storedTurnAlertSfx == null ? true : Boolean(storedTurnAlertSfx);
 	    const hapticEnabled = storedHaptic === "" || storedHaptic == null ? true : Boolean(storedHaptic);
 	    this.setData({ sfxEnabled, turnAlertSfxEnabled, hapticEnabled });
-	    this.voiceStartTs = 0;
-	    this.voiceStopLocked = false;
+    this.voiceStartTs = 0;
+    this.voiceStopLocked = false;
     this.pendingVoiceFileId = "";
+    this.pendingVoiceRequestId = "";
+    this.pendingVoiceTranscriptTimer = null;
+    this.pendingVoiceTranscriptPromise = null;
+    this.pendingVoiceTranscriptResolve = null;
+    this.pendingVoiceTranscriptReject = null;
     this.voiceTempMap = {};
 	    this.myDiceRevealTimer = null;
 	    this.myDiceAutoPeekTimer = null;
@@ -1838,7 +1868,7 @@ Page({
     this.sfxPaths = {};
     void this.ensureSfxFiles();
 
-    // Optional: WechatSI speech-to-text plugin (if the project enables it in app.json).
+    // Optional: WechatSI speech-to-text plugin (only available after the appid is authorized and app.json enables it).
     try {
       // eslint-disable-next-line no-undef
       const plugin = typeof requirePlugin === "function" ? requirePlugin("WechatSI") : null;
@@ -1866,6 +1896,13 @@ Page({
       }
     }
 
+    this.setData({
+      callVoiceReady: Boolean(
+        this.recorderManager
+        && typeof this.recorderManager.start === "function"
+      )
+    });
+
     if (this.audioContext) {
       this.audioContext.onEnded(() => {
         this.setData({
@@ -1888,6 +1925,7 @@ Page({
         this.voiceStopLocked = false;
         this.setData({
           recording: true,
+          voiceRecognizing: false,
           voiceTipText: "录音中，松开发送"
         });
       });
@@ -1895,7 +1933,8 @@ Page({
       this.recorderManager.onStop(async (res) => {
         this.setData({
           recording: false,
-          voiceTipText: "按住语音键说话，松开发送"
+          voiceRecognizing: true,
+          voiceTipText: "识别中..."
         });
 
         const durationMs = Number(res.duration || Math.max(0, Date.now() - this.voiceStartTs));
@@ -1911,27 +1950,49 @@ Page({
             return;
           }
 
+          const clientRequestId = `voice_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
           const fileName = `voice_${Date.now()}.mp3`;
+          const transcriptPromise = this.waitForVoiceTranscript(clientRequestId);
           this.sendEvent("voice:upload", {
             fileName,
             mimeType: "audio/mpeg",
             durationMs,
-            base64
+            base64,
+            clientRequestId
           });
 
-          const trySubmitTranscript = (text) => {
-            const transcript = String(text || "").trim();
-            if (!transcript) {
+          const trySubmitTranscript = (result) => {
+            const transcript = String(result && typeof result === "object" ? result.text : result || "").trim();
+            const parsed = result
+              && typeof result === "object"
+              && Number.isInteger(Number(result.count))
+              && Number.isInteger(Number(result.point))
+              ? {
+                count: Number(result.count),
+                point: Number(result.point)
+              }
+              : parseCallInput(transcript);
+
+            if (!transcript && !parsed) {
+              this.setData({
+                voiceRecognizing: false,
+                voiceTipText: "没听清，按住重说"
+              });
               return;
             }
 
-            this.sendEvent("voice:transcript", {
-              text: transcript,
-              ts: Date.now()
-            }, { silentLog: true });
+            if (transcript) {
+              this.sendEvent("voice:transcript", {
+                text: transcript,
+                ts: Date.now()
+              }, { silentLog: true });
+            }
 
-            const parsed = parseCallInput(transcript);
             if (!parsed) {
+              this.setData({
+                voiceRecognizing: false,
+                voiceTipText: "没听清，按住重说"
+              });
               wx.showToast({ title: "语音识别未匹配叫骰格式", icon: "none" });
               return;
             }
@@ -1944,7 +2005,9 @@ Page({
               callCountTouched: true,
               callPointTouched: true,
               callSelectionLegal: this.isCallSelectionLegal(parsed.count, parsed.point),
-              callSelectionSummaryText: buildCallSelectionSummary(true, true, parsed.count, parsed.point)
+              callSelectionSummaryText: buildCallSelectionSummary(true, true, parsed.count, parsed.point),
+              voiceRecognizing: false,
+              voiceTipText: "已识别，确认或按住重说"
             });
 
             const canCall = this.data.phase === "calling"
@@ -1954,8 +2017,7 @@ Page({
             if (canCall) {
               this.setData({
                 callPanelExpanded: true,
-                callSelectorMode: this.data.callSelectorMode || "count",
-                primaryActionText: "喊點"
+                callSelectorMode: this.data.callSelectorMode || "count"
               });
               wx.showToast({ title: `已识别：${parsed.count}个${parsed.point}（请确认）`, icon: "none" });
             } else {
@@ -1963,32 +2025,27 @@ Page({
             }
           };
 
-          const transcript = String(this.asrFinalText || this.asrText || "").trim();
-          if (transcript) {
-            trySubmitTranscript(transcript);
-            return;
-          }
-
-          // Fallback when ASR plugin is unavailable: manual transcript input.
-          wx.showModal({
-            title: "语音叫骰",
-            editable: true,
-            placeholderText: "输入识别文本，例如 10个4（留空则仅发送语音）",
-            success: (modalRes) => {
-              if (!modalRes.confirm) {
-                return;
-              }
-              trySubmitTranscript(modalRes.content);
-            }
-          });
+          const transcript = await transcriptPromise;
+          trySubmitTranscript(transcript);
         } catch (error) {
-          wx.showToast({ title: "语音读取失败", icon: "none" });
+          const message = error instanceof Error && error.message
+            ? error.message
+            : "语音读取失败，请重试";
+          const silentToast = Boolean(error && typeof error === "object" && error.silentToast);
+          this.setData({
+            voiceRecognizing: false,
+            voiceTipText: message
+          });
+          if (!silentToast) {
+            wx.showToast({ title: message, icon: "none" });
+          }
         }
       });
 
       this.recorderManager.onError(() => {
         this.setData({
           recording: false,
+          voiceRecognizing: false,
           voiceTipText: "录音失败，请重试"
         });
         wx.showToast({ title: "录音失败", icon: "none" });
@@ -2374,6 +2431,7 @@ Page({
     if (this.recorderManager && this.data.recording) {
       this.recorderManager.stop();
     }
+    this.clearPendingVoiceTranscriptWait();
 
     if (this.audioContext) {
       this.audioContext.destroy();
@@ -3886,39 +3944,85 @@ Page({
       callCountTouched: false,
       callPointTouched: false,
       callSelectionLegal: true,
-      callSelectionSummaryText: buildCallSelectionSummary(false, false, count, point)
+      voiceRecognizing: false,
+      callSelectionSummaryText: buildCallSelectionSummary(false, false, count, point),
+      voiceTipText: DEFAULT_CALL_VOICE_TIP_TEXT
     });
   },
 
-  quickCall() {
-    wx.showModal({
-      title: "叫牌",
-      editable: true,
-      placeholderText: "输入例如 3个6 或 3 6",
-      success: (res) => {
-        if (!res.confirm) {
-          return;
-        }
+  clearPendingVoiceTranscriptWait() {
+    if (this.pendingVoiceTranscriptTimer) {
+      clearTimeout(this.pendingVoiceTranscriptTimer);
+      this.pendingVoiceTranscriptTimer = null;
+    }
+    this.pendingVoiceTranscriptPromise = null;
+    this.pendingVoiceTranscriptResolve = null;
+    this.pendingVoiceTranscriptReject = null;
+    this.pendingVoiceRequestId = "";
+  },
 
-        const parsed = parseCallInput(res.content);
-        if (!parsed) {
-          wx.showToast({ title: "格式错误", icon: "none" });
-          return;
-        }
-
-        this.setData({
-          callCount: String(parsed.count),
-          callPoint: String(parsed.point),
-          callCountOptions: this.buildCallCountOptions(parsed.count, this.getMaxCallCount(), parsed.point),
-          callPointOptionItems: this.buildCallPointOptionItemsForSelection(parsed.count),
-          callSelectionLegal: this.isCallSelectionLegal(parsed.count, parsed.point)
-        });
+  resolvePendingVoiceTranscript(result) {
+    const transcriptResult = result && typeof result === "object"
+      ? {
+        text: String(result.text || "").trim(),
+        count: Number(result.count),
+        point: Number(result.point)
       }
+      : {
+        text: String(result || "").trim(),
+        count: NaN,
+        point: NaN
+      };
+
+    if (
+      !transcriptResult.text
+      && (!Number.isInteger(transcriptResult.count) || !Number.isInteger(transcriptResult.point))
+    ) {
+      return;
+    }
+
+    if (typeof this.pendingVoiceTranscriptResolve !== "function") {
+      return;
+    }
+
+    const resolve = this.pendingVoiceTranscriptResolve;
+    this.clearPendingVoiceTranscriptWait();
+    resolve(transcriptResult);
+  },
+
+  rejectPendingVoiceTranscript(message, options = {}) {
+    if (typeof this.pendingVoiceTranscriptReject !== "function") {
+      return;
+    }
+
+    const reject = this.pendingVoiceTranscriptReject;
+    this.clearPendingVoiceTranscriptWait();
+    const error = new Error(String(message || "语音识别失败，请重试"));
+    error.silentToast = Boolean(options && options.silentToast);
+    reject(error);
+  },
+
+  waitForVoiceTranscript(clientRequestId = "", timeoutMs = VOICE_RECOGNITION_WAIT_MS) {
+    this.clearPendingVoiceTranscriptWait();
+    this.pendingVoiceRequestId = String(clientRequestId || "");
+    this.pendingVoiceTranscriptPromise = new Promise((resolve, reject) => {
+      this.pendingVoiceTranscriptResolve = resolve;
+      this.pendingVoiceTranscriptReject = reject;
+      this.pendingVoiceTranscriptTimer = setTimeout(() => {
+        const fallback = String(this.asrFinalText || this.asrText || "").trim();
+        if (fallback) {
+          this.resolvePendingVoiceTranscript({ text: fallback });
+          return;
+        }
+        this.rejectPendingVoiceTranscript("没听清，按住重说");
+      }, timeoutMs);
     });
+
+    return this.pendingVoiceTranscriptPromise;
   },
 
   async onVoiceTouchStart() {
-    if (this.data.recording || this.voiceStopLocked) {
+    if (this.data.recording || this.voiceStopLocked || this.data.voiceRecognizing) {
       return;
     }
 
@@ -3960,7 +4064,7 @@ Page({
     if (this.asrManager) {
       try {
         this.asrManager.start({
-          duration: 10000,
+          duration: MAX_CALL_VOICE_DURATION_MS,
           lang: "zh_CN"
         });
       } catch (error) {
@@ -3970,7 +4074,7 @@ Page({
 
     try {
       this.recorderManager.start({
-        duration: 10000,
+        duration: MAX_CALL_VOICE_DURATION_MS,
         sampleRate: 16000,
         numberOfChannels: 1,
         encodeBitRate: 48000,
@@ -3987,6 +4091,10 @@ Page({
     }
 
     this.voiceStopLocked = true;
+    this.setData({
+      voiceRecognizing: true,
+      voiceTipText: "识别中..."
+    });
     if (this.asrManager) {
       try {
         this.asrManager.stop();
@@ -4763,25 +4871,55 @@ Page({
           return;
         }
 
+        const emptySeatOptions = buildEmptySeatOptions(this.data.playersRaw, 8);
+        if (!emptySeatOptions.length) {
+          wx.showToast({ title: "没有空座位，请先调座", icon: "none" });
+          return;
+        }
+
+        const submitAdmitSeat = (rawSeatIndex) => {
+          const seatIndex = Number(String(rawSeatIndex || "").trim());
+          if (!Number.isInteger(seatIndex) || seatIndex < 1 || seatIndex > 8) {
+            wx.showToast({ title: "座位号不合法", icon: "none" });
+            return;
+          }
+
+          const matchedSeat = emptySeatOptions.find((item) => item.seatIndex === seatIndex);
+          if (!matchedSeat) {
+            wx.showToast({ title: "只能选择空座位，请先调座", icon: "none" });
+            return;
+          }
+
+          this.sendEvent("room:waiting:admit", {
+            playerId: picked.id,
+            seatIndex
+          });
+        };
+
+        if (emptySeatOptions.length <= 6) {
+          this.showActionSheetSafe({
+            itemList: emptySeatOptions.map((item) => item.label),
+            success: (seatRes) => {
+              const selectedSeat = emptySeatOptions[seatRes.tapIndex];
+              if (!selectedSeat) {
+                return;
+              }
+              submitAdmitSeat(selectedSeat.seatIndex);
+            }
+          });
+          return;
+        }
+
         wx.showModal({
           title: "为等待者分配座位",
           editable: true,
           placeholderText: "输入空座位号 1-8",
+          content: `空座位：${emptySeatOptions.map((item) => item.seatIndex).join("、")}`,
           success: (modalRes) => {
             if (!modalRes.confirm) {
               return;
             }
-
-            const seatIndex = Number(String(modalRes.content || "").trim());
-            if (!Number.isInteger(seatIndex) || seatIndex < 1 || seatIndex > 8) {
-              wx.showToast({ title: "座位号不合法", icon: "none" });
-              return;
-            }
-
-            this.sendEvent("room:waiting:admit", {
-              playerId: picked.id,
-              seatIndex
-            });
+            submitAdmitSeat(modalRes.content);
           }
         });
       }
@@ -5387,6 +5525,12 @@ Page({
           break;
         }
 
+        if (!payload.ok && actionEvent === "voice:upload") {
+          this.rejectPendingVoiceTranscript(String(payload.reason || "语音识别失败，请重试"), {
+            silentToast: true
+          });
+        }
+
         if (payload.roomId || payload.playerId || payload.resumeToken) {
           const nextRoomId = payload.roomId || this.data.roomId;
           const ackThemeManifest = payload.themeManifest
@@ -5471,6 +5615,8 @@ Page({
 
           if (actionEvent === "room:join" && payload.code === "ROOM_NOT_FOUND") {
             wx.showToast({ title: "房间不存在或房间号有误", icon: "none", duration: 5000 });
+          } else if (actionEvent === "room:waiting:admit" && payload.code === "SEAT_CONFLICT") {
+            wx.showToast({ title: "该座位已有人，请先调座", icon: "none" });
           } else {
             wx.showToast({ title: reason, icon: "none" });
           }
@@ -5632,6 +5778,23 @@ Page({
             playingVoiceTip: "点击语音可播放"
           });
         });
+        break;
+      }
+      case "voice:transcribed": {
+        const requestId = String(payload.clientRequestId || "");
+        if (requestId && this.pendingVoiceRequestId && requestId !== this.pendingVoiceRequestId) {
+          break;
+        }
+
+        if (payload.ok) {
+          this.resolvePendingVoiceTranscript({
+            text: payload.text,
+            count: payload.count,
+            point: payload.point
+          });
+        } else {
+          this.rejectPendingVoiceTranscript(payload.reason || "语音识别失败，请重试");
+        }
         break;
       }
       case "system:error": {
@@ -5876,8 +6039,10 @@ Page({
       callSelectorMode: "count",
       callCountTouched: nextCountTouched,
       callPointTouched: nextPointTouched,
+      voiceRecognizing: false,
       callSelectionLegal: this.isCallSelectionLegal(this.data.callCount, this.data.callPoint),
-      callSelectionSummaryText: buildCallSelectionSummary(nextCountTouched, nextPointTouched, this.data.callCount, this.data.callPoint)
+      callSelectionSummaryText: buildCallSelectionSummary(nextCountTouched, nextPointTouched, this.data.callCount, this.data.callPoint),
+      voiceTipText: this.data.recording ? "录音中，松开发送" : DEFAULT_CALL_VOICE_TIP_TEXT
     });
   },
 
@@ -5885,7 +6050,9 @@ Page({
     this.setData({
       callPanelVisible: false,
       callPanelExpanded: false,
-      callSelectionSummaryText: buildCallSelectionSummary(this.data.callCountTouched, this.data.callPointTouched, this.data.callCount, this.data.callPoint)
+      voiceRecognizing: false,
+      callSelectionSummaryText: buildCallSelectionSummary(this.data.callCountTouched, this.data.callPointTouched, this.data.callCount, this.data.callPoint),
+      voiceTipText: this.data.recording ? "录音中，松开发送" : DEFAULT_CALL_VOICE_TIP_TEXT
     });
   },
 
@@ -6147,6 +6314,7 @@ Page({
     this.suppressCallAttention = false;
 
     this.pendingVoiceFileId = "";
+    this.clearPendingVoiceTranscriptWait();
     this.clearPendingRoomAction();
 
     this.setData({
@@ -6197,6 +6365,10 @@ Page({
       myDiceRevealing: false,
       myDiceJustRevealed: false,
       myDiceCovered: false,
+      recording: false,
+      callVoiceReady: Boolean(this.recorderManager && typeof this.recorderManager.start === "function"),
+      voiceRecognizing: false,
+      voiceTipText: DEFAULT_CALL_VOICE_TIP_TEXT,
       roomSelfDiceFaces: buildSelfDiceDisplayItems(this.data.roomThemeId),
       historyItems: [],
       historyNextBeforeRound: null,
@@ -6372,6 +6544,7 @@ Page({
     wx.removeStorageSync(SESSION_KEY);
     this.voiceTempMap = {};
     this.pendingVoiceFileId = "";
+    this.clearPendingVoiceTranscriptWait();
     this.clearPendingRoomAction();
     this.clearMyDiceTimers();
     this.resetSelfRollTransientState();

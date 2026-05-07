@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@dice/shared": "0.1.0",
+    "dotenv": "^17.4.2",
+    "tencentcloud-sdk-nodejs": "^4.1.225",
     "ws": "^8.18.0"
   },
   "devDependencies": {

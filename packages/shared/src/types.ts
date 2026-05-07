@@ -192,6 +192,22 @@ export interface VoiceFetchedDTO {
   serverTs: number;
 }
 
+export interface VoiceTranscribedDTO {
+  roomId: string;
+  playerId: string;
+  fileId: string;
+  clientRequestId?: string;
+  ok: boolean;
+  text?: string;
+  count?: number;
+  point?: number;
+  reason?: string;
+  attemptsRemaining?: number;
+  invalidStreak?: number;
+  disabledForTurn?: boolean;
+  serverTs: number;
+}
+
 export interface ChatMessageDTO {
   id: string;
   playerId: string;
@@ -280,6 +296,7 @@ export interface ClientEventMap {
     mimeType: string;
     durationMs: number;
     base64: string;
+    clientRequestId?: string;
   };
   "voice:list": {
     limit?: number;
@@ -320,6 +337,7 @@ export interface ServerEventMap {
   "voice:uploaded": VoiceUploadedDTO;
   "voice:list": VoiceListDTO;
   "voice:fetched": VoiceFetchedDTO;
+  "voice:transcribed": VoiceTranscribedDTO;
   "chat:new": {
     roomId: string;
     message: ChatMessageDTO;
