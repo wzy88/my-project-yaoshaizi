@@ -1189,41 +1189,14 @@ test("room page: mode create accepts color aliases before sending room config", 
   }
 });
 
-test("room page: create payload keeps each selected premium theme when remote manifest falls back to green", async () => {
+test("room page: create payload keeps each selected premium theme without waiting on remote theme prefetch", async () => {
   const sentPackets = [];
-  const requestedThemeIds = [];
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
       [NICKNAME_KEY]: "手机玩家"
     },
-    appWsUrl: "ws://192.168.1.23:3000/ws",
-    apiAvailability: {
-      request(options) {
-        requestedThemeIds.push(options.data && options.data.themeId);
-        options.success({
-          statusCode: 200,
-          data: {
-            manifest: {
-              id: "jade-green",
-              version: "remote-green-fallback",
-              label: "青岚",
-              className: "room-theme-jade-green",
-              delivery: "bundled",
-              assets: {},
-              criticalAssets: [],
-              tokens: {
-                themeId: "jade-green"
-              },
-              loading: {
-                title: "正在布置「青岚」房间",
-                steps: ["同步主题配置", "进入房间"]
-              }
-            }
-          }
-        });
-      }
-    }
+    appWsUrl: "ws://192.168.1.23:3000/ws"
   });
 
   try {
@@ -1266,8 +1239,6 @@ test("room page: create payload keeps each selected premium theme when remote ma
       assert.equal(sentPackets[0].payload.config.themeId, themeId);
       assert.notEqual(sentPackets[0].payload.config.themeId, "jade-green");
     }
-
-    assert.deepEqual(requestedThemeIds, themeIds);
   } finally {
     cleanup();
   }
@@ -1427,6 +1398,52 @@ test("room page: mode join enters on the room shell while the pending join actio
 
     assert.equal(connectAttempts, 1);
     assert.equal(page.data.pendingActionText, "连接成功后将自动加入房间 123456");
+    assert.equal(page.data.roomThemeReady, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: join with a routed theme hint keeps the shell ready instead of flashing green", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({ mode: "join", roomId: "123456", themeId: "ruby-red" });
+
+    assert.equal(page.data.roomThemeId, "ruby-red");
+    assert.equal(page.data.roomThemeReady, true);
+    assert.equal(page.data.roomThemeLoading, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: join keeps the shell ready when the room theme was cached locally", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家",
+      [ROOM_THEME_CACHE_KEY]: {
+        "123456": "glacier-blue"
+      }
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({ mode: "join", roomId: "123456" });
+
+    assert.equal(page.data.roomThemeId, "glacier-blue");
+    assert.equal(page.data.roomThemeReady, true);
+    assert.equal(page.data.roomThemeLoading, false);
   } finally {
     cleanup();
   }
@@ -3236,7 +3253,7 @@ test("room page: seat nickname display keeps a five-character nickname intact", 
   }
 });
 
-test("room page: seating panel moves the selected player into an empty seat", () => {
+test("room page: seating panel keeps a local draft when moving the selected player into an empty seat", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -3246,13 +3263,9 @@ test("room page: seating panel moves the selected player into an empty seat", ()
   });
 
   try {
-    const sent = [];
     let hapticCalls = 0;
     let sfxCalls = 0;
 
-    page.sendEvent = (event, payload) => {
-      sent.push({ event, payload });
-    };
     page.haptic = () => {
       hapticCalls += 1;
     };
@@ -3305,12 +3318,7 @@ test("room page: seating panel moves the selected player into an empty seat", ()
       }
     });
 
-    assert.deepEqual(sent, [
-      {
-        event: "room:seat:set",
-        payload: { playerId: "guest-b", seatIndex: 5 }
-      }
-    ]);
+    assert.equal(page.data.seatingDraftPlayers.find((item) => item.id === "guest-b").seatIndex, 5);
     assert.equal(page.data.seatingSelectedSeatIndex, 0);
     assert.equal(page.data.seatingSelectedText, "未选择");
     assert.equal(hapticCalls, 1);
@@ -3384,13 +3392,9 @@ test("room page: seating direction change keeps haptic but stays audio silent", 
   });
 
   try {
-    const sent = [];
     let hapticCalls = 0;
     let sfxCalls = 0;
 
-    page.sendEvent = (event, payload) => {
-      sent.push({ event, payload });
-    };
     page.haptic = () => {
       hapticCalls += 1;
     };
@@ -3404,7 +3408,9 @@ test("room page: seating direction change keeps haptic but stays audio silent", 
       selfIsOwner: true,
       roomConfig: {
         direction: "cw"
-      }
+      },
+      seatingMode: "staging",
+      seatingDraftDirection: "cw"
     });
 
     page.onSeatingSelectDirection({
@@ -3415,12 +3421,7 @@ test("room page: seating direction change keeps haptic but stays audio silent", 
       }
     });
 
-    assert.deepEqual(sent, [
-      {
-        event: "room:config:update",
-        payload: { direction: "ccw" }
-      }
-    ]);
+    assert.equal(page.data.seatingDraftDirection, "ccw");
     assert.equal(hapticCalls, 1);
     assert.equal(sfxCalls, 0);
   } finally {
@@ -3438,10 +3439,6 @@ test("room page: seating direction can still be updated after settlement", () =>
   });
 
   try {
-    const sent = [];
-    page.sendEvent = (event, payload) => {
-      sent.push({ event, payload });
-    };
     page.haptic = () => {};
     page.setData({
       phase: "ended",
@@ -3449,7 +3446,9 @@ test("room page: seating direction can still be updated after settlement", () =>
       selfIsOwner: true,
       roomConfig: {
         direction: "cw"
-      }
+      },
+      seatingMode: "staging",
+      seatingDraftDirection: "cw"
     });
 
     page.onSeatingSelectDirection({
@@ -3460,12 +3459,7 @@ test("room page: seating direction can still be updated after settlement", () =>
       }
     });
 
-    assert.deepEqual(sent, [
-      {
-        event: "room:config:update",
-        payload: { direction: "ccw" }
-      }
-    ]);
+    assert.equal(page.data.seatingDraftDirection, "ccw");
   } finally {
     cleanup();
   }
@@ -3525,7 +3519,7 @@ test("room page: seating panel label shows only the nickname without the raw pla
   }
 });
 
-test("room page: seating panel swaps two occupied seats", () => {
+test("room page: seating panel swaps two occupied seats inside the local draft", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -3535,13 +3529,9 @@ test("room page: seating panel swaps two occupied seats", () => {
   });
 
   try {
-    const sent = [];
     let hapticCalls = 0;
     let sfxCalls = 0;
 
-    page.sendEvent = (event, payload) => {
-      sent.push({ event, payload });
-    };
     page.haptic = () => {
       hapticCalls += 1;
     };
@@ -3605,12 +3595,8 @@ test("room page: seating panel swaps two occupied seats", () => {
       }
     });
 
-    assert.deepEqual(sent, [
-      {
-        event: "room:seat:swap",
-        payload: { playerIdA: "guest-b", playerIdB: "guest-c" }
-      }
-    ]);
+    assert.equal(page.data.seatingDraftPlayers.find((item) => item.id === "guest-b").seatIndex, 6);
+    assert.equal(page.data.seatingDraftPlayers.find((item) => item.id === "guest-c").seatIndex, 2);
     assert.equal(page.data.seatingSelectedSeatIndex, 0);
     assert.equal(page.data.seatingSelectedText, "未选择");
     assert.equal(hapticCalls, 1);
@@ -3630,10 +3616,6 @@ test("room page: stale seating panel refuses to submit after the room leaves set
   });
 
   try {
-    const sent = [];
-    page.sendEvent = (event, payload) => {
-      sent.push({ event, payload });
-    };
     page.data.playerId = "owner-a";
     page.setData({
       phase: "ended",
@@ -3654,7 +3636,6 @@ test("room page: stale seating panel refuses to submit after the room leaves set
       }
     });
 
-    assert.deepEqual(sent, []);
     assert.equal(page.data.seatingVisible, false);
   } finally {
     cleanup();
@@ -3864,7 +3845,7 @@ test("room page: room state sync keeps waiting count and spectator state on the 
 
     assert.equal(page.data.selfIsWaiting, true);
     assert.equal(page.data.waitingPlayerCount, 2);
-    assert.equal(page.data.primaryActionText, "旁观中");
+    assert.equal(page.data.primaryActionText, "待上桌");
   } finally {
     cleanup();
   }
@@ -4782,6 +4763,37 @@ test("room page: opening the call panel from the hud primary button stays audio 
   }
 });
 
+test("room page: failed voice upload now surfaces a toast instead of failing silently", async () => {
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.actionEventMap = {
+      "voice-ack-1": "voice:upload"
+    };
+    const transcriptPromise = page.waitForVoiceTranscript("voice_req_1").catch((error) => error.message);
+
+    page.handleServerPacket(JSON.stringify({
+      event: "action:ack",
+      payload: {
+        actionId: "voice-ack-1",
+        ok: false,
+        reason: "语音识别服务暂时不可用"
+      }
+    }));
+
+    assert.equal(await transcriptPromise, "语音识别服务暂时不可用");
+    assert.equal(toasts.includes("语音识别服务暂时不可用"), true);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: calling-turn room state routes open into the left secondary action when opening is allowed", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -4936,7 +4948,7 @@ test("room page: non-turn players can jump-open while the latest caller sees no 
   }
 });
 
-test("room page: ended state with waiting players routes restart control to owner admission", () => {
+test("room page: ended state with pending-seat spectators routes restart control to owner seating panel", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -4946,9 +4958,9 @@ test("room page: ended state with waiting players routes restart control to owne
   });
 
   try {
-    let admitOpened = 0;
-    page.openWaitingAdmitFlow = () => {
-      admitOpened += 1;
+    let seatingOpened = 0;
+    page.openSeatingPanel = () => {
+      seatingOpened += 1;
     };
     page.setData({ playerId: "P1" });
     page.handleServerPacket(JSON.stringify({
@@ -4971,7 +4983,7 @@ test("room page: ended state with waiting players routes restart control to owne
           { id: "P2", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "active", seatIndex: 2, diceCupStatus: "open", rollLocked: true }
         ],
         waitingPlayers: [
-          { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online" }
+          { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online", seatIntent: "pendingSeat" }
         ],
         networkHealth: "good",
         version: 3,
@@ -4979,10 +4991,10 @@ test("room page: ended state with waiting players routes restart control to owne
       }
     }));
 
-    assert.equal(page.data.primaryActionText, "安排入座");
+    assert.equal(page.data.primaryActionText, "安排座位");
     assert.equal(page.data.canPrimaryAction, true);
     page.onPrimaryAction();
-    assert.equal(admitOpened, 1);
+    assert.equal(seatingOpened, 1);
 
     page.setData({ playerId: "P2" });
     page.handleServerPacket(JSON.stringify({
@@ -5005,7 +5017,7 @@ test("room page: ended state with waiting players routes restart control to owne
           { id: "P2", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "active", seatIndex: 2, diceCupStatus: "open", rollLocked: true }
         ],
         waitingPlayers: [
-          { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online" }
+          { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online", seatIntent: "pendingSeat" }
         ],
         networkHealth: "good",
         version: 4,
@@ -5051,7 +5063,7 @@ test("room page: offline waiting players do not block the owner start control", 
           { id: "P2", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "open", rollLocked: true }
         ],
         waitingPlayers: [
-          { id: "W1", nickname: "离线等待者", avatar: "", onlineStatus: "offline" }
+          { id: "W1", nickname: "离线等待者", avatar: "", onlineStatus: "offline", seatIntent: "pendingSeat" }
         ],
         networkHealth: "good",
         version: 5,
@@ -5062,15 +5074,12 @@ test("room page: offline waiting players do not block the owner start control", 
     assert.equal(page.data.waitingPlayerCount, 0);
     assert.equal(page.data.primaryActionText, "开始");
     assert.equal(page.data.canPrimaryAction, true);
-
-    page.openWaitingAdmitFlow();
-    assert.equal(toasts.includes("暂无在线等待玩家"), true);
   } finally {
     cleanup();
   }
 });
 
-test("room page: waiting admit only offers empty seats and sends the picked empty slot", () => {
+test("room page: seating draft can move a spectator onto the first empty seat", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -5080,20 +5089,88 @@ test("room page: waiting admit only offers empty seats and sends the picked empt
   });
 
   try {
-    const sent = [];
-    let sheetCount = 0;
-    page.sendEvent = (event, payload) => {
-      sent.push({ event, payload });
-    };
-    page.showActionSheetSafe = ({ itemList = [], success }) => {
-      sheetCount += 1;
-      if (sheetCount === 1) {
-        assert.match(itemList[0], /等待者/);
-        success({ tapIndex: 0 });
-        return;
+    page.setData({
+      phase: "ended",
+      selfIsOwner: true,
+      seatingMode: "staging",
+      seatingDraftPlayers: [
+        { id: "P1", nickname: "房主", avatar: "", isOwner: true, seatIndex: 1 },
+        { id: "P2", nickname: "玩家二", avatar: "", isOwner: false, seatIndex: 2 }
+      ],
+      seatingDraftSpectators: [
+        { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online", seatIntent: "pendingSeat" }
+      ]
+    });
+
+    page.onTapSeatingDraftSpectatorAction({
+      currentTarget: {
+        dataset: {
+          id: "W1"
+        }
       }
-      assert.deepEqual(itemList, ["3号 空", "4号 空", "5号 空", "6号 空", "7号 空", "8号 空"]);
-      success({ tapIndex: 1 });
+    });
+
+    assert.equal(page.data.seatingDraftPlayers.find((item) => item.id === "W1").seatIndex, 3);
+    assert.equal(page.data.seatingDraftSpectators.length, 0);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: seating draft refuses to place a spectator when no seat is free", () => {
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({
+      phase: "ended",
+      selfIsOwner: true,
+      seatingMode: "staging",
+      seatingDraftPlayers: Array.from({ length: 8 }, (_, index) => ({
+        id: `P${index + 1}`,
+        nickname: `玩家${index + 1}`,
+        avatar: "",
+        isOwner: index === 0,
+        seatIndex: index + 1
+      })),
+      seatingDraftSpectators: [
+        { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online", seatIntent: "pendingSeat" }
+      ]
+    });
+
+    page.onTapSeatingDraftSpectatorAction({
+      currentTarget: {
+        dataset: {
+          id: "W1"
+        }
+      }
+    });
+
+    assert.equal(page.data.seatingDraftSpectators.length, 1);
+    assert.equal(toasts.includes("没有空座位，请先调整桌上玩家"), true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: waiting admit compatibility entry just reopens the owner seating panel", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    let seatingOpened = 0;
+    page.openSeatingPanel = () => {
+      seatingOpened += 1;
     };
     page.setData({
       playersRaw: [
@@ -5101,24 +5178,19 @@ test("room page: waiting admit only offers empty seats and sends the picked empt
         { id: "P2", nickname: "玩家二", avatar: "", isOwner: false, seatIndex: 2 }
       ],
       waitingPlayersRaw: [
-        { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online" }
+        { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online", seatIntent: "pendingSeat" }
       ]
     });
 
     page.openWaitingAdmitFlow();
 
-    assert.deepEqual(sent, [
-      {
-        event: "room:waiting:admit",
-        payload: { playerId: "W1", seatIndex: 4 }
-      }
-    ]);
+    assert.equal(seatingOpened, 1);
   } finally {
     cleanup();
   }
 });
 
-test("room page: waiting admit blocks occupied seats locally with a clear hint", () => {
+test("room page: live seating actions update the next-round tags immediately after tapping", () => {
   const { page, toasts, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
@@ -5129,32 +5201,49 @@ test("room page: waiting admit blocks occupied seats locally with a clear hint",
 
   try {
     const sent = [];
-    const originalShowModal = globalThis.wx.showModal;
     page.sendEvent = (event, payload) => {
       sent.push({ event, payload });
     };
-    page.showActionSheetSafe = ({ success }) => {
-      success({ tapIndex: 0 });
-    };
-    globalThis.wx.showModal = (options = {}) => {
-      if (options && typeof options.success === "function") {
-        options.success({ confirm: true, cancel: false, content: "1" });
-      }
+    page.socketTask = {
+      send() {}
     };
     page.setData({
+      connected: true,
+      legalAccepted: true,
+      phase: "calling",
+      playerId: "P1",
+      selfIsOwner: true,
+      seatingMode: "live",
+      ownerSeatingRequired: false,
       playersRaw: [
-        { id: "P1", nickname: "房主", avatar: "", isOwner: true, seatIndex: 1 }
+        { id: "P1", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", seatIndex: 1, pendingBench: false },
+        { id: "P2", nickname: "玩家二", avatar: "", isOwner: false, onlineStatus: "online", seatIndex: 2, pendingBench: false }
       ],
       waitingPlayersRaw: [
-        { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online" }
+        { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online", seatIntent: "spectating" }
       ]
     });
 
-    page.openWaitingAdmitFlow();
+    page.onTapSeatingLiveAction({
+      currentTarget: {
+        dataset: {
+          id: "P2",
+          target: "bench"
+        }
+      }
+    });
 
-    assert.deepEqual(sent, []);
-    assert.equal(toasts.includes("只能选择空座位，请先调座"), true);
-    globalThis.wx.showModal = originalShowModal;
+    assert.deepEqual(sent, [{
+      event: "room:participant:plan",
+      payload: {
+        playerId: "P2",
+        target: "bench"
+      }
+    }]);
+    assert.equal(page.data.seatingLivePlayers.find((item) => item.id === "P2").tagText, "下局旁观");
+    assert.equal(page.data.seatingLivePlayers.find((item) => item.id === "P2").actionText, "取消旁观");
+    assert.equal(page.data.seatingLivePendingCount, 1);
+    assert.equal(toasts.at(-1), "已设为下局旁观");
   } finally {
     cleanup();
   }

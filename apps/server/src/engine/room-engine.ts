@@ -14,7 +14,8 @@ import {
   type RoomStateDTO,
   type RoundSummaryDTO,
   type RuleOptions,
-  type WaitingPlayerState
+  type SpectatorIntent,
+  type SpectatorState
 } from "@dice/shared";
 
 import { DEFAULT_DICE_PER_PLAYER, MAX_PLAYERS, MIN_PLAYERS_TO_START } from "../config.js";
@@ -45,6 +46,12 @@ interface OpenExecution {
 
 interface RemovePlayerOptions {
   preserveCurrentTurn?: boolean;
+}
+
+interface CommitSeatingInput {
+  direction: RoomDirection;
+  seatedPlayerIds: Array<{ playerId: string; seatIndex: number }>;
+  spectatorPlayerIds: string[];
 }
 
 class SeededRng {
@@ -82,7 +89,7 @@ export class RoomEngine {
   readonly roomId: string;
 
   private players = new Map<string, InternalPlayer>();
-  private waitingPlayers = new Map<string, WaitingPlayerState>();
+  private spectators = new Map<string, SpectatorState>();
   private phase: RoomPhase = "ready";
   private round = 0;
   private currentPlayerId?: string;
@@ -112,20 +119,20 @@ export class RoomEngine {
   }
 
   hasParticipant(playerId: string): boolean {
-    return this.players.has(playerId) || this.waitingPlayers.has(playerId);
+    return this.players.has(playerId) || this.spectators.has(playerId);
   }
 
   updatePlayerProfile(actorId: string, patch: { nickname?: string; avatar?: string }): void {
     const nicknameRaw = patch.nickname == null ? "" : String(patch.nickname);
     const nickname = nicknameRaw.trim();
 
-    const waiting = this.waitingPlayers.get(actorId);
-    if (waiting) {
+    const spectator = this.spectators.get(actorId);
+    if (spectator) {
       if (nickname) {
-        waiting.nickname = nickname;
+        spectator.nickname = nickname;
       }
       if (patch.avatar != null) {
-        waiting.avatar = String(patch.avatar || "").trim();
+        spectator.avatar = String(patch.avatar || "").trim();
       }
       this.bumpVersion();
       return;
@@ -147,10 +154,10 @@ export class RoomEngine {
   }
 
   setPlayerOnlineStatus(playerId: string, status: "online" | "offline"): void {
-    const waiting = this.waitingPlayers.get(playerId);
-    if (waiting) {
-      waiting.onlineStatus = status;
-      if (this.phase === "ended" && status === "online") {
+    const spectator = this.spectators.get(playerId);
+    if (spectator) {
+      spectator.onlineStatus = status;
+      if (this.phase === "ended" && spectator.seatIntent === "pendingSeat") {
         this.ownerRestartRequired = true;
         this.promoteOwnerAsRestartControllerIfNeeded();
       }
@@ -199,7 +206,18 @@ export class RoomEngine {
         ...publicState
       }) => publicState);
 
-    const waitingPlayers = [...this.waitingPlayers.values()].sort((a, b) => a.nickname.localeCompare(b.nickname));
+    const spectators = [...this.spectators.values()].sort((a, b) => {
+      if (a.seatIntent !== b.seatIntent) {
+        return a.seatIntent === "pendingSeat" ? -1 : 1;
+      }
+
+      const joinedDiff = Number(a.joinedAt || 0) - Number(b.joinedAt || 0);
+      if (joinedDiff !== 0) {
+        return joinedDiff;
+      }
+
+      return a.nickname.localeCompare(b.nickname);
+    });
 
     return {
       roomId: this.roomId,
@@ -208,8 +226,9 @@ export class RoomEngine {
       currentPlayerId: this.currentPlayerId,
       config: this.config,
       players,
-      waitingPlayers,
+      spectators,
       lastCall: this.lastCall,
+      ownerSeatingRequired: this.ownerRestartRequired,
       networkHealth: "good",
       version: this.version,
       serverTs: Date.now()
@@ -217,11 +236,11 @@ export class RoomEngine {
   }
 
   addPlayer(input: AddPlayerInput): void {
-    if (this.players.size + this.waitingPlayers.size >= MAX_PLAYERS) {
+    if (this.players.size + this.spectators.size >= MAX_PLAYERS) {
       throw new GameError(ErrorCode.ROOM_FULL, "房间人数已达上限");
     }
 
-    if (this.players.has(input.id)) {
+    if (this.players.has(input.id) || this.spectators.has(input.id)) {
       throw new GameError(ErrorCode.BAD_REQUEST, "玩家已在房间中");
     }
 
@@ -257,24 +276,27 @@ export class RoomEngine {
     this.bumpVersion();
   }
 
-  addWaitingPlayer(input: Omit<AddPlayerInput, "isOwner">): void {
-    if (this.players.size + this.waitingPlayers.size >= MAX_PLAYERS) {
+  addSpectator(input: Omit<AddPlayerInput, "isOwner">, intent: SpectatorIntent = "pendingSeat"): void {
+    if (this.players.size + this.spectators.size >= MAX_PLAYERS) {
       throw new GameError(ErrorCode.ROOM_FULL, "房间人数已达上限");
     }
 
-    if (this.players.has(input.id) || this.waitingPlayers.has(input.id)) {
+    if (this.players.has(input.id) || this.spectators.has(input.id)) {
       throw new GameError(ErrorCode.BAD_REQUEST, "玩家已在房间中");
     }
 
-    this.waitingPlayers.set(input.id, {
+    this.spectators.set(input.id, {
       id: input.id,
       accountId: input.accountId,
       accountDisplayId: input.accountDisplayId,
       nickname: input.nickname,
       avatar: input.avatar,
-      onlineStatus: "online"
+      onlineStatus: "online",
+      seatIntent: intent,
+      joinedAt: Date.now()
     });
-    if (this.phase === "ended") {
+
+    if (this.phase === "ended" && intent === "pendingSeat") {
       this.ownerRestartRequired = true;
       this.promoteOwnerAsRestartControllerIfNeeded();
     }
@@ -282,7 +304,7 @@ export class RoomEngine {
   }
 
   removePlayer(playerId: string, options: RemovePlayerOptions = {}): void {
-    if (this.waitingPlayers.delete(playerId)) {
+    if (this.spectators.delete(playerId)) {
       this.promoteOwnerAsRestartControllerIfNeeded();
       this.bumpVersion();
       return;
@@ -372,106 +394,123 @@ export class RoomEngine {
     this.bumpVersion();
   }
 
-  setSeat(actorId: string, playerId: string, seatIndex: number): void {
+  planParticipant(actorId: string, playerId: string, target: "bench" | "stay" | "seat" | "spectate"): void {
+    this.ensureOwner(actorId);
+
+    const phaseAllowsPlanning = this.phase === "rolling" || this.phase === "calling" || this.phase === "opening";
+    if (!phaseAllowsPlanning) {
+      throw new GameError(ErrorCode.INVALID_PHASE, "仅本局进行中可设置下局人员");
+    }
+
+    if (target === "bench" || target === "stay") {
+      const player = this.players.get(playerId);
+      if (!player) {
+        throw new GameError(ErrorCode.PLAYER_NOT_IN_ROOM, "玩家不在对局中");
+      }
+      if (player.isOwner && target === "bench") {
+        throw new GameError(ErrorCode.FORBIDDEN, "房主暂不能下局旁观");
+      }
+      player.pendingBench = target === "bench";
+      this.bumpVersion();
+      return;
+    }
+
+    const spectator = this.spectators.get(playerId);
+    if (!spectator) {
+      throw new GameError(ErrorCode.PLAYER_NOT_IN_ROOM, "旁观者不存在");
+    }
+    spectator.seatIntent = target === "seat" ? "pendingSeat" : "spectating";
+    spectator.joinedAt = spectator.joinedAt || Date.now();
+    this.bumpVersion();
+  }
+
+  commitSeating(actorId: string, payload: CommitSeatingInput): void {
     this.ensureOwner(actorId);
 
     const phaseAllowsSeat = this.phase === "ready" || this.phase === "ended";
     if (!phaseAllowsSeat) {
-      throw new GameError(ErrorCode.INVALID_PHASE, "仅准备/结算阶段可排位");
+      throw new GameError(ErrorCode.INVALID_PHASE, "仅准备/结算阶段可安排座位");
     }
 
-    const target = this.players.get(playerId);
-    if (!target) {
-      throw new GameError(ErrorCode.PLAYER_NOT_IN_ROOM, "玩家不在对局中");
+    const direction = payload.direction === "ccw" ? "ccw" : "cw";
+    const seatedEntries = Array.isArray(payload.seatedPlayerIds) ? payload.seatedPlayerIds : [];
+    const spectatorIds = Array.isArray(payload.spectatorPlayerIds) ? payload.spectatorPlayerIds : [];
+    const allParticipants = this.getAllParticipants();
+    const participantIds = new Set(allParticipants.map((participant) => participant.id));
+    const seenIds = new Set<string>();
+    const seatSeen = new Set<number>();
+
+    if (seatedEntries.length === 0) {
+      throw new GameError(ErrorCode.BAD_REQUEST, "至少保留一位桌上玩家");
     }
 
-    const normalizedSeat = this.normalizeSeatIndex(seatIndex);
-
-    const occupied = [...this.players.values()].find((p) => p.seatIndex === normalizedSeat);
-    if (occupied && occupied.id !== target.id) {
-      throw new GameError(ErrorCode.SEAT_CONFLICT, "座位已被占用");
-    } else {
-      target.seatIndex = normalizedSeat;
+    for (const entry of seatedEntries) {
+      const playerId = String(entry?.playerId || "").trim();
+      const seatIndex = this.normalizeSeatIndex(entry?.seatIndex);
+      if (!participantIds.has(playerId)) {
+        throw new GameError(ErrorCode.PLAYER_NOT_IN_ROOM, "排位名单中存在无效玩家");
+      }
+      if (seenIds.has(playerId)) {
+        throw new GameError(ErrorCode.BAD_REQUEST, "排位名单存在重复玩家");
+      }
+      if (seatSeen.has(seatIndex)) {
+        throw new GameError(ErrorCode.SEAT_CONFLICT, "座位分配重复");
+      }
+      seenIds.add(playerId);
+      seatSeen.add(seatIndex);
     }
 
-    this.bumpVersion();
-  }
-
-  swapSeats(actorId: string, playerIdA: string, playerIdB: string): void {
-    this.ensureOwner(actorId);
-
-    const phaseAllowsSeat = this.phase === "ready" || this.phase === "ended";
-    if (!phaseAllowsSeat) {
-      throw new GameError(ErrorCode.INVALID_PHASE, "仅准备/结算阶段可排位");
+    for (const rawId of spectatorIds) {
+      const spectatorId = String(rawId || "").trim();
+      if (!participantIds.has(spectatorId)) {
+        throw new GameError(ErrorCode.PLAYER_NOT_IN_ROOM, "旁观名单中存在无效玩家");
+      }
+      if (seenIds.has(spectatorId)) {
+        throw new GameError(ErrorCode.BAD_REQUEST, "同一玩家不能同时在桌上和旁观");
+      }
+      seenIds.add(spectatorId);
     }
 
-    const a = this.players.get(playerIdA);
-    const b = this.players.get(playerIdB);
-    if (!a || !b) {
-      throw new GameError(ErrorCode.PLAYER_NOT_IN_ROOM, "玩家不在对局中");
+    if (seenIds.size !== participantIds.size) {
+      throw new GameError(ErrorCode.BAD_REQUEST, "请完成全部人员的桌上/旁观安排");
     }
 
-    if (!a.seatIndex || !b.seatIndex) {
-      throw new GameError(ErrorCode.BAD_REQUEST, "玩家座位信息不完整");
+    const ownerId = this.getOwnerId();
+    if (ownerId && spectatorIds.includes(ownerId)) {
+      throw new GameError(ErrorCode.FORBIDDEN, "房主暂不能移到旁观");
     }
 
-    if (a.id === b.id) {
-      return;
+    this.config = {
+      ...this.config,
+      direction
+    };
+
+    const nextPlayers = new Map<string, InternalPlayer>();
+    const nextSpectators = new Map<string, SpectatorState>();
+
+    for (const entry of seatedEntries) {
+      const participant = allParticipants.find((item) => item.id === entry.playerId);
+      if (!participant) {
+        continue;
+      }
+      const player = this.buildPlayerFromParticipant(participant, this.normalizeSeatIndex(entry.seatIndex));
+      nextPlayers.set(player.id, player);
     }
 
-    const seatA = a.seatIndex;
-    const seatB = b.seatIndex;
-    if (seatA === seatB) {
-      return;
+    for (const spectatorId of spectatorIds) {
+      const participant = allParticipants.find((item) => item.id === spectatorId);
+      if (!participant) {
+        continue;
+      }
+      nextSpectators.set(spectatorId, this.buildSpectatorFromParticipant(participant, "spectating"));
     }
 
-    a.seatIndex = seatB;
-    b.seatIndex = seatA;
-
-    this.bumpVersion();
-  }
-
-  admitWaitingPlayer(actorId: string, waitingPlayerId: string, seatIndex: number): void {
-    this.ensureOwner(actorId);
-
-    const phaseAllowsAdmit = this.phase === "ready" || this.phase === "ended";
-    if (!phaseAllowsAdmit) {
-      throw new GameError(ErrorCode.INVALID_PHASE, "仅准备/结算阶段可加入对局");
-    }
-
-    if (this.players.size >= MAX_PLAYERS) {
-      throw new GameError(ErrorCode.ROOM_FULL, "房间人数已达上限");
-    }
-
-    const waiting = this.waitingPlayers.get(waitingPlayerId);
-    if (!waiting) {
-      throw new GameError(ErrorCode.BAD_REQUEST, "等待玩家不存在");
-    }
-    if (waiting.onlineStatus !== "online") {
-      throw new GameError(ErrorCode.BAD_REQUEST, "等待玩家已离线");
-    }
-
-    const normalizedSeat = this.normalizeSeatIndex(seatIndex);
-    const occupied = [...this.players.values()].some((p) => p.seatIndex === normalizedSeat);
-    if (occupied) {
-      throw new GameError(ErrorCode.SEAT_CONFLICT, "座位已被占用");
-    }
-
-    this.waitingPlayers.delete(waitingPlayerId);
-    this.addPlayer({
-      id: waiting.id,
-      accountId: waiting.accountId,
-      accountDisplayId: waiting.accountDisplayId,
-      nickname: waiting.nickname,
-      avatar: waiting.avatar
-    });
-
-    const admitted = this.players.get(waiting.id);
-    if (admitted) {
-      admitted.seatIndex = normalizedSeat;
-    }
-
+    this.players = nextPlayers;
+    this.spectators = nextSpectators;
+    this.ownerRestartRequired = false;
     this.promoteOwnerAsRestartControllerIfNeeded();
+    this.ensureRoomHasOwner();
+    this.repairTurnAfterPlayerChange();
     this.bumpVersion();
   }
 
@@ -510,8 +549,8 @@ export class RoomEngine {
       throw new GameError(ErrorCode.INVALID_PHASE, "当前阶段无法开始游戏");
     }
 
-    if (this.getOnlineWaitingPlayerCount() > 0) {
-      throw new GameError(ErrorCode.BAD_REQUEST, "请先安排等待玩家入座");
+    if (this.ownerRestartRequired || this.getOnlinePendingSeatCount() > 0) {
+      throw new GameError(ErrorCode.BAD_REQUEST, "请先完成下一局座位安排");
     }
 
     const maxCount = this.getMaxCallCount();
@@ -534,13 +573,9 @@ export class RoomEngine {
     if (this.ownerRestartRequired) {
       const actor = this.players.get(actorId);
       if (!actor?.isOwner) {
-        throw new GameError(ErrorCode.FORBIDDEN, "有等待玩家时仅房主可开始下一局");
+        throw new GameError(ErrorCode.FORBIDDEN, "请等待房主完成下一局座位安排");
       }
-      if (this.getOnlineWaitingPlayerCount() > 0) {
-        throw new GameError(ErrorCode.BAD_REQUEST, "请先安排等待玩家入座");
-      }
-      this.beginRound();
-      return;
+      throw new GameError(ErrorCode.BAD_REQUEST, "请先完成下一局座位安排");
     }
 
     if (actorId !== this.nextRoundStarterId) {
@@ -754,10 +789,7 @@ export class RoomEngine {
 
     this.phase = "ended";
     this.currentPlayerId = loserId;
-    if (this.getOnlineWaitingPlayerCount() > 0) {
-      this.ownerRestartRequired = true;
-      this.promoteOwnerAsRestartControllerIfNeeded();
-    }
+    this.prepareNextRoundParticipants();
 
     const openResult: OpenResultDTO = {
       round: this.round,
@@ -878,6 +910,7 @@ export class RoomEngine {
       player.turnStatus = "idle";
       player.rollLocked = false;
       player.pendingRemoval = false;
+      player.pendingBench = false;
     }
 
     const starter = this.nextRoundStarterId && this.players.get(this.nextRoundStarterId)?.onlineStatus === "online"
@@ -929,6 +962,7 @@ export class RoomEngine {
       player.turnStatus = "idle";
       player.rollLocked = false;
       player.pendingRemoval = false;
+      player.pendingBench = false;
     }
 
     const fallbackActive = this.getFirstPlayerId((p) => p.onlineStatus === "online");
@@ -952,8 +986,70 @@ export class RoomEngine {
     this.resetRoundState();
   }
 
-  private getOnlineWaitingPlayerCount(): number {
-    return [...this.waitingPlayers.values()].filter((player) => player.onlineStatus === "online").length;
+  private prepareNextRoundParticipants(): void {
+    const nextPlayers = new Map<string, InternalPlayer>();
+    const nextSpectators = new Map<string, SpectatorState>();
+    const hadPendingBench = [...this.players.values()].some((player) => player.pendingBench);
+    const pendingSeatSpectators = [...this.spectators.values()]
+      .filter((spectator) => spectator.seatIntent === "pendingSeat")
+      .sort((a, b) => {
+        const joinedDiff = Number(a.joinedAt || 0) - Number(b.joinedAt || 0);
+        if (joinedDiff !== 0) {
+          return joinedDiff;
+        }
+        return a.nickname.localeCompare(b.nickname);
+      });
+
+    for (const player of this.getOrderedPlayers()) {
+      if (player.pendingRemoval) {
+        continue;
+      }
+      if (player.pendingBench) {
+        nextSpectators.set(player.id, this.buildSpectatorFromParticipant(player, "spectating"));
+        continue;
+      }
+      nextPlayers.set(player.id, this.buildPlayerFromParticipant(player, player.seatIndex));
+    }
+
+    for (const spectator of this.spectators.values()) {
+      if (spectator.seatIntent !== "pendingSeat") {
+        nextSpectators.set(spectator.id, this.buildSpectatorFromParticipant(spectator, "spectating"));
+      }
+    }
+
+    const usedSeats = new Set([...nextPlayers.values()].map((player) => player.seatIndex));
+    for (const spectator of pendingSeatSpectators) {
+      const seatIndex = this.findNextEmptySeatIndex(usedSeats);
+      if (!seatIndex) {
+        nextSpectators.set(spectator.id, this.buildSpectatorFromParticipant(spectator, "pendingSeat"));
+        continue;
+      }
+      usedSeats.add(seatIndex);
+      nextPlayers.set(spectator.id, this.buildPlayerFromParticipant(spectator, seatIndex));
+    }
+
+    this.players = nextPlayers;
+    this.spectators = nextSpectators;
+    this.ensureRoomHasOwner();
+    this.resetRoundState();
+
+    const hadPendingSeat = pendingSeatSpectators.length > 0;
+    this.ownerRestartRequired = hadPendingBench || hadPendingSeat;
+    if (this.ownerRestartRequired) {
+      this.promoteOwnerAsRestartControllerIfNeeded();
+    } else if (this.nextRoundStarterId && this.players.has(this.nextRoundStarterId)) {
+      this.currentPlayerId = this.nextRoundStarterId;
+      const starter = this.players.get(this.nextRoundStarterId);
+      if (starter) {
+        starter.turnStatus = "active";
+      }
+    }
+  }
+
+  private getOnlinePendingSeatCount(): number {
+    return [...this.spectators.values()].filter((player) => (
+      player.seatIntent === "pendingSeat" && player.onlineStatus === "online"
+    )).length;
   }
 
   private promoteOwnerAsRestartControllerIfNeeded(): void {
@@ -1032,6 +1128,67 @@ export class RoomEngine {
     }
 
     throw new GameError(ErrorCode.ROOM_FULL, "房间人数已达上限");
+  }
+
+  private findNextEmptySeatIndex(usedSeats: Set<number>): number | undefined {
+    for (let index = 1; index <= MAX_PLAYERS; index += 1) {
+      if (!usedSeats.has(index)) {
+        return index;
+      }
+    }
+    return undefined;
+  }
+
+  private getOwnerId(): string | undefined {
+    return this.getOrderedPlayers().find((player) => player.isOwner && !player.pendingRemoval)?.id;
+  }
+
+  private getAllParticipants(): Array<InternalPlayer | SpectatorState> {
+    return [
+      ...this.getOrderedPlayers(),
+      ...[...this.spectators.values()].sort((a, b) => a.nickname.localeCompare(b.nickname))
+    ];
+  }
+
+  private buildPlayerFromParticipant(participant: InternalPlayer | SpectatorState, seatIndex: number): InternalPlayer {
+    const existingPlayer = this.players.get(participant.id);
+    return {
+      id: participant.id,
+      accountId: participant.accountId,
+      accountDisplayId: participant.accountDisplayId,
+      nickname: participant.nickname,
+      avatar: participant.avatar,
+      isOwner: existingPlayer?.isOwner || false,
+      onlineStatus: participant.onlineStatus,
+      turnStatus: "idle",
+      seatIndex,
+      diceCupStatus: "closed",
+      rollLocked: false,
+      rollCountThisRound: 0,
+      pendingBench: false,
+      currentCall: undefined,
+      privateDice: [],
+      hasRolled: false,
+      hasBidThisRound: false,
+      pendingRemoval: false
+    };
+  }
+
+  private buildSpectatorFromParticipant(
+    participant: InternalPlayer | SpectatorState,
+    seatIntent: SpectatorIntent
+  ): SpectatorState {
+    const existingSpectator = this.spectators.get(participant.id);
+    return {
+      id: participant.id,
+      accountId: participant.accountId,
+      accountDisplayId: participant.accountDisplayId,
+      nickname: participant.nickname,
+      avatar: participant.avatar,
+      onlineStatus: participant.onlineStatus,
+      seatIntent,
+      joinedAt: existingSpectator?.joinedAt || ("joinedAt" in participant ? participant.joinedAt : undefined) || Date.now()
+    };
   }
 
   private getOrderedPlayers(): InternalPlayer[] {

@@ -16,6 +16,26 @@
       ]
     }
   ],
+  "preloadRule": {
+    "pages/lobby/lobby": {
+      "network": "all",
+      "packages": [
+        "pages/room"
+      ]
+    },
+    "pages/create-room/create-room": {
+      "network": "all",
+      "packages": [
+        "pages/room"
+      ]
+    },
+    "pages/me/me": {
+      "network": "all",
+      "packages": [
+        "pages/room"
+      ]
+    }
+  },
   "window": {
     "navigationBarTitleText": "摇骰子聚会助手",
     "navigationBarBackgroundColor": "#1d1109",

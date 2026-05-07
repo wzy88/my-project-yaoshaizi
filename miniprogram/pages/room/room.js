@@ -65,7 +65,7 @@ const ROOM_AUDIO_STOP_RATIOS = {};
 const ROOM_PLAYFIELD_LIFT_RPX = 48;
 const ROOM_STAGE_HEIGHT_RPX = 1608;
 const ROOM_STAGE_MIN_SCALE = 0.9;
-const DEFAULT_CALL_VOICE_TIP_TEXT = "按住说，识别后再确认";
+const DEFAULT_CALL_VOICE_TIP_TEXT = "按住说话，松开发送";
 const MAX_CALL_VOICE_DURATION_MS = 5000;
 const VOICE_RECOGNITION_WAIT_MS = 3000;
 const ROOM_RULE_SECTIONS = [
@@ -105,6 +105,10 @@ function buildRoomThemePresentation(themeId) {
 }
 
 const ROOM_THEME_CACHE_LIMIT = 18;
+
+function hasExplicitRoomThemeHint(options = {}) {
+  return Boolean(parseRoomThemeId(options && options.themeId));
+}
 
 function buildAccountAuthPayload() {
   const session = getStoredAccountSession();
@@ -1028,6 +1032,87 @@ function buildSeatRows(playersRaw, maxSeats = 8, selectedSeatIndex = 0) {
   });
 }
 
+function cloneDraftPlayers(playersRaw) {
+  return (Array.isArray(playersRaw) ? playersRaw : [])
+    .map((player) => ({ ...player, pendingBench: Boolean(player && player.pendingBench) }))
+    .sort((a, b) => Number(a.seatIndex || 0) - Number(b.seatIndex || 0));
+}
+
+function cloneDraftSpectators(spectatorsRaw) {
+  return (Array.isArray(spectatorsRaw) ? spectatorsRaw : [])
+    .map((player) => ({ ...player, seatIntent: player && player.seatIntent === "pendingSeat" ? "pendingSeat" : "spectating" }))
+    .sort((a, b) => {
+      const joinedDiff = Number(a && a.joinedAt || 0) - Number(b && b.joinedAt || 0);
+      if (joinedDiff !== 0) {
+        return joinedDiff;
+      }
+      return String(a && a.nickname || "").localeCompare(String(b && b.nickname || ""));
+    });
+}
+
+function findFirstEmptySeatIndex(playersRaw, maxSeats = 8) {
+  const occupiedSeats = new Set(
+    (Array.isArray(playersRaw) ? playersRaw : [])
+      .map((player) => Number(player && player.seatIndex))
+      .filter((seatIndex) => Number.isInteger(seatIndex) && seatIndex >= 1 && seatIndex <= maxSeats)
+  );
+
+  for (let seatIndex = 1; seatIndex <= maxSeats; seatIndex += 1) {
+    if (!occupiedSeats.has(seatIndex)) {
+      return seatIndex;
+    }
+  }
+
+  return 0;
+}
+
+function buildOwnerLiveRows(playersRaw, spectatorsRaw) {
+  const players = (Array.isArray(playersRaw) ? playersRaw : []).map((player) => {
+    const nickname = safeDecodeComponent(player && player.nickname).trim() || "玩家";
+    const pendingBench = Boolean(player && player.pendingBench);
+    return {
+      id: player.id,
+      seatIndex: Number(player.seatIndex) || 0,
+      label: `${Number(player.seatIndex) || "-"}号 ${nickname.slice(0, 8)}`,
+      tagText: pendingBench ? "下局旁观" : (player && player.isOwner ? "房主" : ""),
+      actionText: pendingBench ? "取消旁观" : "下局旁观",
+      actionTarget: pendingBench ? "stay" : "bench",
+      actionClass: pendingBench ? "is-active" : "is-danger"
+    };
+  });
+
+  const spectators = (Array.isArray(spectatorsRaw) ? spectatorsRaw : []).map((player) => {
+    const nickname = safeDecodeComponent(player && player.nickname).trim() || "玩家";
+    const pendingSeat = player && player.seatIntent === "pendingSeat";
+    return {
+      id: player.id,
+      label: nickname.slice(0, 8),
+      tagText: pendingSeat ? "待上桌" : "旁观中",
+      actionText: pendingSeat ? "取消上桌" : "下局上桌",
+      actionTarget: pendingSeat ? "spectate" : "seat",
+      actionClass: pendingSeat ? "is-active" : "is-positive"
+    };
+  });
+
+  return { players, spectators };
+}
+
+function countPendingLivePlans(playersRaw, spectatorsRaw) {
+  const pendingBenchCount = (Array.isArray(playersRaw) ? playersRaw : []).filter((player) => Boolean(player && player.pendingBench)).length;
+  const pendingSeatCount = (Array.isArray(spectatorsRaw) ? spectatorsRaw : []).filter((player) => player && player.seatIntent === "pendingSeat").length;
+  return pendingBenchCount + pendingSeatCount;
+}
+
+function buildObserverStatusText(phase, seatIntent, ownerSeatingRequired) {
+  if (seatIntent === "pendingSeat") {
+    if ((phase === "ready" || phase === "ended") && ownerSeatingRequired) {
+      return "等待房主确认下一局排位";
+    }
+    return "已申请下局上桌";
+  }
+  return "旁观中";
+}
+
 function buildEmptySeatOptions(playersRaw, maxSeats = 8) {
   const players = Array.isArray(playersRaw) ? playersRaw : [];
   const occupiedSeats = new Set(
@@ -1618,7 +1703,9 @@ Page({
     waitingPlayersRaw: [],
     waitingPlayerCount: 0,
     selfIsWaiting: false,
+    selfSpectatorIntent: "",
     selfIsOwner: false,
+    ownerSeatingRequired: false,
     selfHasDice: false,
     selfHasCalled: false,
     selfRollLocked: false,
@@ -1700,9 +1787,17 @@ Page({
     secondaryActionKind: "",
     secondaryActionEnabled: false,
     seatingVisible: false,
+    seatingMode: "staging",
+    seatingDraftPlayers: [],
+    seatingDraftSpectators: [],
+    seatingDraftDirection: "cw",
     seatingSelectedSeatIndex: 0,
     seatingSelectedText: "未选择",
     seatRows: [],
+    seatingLivePlayers: [],
+    seatingLiveSpectators: [],
+    seatingLivePendingCount: 0,
+    seatingObserverStatusText: "旁观中",
     legalAccepted: false,
     legalAgreementChecked: false,
     showLegalModal: false
@@ -1719,6 +1814,13 @@ Page({
     }
 
     const devtoolsMode = Boolean(this.devtoolsMode || this.data.devtoolsMode);
+    if (typeof wx.showActionSheet !== "function") {
+      if (typeof opt.success === "function") {
+        opt.success({ tapIndex: 0 });
+      }
+      return;
+    }
+
     if (itemList.length > 6) {
       const msg = `showActionSheet.itemList 最多 6 项，当前 ${itemList.length} 项：${itemList.join("、")}`;
       // eslint-disable-next-line no-console
@@ -1762,9 +1864,11 @@ Page({
     }
     const cached = wx.getStorageSync(SESSION_KEY);
     const mode = String(options.mode || "");
-    const shouldWaitForAuthoritativeRoomTheme = mode === "join";
+    const hasInitialRoomThemeHint = this.hasInitialRoomThemeHintForLoad(options, cached);
+    const shouldWaitForAuthoritativeRoomTheme = mode === "join" && !hasInitialRoomThemeHint;
     const initialRoomThemeId = this.resolveInitialRoomThemeForLoad(options, cached);
     const initialRoomThemeManifest = registerRoomThemeManifest(buildLocalRoomThemeManifest(initialRoomThemeId));
+    this.initialRoomThemeHintReady = hasInitialRoomThemeHint;
 	    this.devtoolsMode = isDevtoolsPlatform();
 	    this.setData({
       devtoolsMode: this.devtoolsMode,
@@ -2859,10 +2963,12 @@ Page({
 
   async sendCreateActionAfterThemeLoad(action) {
     const config = action && action.config ? action.config : this.buildCreateConfigOrToast();
-    const manifest = await this.prepareRoomThemeForEntry(config.themeId || this.data.createRoomThemeId, {
-      preferRemote: true,
-      themeVersion: config.themeVersion
-    });
+    const manifest = this.rememberRoomThemeManifest(
+      normalizeRoomThemeManifest(
+        this.data.roomThemeManifest || buildLocalRoomThemeManifest(config.themeId || this.data.createRoomThemeId),
+        config.themeId || this.data.createRoomThemeId
+      )
+    );
     if (!this.data.connected || !this.socketTask) {
       this.queuePendingRoomAction({
         kind: "create",
@@ -2893,7 +2999,10 @@ Page({
       return;
     }
 
-    this.setData({
+    const keepRoomReady = Boolean(this.initialRoomThemeHintReady || this.data.roomThemeReady);
+    this.setData(keepRoomReady ? {
+      roomThemeLoadError: ""
+    } : {
       roomThemeReady: false,
       roomThemeLoading: true,
       roomThemeLoadingTitle: "正在进入房间",
@@ -3412,6 +3521,10 @@ Page({
   },
 
   startGame() {
+    if (this.data.selfIsOwner && (this.data.ownerSeatingRequired || this.data.waitingPlayerCount > 0)) {
+      this.openSeatingPanel();
+      return;
+    }
     this.haptic("light");
     this.playPrimaryAwareSfx("call");
     this.sendEvent("game:start", {});
@@ -3821,11 +3934,11 @@ Page({
   },
 
   restartRound() {
-    if ((this.data.waitingPlayersRaw || []).some((player) => player.onlineStatus !== "offline")) {
+    if (this.data.ownerSeatingRequired) {
       if (this.data.selfIsOwner) {
-        this.openWaitingAdmitFlow();
+        this.openSeatingPanel();
       } else {
-        wx.showToast({ title: "等待房主安排入座", icon: "none" });
+        wx.showToast({ title: "等待房主完成下一局安排", icon: "none" });
       }
       return;
     }
@@ -4122,9 +4235,13 @@ Page({
     }
 
     const self = (this.data.playersRaw || []).find((player) => player.id === this.data.playerId);
-    const canManageSeating = (this.data.phase === "ready" || this.data.phase === "ended")
-      && self
-      && self.isOwner;
+    const canManageSeating = self && self.isOwner && (
+      this.data.phase === "ready"
+      || this.data.phase === "ended"
+      || this.data.phase === "rolling"
+      || this.data.phase === "calling"
+      || this.data.phase === "opening"
+    );
     if (canManageSeating) {
       const picked = (this.data.playersRaw || []).find((p) => p.id === playerId);
       this.openSeatingPanel(picked);
@@ -4141,54 +4258,93 @@ Page({
     this.updateSelectedTargets([...current]);
   },
 
+  syncSeatingDraftView(playersRaw = this.data.seatingDraftPlayers, selectedSeatIndex = this.data.seatingSelectedSeatIndex) {
+    const seatIndex = Number(selectedSeatIndex || 0);
+    const seatRows = buildSeatRows(playersRaw, 8, seatIndex);
+    const selectedRow = seatIndex ? seatRows.find((row) => row.seatIndex === seatIndex) : null;
+    const seatingSelectedText = seatIndex
+      ? (selectedRow && selectedRow.occupied
+        ? `${seatIndex}号 ${String(selectedRow.label || "").split("（")[0]}`
+        : `${seatIndex}号 空`)
+      : "未选择";
+
+    this.setData({
+      seatRows,
+      seatingSelectedSeatIndex: seatIndex,
+      seatingSelectedText
+    });
+  },
+
   openSeatingPanel(presetPlayer) {
-    if (!((this.data.phase === "ready" || this.data.phase === "ended") && this.data.selfIsOwner)) {
-      wx.showToast({ title: "当前不可排位", icon: "none" });
+    if (!this.data.selfIsOwner) {
+      wx.showToast({ title: "仅房主可操作", icon: "none" });
       return;
     }
 
+    const phase = String(this.data.phase || "ready");
+    const isStagingMode = phase === "ready" || phase === "ended";
     const picked = presetPlayer && presetPlayer.id ? presetPlayer : null;
     const pickedSeatIndex = picked && Number.isInteger(picked.seatIndex) ? picked.seatIndex : 0;
-    const pickedName = picked ? (safeDecodeComponent(picked.nickname).trim() || "玩家").slice(0, 6) : "";
-    const pickedText = pickedSeatIndex
-      ? `${pickedSeatIndex}号 ${pickedName || "玩家"}`
-      : "未选择";
+
+    if (isStagingMode) {
+      const seatingDraftPlayers = cloneDraftPlayers(this.data.playersRaw);
+      const seatingDraftSpectators = cloneDraftSpectators(this.data.waitingPlayersRaw);
+      this.setData({
+        seatingVisible: true,
+        seatingMode: "staging",
+        seatingDraftPlayers,
+        seatingDraftSpectators,
+        seatingDraftDirection: this.data.roomConfig && this.data.roomConfig.direction === "ccw" ? "ccw" : "cw",
+        seatingSelectedSeatIndex: pickedSeatIndex
+      });
+      this.syncSeatingDraftView(seatingDraftPlayers, pickedSeatIndex);
+      return;
+    }
+
+    const liveRows = buildOwnerLiveRows(this.data.playersRaw, this.data.waitingPlayersRaw);
     this.setData({
       seatingVisible: true,
-      seatingSelectedSeatIndex: pickedSeatIndex,
-      seatingSelectedText: pickedText,
-      seatRows: buildSeatRows(this.data.playersRaw, 8, pickedSeatIndex)
+      seatingMode: "live",
+      seatingLivePlayers: liveRows.players,
+      seatingLiveSpectators: liveRows.spectators,
+      seatingLivePendingCount: countPendingLivePlans(this.data.playersRaw, this.data.waitingPlayersRaw),
+      seatingSelectedSeatIndex: 0,
+      seatingSelectedText: "本局中仅管理下局人员"
     });
   },
 
   closeSeatingPanel() {
     this.setData({
-      seatingVisible: false
+      seatingVisible: false,
+      seatingSelectedSeatIndex: 0,
+      seatingSelectedText: "未选择"
     });
   },
 
   onSeatingSelectDirection(event) {
-    if (!((this.data.phase === "ready" || this.data.phase === "ended") && this.data.selfIsOwner)) {
+    const phase = String(this.data.phase || "ready");
+    if (this.data.seatingMode !== "staging" || !this.data.selfIsOwner || (phase !== "ready" && phase !== "ended")) {
       wx.showToast({ title: "当前不可修改方向", icon: "none" });
       return;
     }
     const dir = event.currentTarget.dataset.dir;
     if (dir !== "cw" && dir !== "ccw") return;
-    const current = this.data.roomConfig && this.data.roomConfig.direction;
+    const current = this.data.seatingDraftDirection;
     if (current === dir) return;
     this.haptic("light");
-    this.sendEvent("room:config:update", { direction: dir });
+    this.setData({ seatingDraftDirection: dir });
   },
 
   clearSeatingSelection() {
     if (!this.data.seatingSelectedSeatIndex) {
       return;
     }
-    this.setData({ seatingSelectedSeatIndex: 0, seatingSelectedText: "未选择", seatRows: buildSeatRows(this.data.playersRaw, 8, 0) });
+    this.syncSeatingDraftView(this.data.seatingDraftPlayers, 0);
   },
 
   onTapSeatRow(event) {
-    if (!((this.data.phase === "ready" || this.data.phase === "ended") && this.data.selfIsOwner)) {
+    const phase = String(this.data.phase || "ready");
+    if (this.data.seatingMode !== "staging" || !this.data.selfIsOwner || (phase !== "ready" && phase !== "ended")) {
       wx.showToast({ title: "当前不可排位", icon: "none" });
       this.closeSeatingPanel();
       return;
@@ -4201,15 +4357,16 @@ Page({
 
     const selectedSeatIndex = Number(this.data.seatingSelectedSeatIndex || 0);
     const rows = this.data.seatRows || [];
+    const nextPlayers = cloneDraftPlayers(this.data.seatingDraftPlayers);
 
     if (!selectedSeatIndex) {
       const row = rows.find((r) => r.seatIndex === seatIndex);
       const text = row && row.occupied ? `${seatIndex}号 ${String(row.label || "").split("（")[0]}` : `${seatIndex}号 空`;
       this.setData({
         seatingSelectedSeatIndex: seatIndex,
-        seatingSelectedText: text,
-        seatRows: buildSeatRows(this.data.playersRaw, 8, seatIndex)
+        seatingSelectedText: text
       });
+      this.syncSeatingDraftView(nextPlayers, seatIndex);
       return;
     }
 
@@ -4225,51 +4382,243 @@ Page({
 
     // both empty => just switch selection
     if (!fromId && !toId) {
-      const text = `${seatIndex}号 空`;
-      this.setData({
-        seatingSelectedSeatIndex: seatIndex,
-        seatingSelectedText: text,
-        seatRows: buildSeatRows(this.data.playersRaw, 8, seatIndex)
-      });
+      this.syncSeatingDraftView(nextPlayers, seatIndex);
       return;
     }
 
     this.haptic("light");
 
-    // move
+    const fromPlayer = nextPlayers.find((player) => String(player.id || "") === fromId);
+    const toPlayer = nextPlayers.find((player) => String(player.id || "") === toId);
+
     if (fromId && !toId) {
-      this.sendEvent("room:seat:set", { playerId: fromId, seatIndex });
+      if (fromPlayer) {
+        fromPlayer.seatIndex = seatIndex;
+      }
+      this.setData({ seatingDraftPlayers: nextPlayers });
       this.clearSeatingSelection();
       return;
     }
     if (!fromId && toId) {
-      this.sendEvent("room:seat:set", { playerId: toId, seatIndex: selectedSeatIndex });
+      if (toPlayer) {
+        toPlayer.seatIndex = selectedSeatIndex;
+      }
+      this.setData({ seatingDraftPlayers: nextPlayers });
       this.clearSeatingSelection();
       return;
     }
 
-    // swap
     if (fromId && toId) {
-      this.sendEvent("room:seat:swap", { playerIdA: fromId, playerIdB: toId });
+      if (fromPlayer) {
+        fromPlayer.seatIndex = seatIndex;
+      }
+      if (toPlayer) {
+        toPlayer.seatIndex = selectedSeatIndex;
+      }
+      this.setData({ seatingDraftPlayers: nextPlayers });
       this.clearSeatingSelection();
     }
   },
 
-  onTapWaitingChip() {
-    const waiting = this.data.waitingPlayersRaw || [];
-    if (!waiting.length) return;
-
-    if (this.data.selfIsOwner) {
-      this.openWaitingAdmitFlow();
+  onTapSeatingDraftPlayerAction(event) {
+    const phase = String(this.data.phase || "ready");
+    if (this.data.seatingMode !== "staging" || (phase !== "ready" && phase !== "ended")) {
+      this.closeSeatingPanel();
       return;
     }
 
-    const labels = waiting.map((p) => String(p.nickname || "等待").slice(0, 6));
-    this.showActionSheetSafe({
-      itemList: labels,
-      success: () => {},
-      fail: () => {}
+    const playerId = String(event.currentTarget.dataset.id || "");
+    if (!playerId) return;
+
+    const player = (this.data.seatingDraftPlayers || []).find((item) => String(item.id || "") === playerId);
+    if (!player) return;
+    if (player.isOwner) {
+      wx.showToast({ title: "房主暂不能移到旁观", icon: "none" });
+      return;
+    }
+
+    const nextPlayers = cloneDraftPlayers(this.data.seatingDraftPlayers).filter((item) => String(item.id || "") !== playerId);
+    const nextSpectators = cloneDraftSpectators(this.data.seatingDraftSpectators);
+    nextSpectators.push({
+      id: player.id,
+      accountId: player.accountId,
+      accountDisplayId: player.accountDisplayId,
+      nickname: player.nickname,
+      avatar: player.avatar,
+      onlineStatus: player.onlineStatus,
+      seatIntent: "spectating",
+      joinedAt: Date.now()
     });
+    this.haptic("light");
+    this.setData({
+      seatingDraftPlayers: nextPlayers,
+      seatingDraftSpectators: cloneDraftSpectators(nextSpectators)
+    });
+    this.syncSeatingDraftView(nextPlayers, 0);
+  },
+
+  onTapSeatingDraftSpectatorAction(event) {
+    const phase = String(this.data.phase || "ready");
+    if (this.data.seatingMode !== "staging" || (phase !== "ready" && phase !== "ended")) {
+      this.closeSeatingPanel();
+      return;
+    }
+
+    const spectatorId = String(event.currentTarget.dataset.id || "");
+    if (!spectatorId) return;
+
+    const emptySeatIndex = findFirstEmptySeatIndex(this.data.seatingDraftPlayers, 8);
+    if (!emptySeatIndex) {
+      wx.showToast({ title: "没有空座位，请先调整桌上玩家", icon: "none" });
+      return;
+    }
+
+    const spectators = cloneDraftSpectators(this.data.seatingDraftSpectators);
+    const index = spectators.findIndex((item) => String(item.id || "") === spectatorId);
+    if (index === -1) return;
+    const [spectator] = spectators.splice(index, 1);
+    const nextPlayers = cloneDraftPlayers(this.data.seatingDraftPlayers);
+    nextPlayers.push({
+      id: spectator.id,
+      accountId: spectator.accountId,
+      accountDisplayId: spectator.accountDisplayId,
+      nickname: spectator.nickname,
+      avatar: spectator.avatar,
+      onlineStatus: spectator.onlineStatus,
+      seatIndex: emptySeatIndex,
+      pendingBench: false
+    });
+    this.haptic("light");
+    this.setData({
+      seatingDraftPlayers: cloneDraftPlayers(nextPlayers),
+      seatingDraftSpectators: spectators
+    });
+    this.syncSeatingDraftView(nextPlayers, emptySeatIndex);
+  },
+
+  onTapSeatingLiveAction(event) {
+    if (this.data.seatingMode !== "live" || !this.data.selfIsOwner) {
+      return;
+    }
+
+    const playerId = String(event.currentTarget.dataset.id || "");
+    const target = String(event.currentTarget.dataset.target || "");
+    if (!playerId || !target) {
+      return;
+    }
+
+    if (!this.data.legalAccepted) {
+      wx.showToast({ title: "请先同意隐私协议", icon: "none" });
+      this.setData({ showLegalModal: true });
+      return;
+    }
+
+    if (!this.socketTask || !this.data.connected) {
+      wx.showToast({ title: "未连接", icon: "none" });
+      return;
+    }
+
+    this.haptic("light");
+    const feedbackText = this.applyLiveParticipantPlanLocally(playerId, target);
+    if (feedbackText) {
+      wx.showToast({ title: feedbackText, icon: "none" });
+    }
+    this.sendEvent("room:participant:plan", {
+      playerId,
+      target
+    });
+  },
+
+  applyLiveParticipantPlanLocally(playerId, target) {
+    const normalizedId = String(playerId || "");
+    const normalizedTarget = String(target || "");
+    const playersRaw = cloneDraftPlayers(this.data.playersRaw);
+    const waitingPlayersRaw = cloneDraftSpectators(this.data.waitingPlayersRaw);
+    let toastTitle = "";
+
+    if (normalizedTarget === "bench" || normalizedTarget === "stay") {
+      const player = playersRaw.find((item) => String(item.id || "") === normalizedId);
+      if (!player) {
+        return "";
+      }
+      player.pendingBench = normalizedTarget === "bench";
+      toastTitle = normalizedTarget === "bench" ? "已设为下局旁观" : "已取消下局旁观";
+    } else if (normalizedTarget === "seat" || normalizedTarget === "spectate") {
+      const spectator = waitingPlayersRaw.find((item) => String(item.id || "") === normalizedId);
+      if (!spectator) {
+        return "";
+      }
+      spectator.seatIntent = normalizedTarget === "seat" ? "pendingSeat" : "spectating";
+      toastTitle = normalizedTarget === "seat" ? "已设为下局上桌" : "已取消下局上桌";
+    } else {
+      return "";
+    }
+
+    const phase = String(this.data.phase || "ready");
+    const waitingPlayerCount = waitingPlayersRaw.filter((player) => {
+      const intent = player && player.seatIntent === "spectating" ? "spectating" : "pendingSeat";
+      return intent === "pendingSeat" && player.onlineStatus !== "offline";
+    }).length;
+    const selfSpectator = waitingPlayersRaw.find((player) => String(player.id || "") === String(this.data.playerId || "")) || null;
+    const selfIsWaiting = Boolean(selfSpectator)
+      && !playersRaw.some((player) => String(player.id || "") === String(this.data.playerId || ""));
+    const selfSpectatorIntent = selfSpectator
+      ? (selfSpectator.seatIntent === "spectating" ? "spectating" : "pendingSeat")
+      : "";
+    const ownerSeatingRequired = Boolean(this.data.ownerSeatingRequired) || (
+      (phase === "ready" || phase === "ended") && waitingPlayerCount > 0
+    );
+    const liveRows = buildOwnerLiveRows(playersRaw, waitingPlayersRaw);
+
+    this.setData({
+      playersRaw,
+      waitingPlayersRaw,
+      waitingPlayerCount,
+      selfIsWaiting,
+      selfSpectatorIntent,
+      seatingLivePlayers: liveRows.players,
+      seatingLiveSpectators: liveRows.spectators,
+      seatingLivePendingCount: countPendingLivePlans(playersRaw, waitingPlayersRaw),
+      seatingObserverStatusText: buildObserverStatusText(phase, selfSpectatorIntent, ownerSeatingRequired)
+    });
+
+    return toastTitle;
+  },
+
+  onTapWaitingChip() {
+    if (!this.data.selfIsOwner) {
+      return;
+    }
+    this.openSeatingPanel();
+  },
+
+  submitSeatingCommit() {
+    const phase = String(this.data.phase || "ready");
+    if (this.data.seatingMode !== "staging" || !this.data.selfIsOwner || (phase !== "ready" && phase !== "ended")) {
+      this.closeSeatingPanel();
+      return;
+    }
+
+    const seatedPlayerIds = cloneDraftPlayers(this.data.seatingDraftPlayers).map((player) => ({
+      playerId: player.id,
+      seatIndex: Number(player.seatIndex) || 0
+    }));
+    if (seatedPlayerIds.length <= 0) {
+      wx.showToast({ title: "至少保留一位桌上玩家", icon: "none" });
+      return;
+    }
+
+    const spectatorPlayerIds = cloneDraftSpectators(this.data.seatingDraftSpectators).map((player) => player.id);
+    const startMode = this.data.phase === "ended" ? "restart" : "start";
+    this.haptic("light");
+    this.playPrimaryAwareSfx("call");
+    this.sendEvent("room:seating:commit", {
+      direction: this.data.seatingDraftDirection === "ccw" ? "ccw" : "cw",
+      seatedPlayerIds,
+      spectatorPlayerIds,
+      startMode
+    });
+    this.closeSeatingPanel();
   },
 
   openDice() {
@@ -4553,6 +4902,35 @@ Page({
     return DEFAULT_ROOM_THEME_ID;
   },
 
+  hasInitialRoomThemeHintForLoad(options = {}, cachedSession = null) {
+    const mode = String(options.mode || "");
+    if (mode === "create") {
+      return true;
+    }
+
+    if (mode === "join") {
+      const roomId = normalizeRoomId(safeDecodeComponent(options.roomId).trim());
+      if (hasExplicitRoomThemeHint(options)) {
+        return true;
+      }
+
+      const cachedThemeForRoom = roomId ? this.getCachedRoomTheme(roomId) : "";
+      if (cachedThemeForRoom) {
+        return true;
+      }
+    }
+
+    const cached = cachedSession && typeof cachedSession === "object" ? cachedSession : null;
+    const cachedThemeId = parseOptionalRoomThemeId(cached && cached.themeId);
+    if (!cachedThemeId) {
+      return false;
+    }
+
+    const cachedRoomId = normalizeRoomId(cached && cached.roomId);
+    const optionRoomId = normalizeRoomId(options.roomId);
+    return String(options.resume || "") === "1" || !optionRoomId || optionRoomId === cachedRoomId;
+  },
+
   resolveRoomThemeId(roomId, incomingThemeId = "", provisionalThemeId = "") {
     const explicitThemeId = parseOptionalRoomThemeId(incomingThemeId);
     const normalizedRoomId = normalizeRoomId(roomId);
@@ -4711,8 +5089,7 @@ Page({
 
     const config = this.data.roomConfig;
     const testMode = Boolean(config && config.testMode);
-    const hasWaitingPlayers = (this.data.waitingPlayersRaw || []).some((player) => player.onlineStatus !== "offline");
-    if (this.data.selfIsOwner && hasWaitingPlayers) {
+    if (this.data.selfIsOwner) {
       sections.push({
         label: "房主工具",
         open: () => this.openToolsOwnerMenu()
@@ -4786,10 +5163,8 @@ Page({
     const items = [];
     const actions = [];
 
-    if ((this.data.waitingPlayersRaw || []).some((player) => player.onlineStatus !== "offline")) {
-      items.push("等待者入座");
-      actions.push(() => this.openWaitingAdmitFlow());
-    }
+    items.push("房主管理");
+    actions.push(() => this.openSeatingPanel());
 
     items.push("设置每人骰子数(下局)");
     actions.push(() => this.openDicePerPlayerModal());
@@ -4855,75 +5230,7 @@ Page({
   },
 
   openWaitingAdmitFlow() {
-    const waiting = (this.data.waitingPlayersRaw || []).filter((player) => player.onlineStatus !== "offline");
-    if (!waiting.length) {
-      wx.showToast({ title: "暂无在线等待玩家", icon: "none" });
-      return;
-    }
-
-    const labels = waiting.map((p) => `${String(p.nickname || "等待").slice(0, 6)} (${String(p.id || "").slice(0, 6)})`);
-
-    this.showActionSheetSafe({
-      itemList: labels,
-      success: (res) => {
-        const picked = waiting[res.tapIndex];
-        if (!picked) {
-          return;
-        }
-
-        const emptySeatOptions = buildEmptySeatOptions(this.data.playersRaw, 8);
-        if (!emptySeatOptions.length) {
-          wx.showToast({ title: "没有空座位，请先调座", icon: "none" });
-          return;
-        }
-
-        const submitAdmitSeat = (rawSeatIndex) => {
-          const seatIndex = Number(String(rawSeatIndex || "").trim());
-          if (!Number.isInteger(seatIndex) || seatIndex < 1 || seatIndex > 8) {
-            wx.showToast({ title: "座位号不合法", icon: "none" });
-            return;
-          }
-
-          const matchedSeat = emptySeatOptions.find((item) => item.seatIndex === seatIndex);
-          if (!matchedSeat) {
-            wx.showToast({ title: "只能选择空座位，请先调座", icon: "none" });
-            return;
-          }
-
-          this.sendEvent("room:waiting:admit", {
-            playerId: picked.id,
-            seatIndex
-          });
-        };
-
-        if (emptySeatOptions.length <= 6) {
-          this.showActionSheetSafe({
-            itemList: emptySeatOptions.map((item) => item.label),
-            success: (seatRes) => {
-              const selectedSeat = emptySeatOptions[seatRes.tapIndex];
-              if (!selectedSeat) {
-                return;
-              }
-              submitAdmitSeat(selectedSeat.seatIndex);
-            }
-          });
-          return;
-        }
-
-        wx.showModal({
-          title: "为等待者分配座位",
-          editable: true,
-          placeholderText: "输入空座位号 1-8",
-          content: `空座位：${emptySeatOptions.map((item) => item.seatIndex).join("、")}`,
-          success: (modalRes) => {
-            if (!modalRes.confirm) {
-              return;
-            }
-            submitAdmitSeat(modalRes.content);
-          }
-        });
-      }
-    });
+    this.openSeatingPanel();
   },
 
   openDicePerPlayerModal() {
@@ -5045,7 +5352,7 @@ Page({
       case "room:state": {
         const roomId = payload.roomId || this.data.roomId;
         const playersRaw = payload.players || [];
-        const waitingPlayersRaw = payload.waitingPlayers || [];
+        const waitingPlayersRaw = payload.spectators || payload.waitingPlayers || [];
         this.clearStoredSessionIfSelfMissing(roomId, playersRaw, waitingPlayersRaw);
         const roomConfig = payload.config || null;
         const incomingThemeManifest = payload.themeManifest
@@ -5094,11 +5401,23 @@ Page({
           self && self.avatar ? self.avatar : this.data.avatarUrl,
           Math.max(0, Number(self && self.seatIndex || 1) - 1)
         );
+        const ownerSeatingRequired = Boolean(payload.ownerSeatingRequired);
         const waitingPlayerCount = Array.isArray(waitingPlayersRaw)
-          ? waitingPlayersRaw.filter((player) => player.onlineStatus !== "offline").length
+          ? waitingPlayersRaw.filter((player) => {
+            const intent = player && player.seatIntent === "spectating" ? "spectating" : "pendingSeat";
+            return intent === "pendingSeat" && player.onlineStatus !== "offline";
+          }).length
           : 0;
-        const selfIsWaiting = waitingPlayersRaw.some((player) => player.id === this.data.playerId)
+        const selfSpectator = waitingPlayersRaw.find((player) => player.id === this.data.playerId) || null;
+        const selfIsWaiting = Boolean(selfSpectator)
           && !playersRaw.some((player) => player.id === this.data.playerId);
+        const selfSpectatorIntent = selfSpectator
+          ? ((selfSpectator.seatIntent === "spectating") ? "spectating" : "pendingSeat")
+          : "";
+        const effectiveOwnerSeatingRequired = ownerSeatingRequired || (
+          (payload.phase === "ready" || payload.phase === "ended") && waitingPlayerCount > 0
+        );
+        const seatingObserverStatusText = buildObserverStatusText(payload.phase || "ready", selfSpectatorIntent, effectiveOwnerSeatingRequired);
         const dicePerPlayer = roomConfig && typeof roomConfig.dicePerPlayer === "number"
           ? roomConfig.dicePerPlayer
           : 5;
@@ -5295,11 +5614,16 @@ Page({
         let primaryActionText = "开始";
         let canPrimaryAction = false;
         if (selfIsWaiting) {
-          primaryActionText = "旁观中";
+          primaryActionText = selfSpectatorIntent === "pendingSeat" ? "待上桌" : "旁观中";
           canPrimaryAction = false;
         } else if (phase === "ready") {
-          primaryActionText = startActionText;
-          canPrimaryAction = startActionEnabled;
+          if (selfIsOwner && (effectiveOwnerSeatingRequired || waitingPlayerCount > 0)) {
+            primaryActionText = "安排座位";
+            canPrimaryAction = true;
+          } else {
+            primaryActionText = startActionText;
+            canPrimaryAction = startActionEnabled;
+          }
         } else if (phase === "rolling") {
           if (!hasDice) {
             primaryActionText = "摇骰";
@@ -5315,9 +5639,9 @@ Page({
           primaryActionText = "开牌中";
           canPrimaryAction = false;
         } else if (phase === "ended") {
-          if (waitingPlayerCount > 0) {
+          if (effectiveOwnerSeatingRequired) {
             if (selfIsOwner) {
-              primaryActionText = "安排入座";
+              primaryActionText = "安排座位";
               canPrimaryAction = true;
             } else {
               primaryActionText = "等待房主安排";
@@ -5385,7 +5709,9 @@ Page({
           waitingPlayersRaw,
           waitingPlayerCount,
           selfIsWaiting,
+          selfSpectatorIntent,
           selfIsOwner,
+          ownerSeatingRequired: effectiveOwnerSeatingRequired,
           selfHasCalled,
           selfHasDice: (selfIsWaiting || roundChanged) ? false : hasDice,
           selfRollLocked,
@@ -5395,6 +5721,8 @@ Page({
           seatRows,
           seatingSelectedSeatIndex,
           seatingSelectedText,
+          seatingLivePendingCount: countPendingLivePlans(playersRaw, waitingPlayersRaw),
+          seatingObserverStatusText,
           voiceItems: this.decorateVoiceItems(this.data.voiceItemsRaw, playersRaw),
           chatItems: this.decorateChatItems(this.data.chatItemsRaw, playersRaw, this.data.playerId),
           selectedTargetIds: validTargets,
@@ -5526,9 +5854,7 @@ Page({
         }
 
         if (!payload.ok && actionEvent === "voice:upload") {
-          this.rejectPendingVoiceTranscript(String(payload.reason || "语音识别失败，请重试"), {
-            silentToast: true
-          });
+          this.rejectPendingVoiceTranscript(String(payload.reason || "语音识别失败，请重试"));
         }
 
         if (payload.roomId || payload.playerId || payload.resumeToken) {
@@ -5615,8 +5941,8 @@ Page({
 
           if (actionEvent === "room:join" && payload.code === "ROOM_NOT_FOUND") {
             wx.showToast({ title: "房间不存在或房间号有误", icon: "none", duration: 5000 });
-          } else if (actionEvent === "room:waiting:admit" && payload.code === "SEAT_CONFLICT") {
-            wx.showToast({ title: "该座位已有人，请先调座", icon: "none" });
+          } else if (actionEvent === "room:seating:commit" && payload.code === "SEAT_CONFLICT") {
+            wx.showToast({ title: "座位冲突，请重新调整", icon: "none" });
           } else {
             wx.showToast({ title: reason, icon: "none" });
           }
@@ -6044,6 +6370,10 @@ Page({
       callSelectionSummaryText: buildCallSelectionSummary(nextCountTouched, nextPointTouched, this.data.callCount, this.data.callPoint),
       voiceTipText: this.data.recording ? "录音中，松开发送" : DEFAULT_CALL_VOICE_TIP_TEXT
     });
+    if (this.data.callVoiceReady && !this.voiceUsageHintShown) {
+      this.voiceUsageHintShown = true;
+      wx.showToast({ title: "语音键需要按住说话", icon: "none" });
+    }
   },
 
   closeCallPanel() {
@@ -6338,7 +6668,9 @@ Page({
       waitingPlayersRaw: [],
       waitingPlayerCount: 0,
       selfIsWaiting: false,
+      selfSpectatorIntent: "",
       selfIsOwner: false,
+      ownerSeatingRequired: false,
       selfHasDice: false,
       selfHasCalled: false,
       selfRollLocked: false,
@@ -6400,9 +6732,17 @@ Page({
       secondaryActionKind: "",
       secondaryActionEnabled: false,
       seatingVisible: false,
+      seatingMode: "staging",
+      seatingDraftPlayers: [],
+      seatingDraftSpectators: [],
+      seatingDraftDirection: "cw",
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "未选择",
       seatRows: [],
+      seatingLivePlayers: [],
+      seatingLiveSpectators: [],
+      seatingLivePendingCount: 0,
+      seatingObserverStatusText: "旁观中",
       pendingActionText: ""
     });
   },

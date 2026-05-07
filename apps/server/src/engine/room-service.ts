@@ -269,6 +269,25 @@ export class RoomService {
     return this.rooms.has(String(roomId || "").trim());
   }
 
+  getRoomEntrySnapshot(roomId: string): { exists: boolean; themeId: string; themeVersion: string } {
+    const normalizedRoomId = String(roomId || "").trim();
+    const room = this.rooms.get(normalizedRoomId);
+    if (!room) {
+      return {
+        exists: false,
+        themeId: "",
+        themeVersion: ""
+      };
+    }
+
+    const state = room.getState();
+    return {
+      exists: true,
+      themeId: String(state.config?.themeId || ""),
+      themeVersion: String(state.config?.themeVersion || "")
+    };
+  }
+
   private logDiagnostic(level: "log" | "warn", event: string, details: Record<string, unknown>): void {
     const logger = level === "warn" ? console.warn : console.log;
     logger(`[dice-server] ${event} ${JSON.stringify(details)}`);
@@ -304,7 +323,7 @@ export class RoomService {
       activeRoomIds,
       phase: state?.phase || null,
       playerCount: state?.players.length ?? 0,
-      waitingCount: state?.waitingPlayers.length ?? 0
+      spectatorCount: state?.spectators.length ?? 0
     };
   }
 
@@ -356,14 +375,11 @@ export class RoomService {
       case "room:config:update":
         this.handleRoomConfigUpdate(ws, message.payload, message.actionId);
         break;
-      case "room:seat:set":
-        this.handleRoomSeatSet(ws, message.payload, message.actionId);
+      case "room:participant:plan":
+        this.handleRoomParticipantPlan(ws, message.payload, message.actionId);
         break;
-      case "room:seat:swap":
-        this.handleRoomSeatSwap(ws, message.payload, message.actionId);
-        break;
-      case "room:waiting:admit":
-        this.handleRoomWaitingAdmit(ws, message.payload, message.actionId);
+      case "room:seating:commit":
+        this.handleRoomSeatingCommit(ws, message.payload, message.actionId);
         break;
       case "history:list":
         await this.handleHistoryList(ws, message.payload, message.actionId);
@@ -667,7 +683,7 @@ export class RoomService {
     const playerId = createPlayerId();
     const roomState = room.getState();
     const phase = roomState.phase;
-    const participantCount = roomState.players.length + roomState.waitingPlayers.length;
+    const participantCount = roomState.players.length + roomState.spectators.length;
 
     if (participantCount >= MAX_PLAYERS) {
       throw new GameError(ErrorCode.ROOM_FULL, "房间已满，无法旁观");
@@ -686,7 +702,7 @@ export class RoomService {
         avatar
       });
     } else {
-      room.addWaitingPlayer({
+      room.addSpectator({
         id: playerId,
         accountId: shouldBindJoinedAccount ? boundAccount?.accountId : undefined,
         accountDisplayId: shouldBindJoinedAccount ? boundAccount?.accountDisplayId : undefined,
@@ -804,14 +820,14 @@ export class RoomService {
     this.broadcastRoomState(session.roomId);
   }
 
-  private handleRoomSeatSet(
+  private handleRoomParticipantPlan(
     ws: WebSocket,
-    payload: ClientEventMap["room:seat:set"],
+    payload: ClientEventMap["room:participant:plan"],
     actionId?: string
   ): void {
     const { room, session } = this.getRoomAndSession(ws);
     this.ensureActivePlayer(room, session.playerId);
-    room.setSeat(session.playerId, payload.playerId, payload.seatIndex);
+    room.planParticipant(session.playerId, payload.playerId, payload.target);
 
     this.sendAck(ws, {
       actionId,
@@ -821,31 +837,21 @@ export class RoomService {
     this.broadcastRoomState(session.roomId);
   }
 
-  private handleRoomSeatSwap(
+  private handleRoomSeatingCommit(
     ws: WebSocket,
-    payload: ClientEventMap["room:seat:swap"],
+    payload: ClientEventMap["room:seating:commit"],
     actionId?: string
   ): void {
     const { room, session } = this.getRoomAndSession(ws);
     this.ensureActivePlayer(room, session.playerId);
-    room.swapSeats(session.playerId, payload.playerIdA, payload.playerIdB);
+    room.commitSeating(session.playerId, payload);
 
-    this.sendAck(ws, {
-      actionId,
-      ok: true
-    });
-
-    this.broadcastRoomState(session.roomId);
-  }
-
-  private handleRoomWaitingAdmit(
-    ws: WebSocket,
-    payload: ClientEventMap["room:waiting:admit"],
-    actionId?: string
-  ): void {
-    const { room, session } = this.getRoomAndSession(ws);
-    this.ensureActivePlayer(room, session.playerId);
-    room.admitWaitingPlayer(session.playerId, payload.playerId, payload.seatIndex);
+    const startMode = payload.startMode || "none";
+    if (startMode === "start") {
+      room.startGame(session.playerId);
+    } else if (startMode === "restart") {
+      room.restartRound(session.playerId);
+    }
 
     this.sendAck(ws, {
       actionId,
@@ -1364,28 +1370,14 @@ export class RoomService {
       return active.accountId;
     }
 
-    return state.waitingPlayers.find((player) => player.id === playerId)?.accountId;
-  }
-
-  private hasOnlineRoomParticipantByAccountId(room: RoomEngine, accountId: string): boolean {
-    const normalizedAccountId = String(accountId || "").trim();
-    if (!normalizedAccountId) {
-      return false;
-    }
-
-    const state = room.getState();
-    return state.players.some((player) => (
-      player.accountId === normalizedAccountId && player.onlineStatus === "online"
-    )) || state.waitingPlayers.some((player) => (
-      player.accountId === normalizedAccountId && player.onlineStatus === "online"
-    ));
+    return state.spectators.find((player) => player.id === playerId)?.accountId;
   }
 
   private findRoomParticipantByAccountId(
     room: RoomEngine,
     accountId: string,
     options: { includeOnline?: boolean } = {}
-  ): { id: string; kind: "player" | "waiting" } | null {
+  ): { id: string; kind: "player" | "spectator" } | null {
     const normalizedAccountId = String(accountId || "").trim();
     if (!normalizedAccountId) {
       return null;
@@ -1394,7 +1386,7 @@ export class RoomService {
     const includeOnline = options.includeOnline !== false;
     const state = room.getState();
     const active = state.players.find((player) => {
-      if (player.accountId !== normalizedAccountId) {
+      if (String(player.accountId || "").trim() !== normalizedAccountId) {
         return false;
       }
       if (includeOnline) {
@@ -1409,17 +1401,29 @@ export class RoomService {
       };
     }
 
-    const waiting = state.waitingPlayers.find((player) => (
-      player.accountId === normalizedAccountId
-    ));
-    if (waiting) {
+    const spectator = state.spectators.find((player) => String(player.accountId || "").trim() === normalizedAccountId);
+    if (spectator) {
       return {
-        id: waiting.id,
-        kind: "waiting"
+        id: spectator.id,
+        kind: "spectator"
       };
     }
 
     return null;
+  }
+
+  private hasOnlineRoomParticipantByAccountId(room: RoomEngine, accountId: string): boolean {
+    const normalizedAccountId = String(accountId || "").trim();
+    if (!normalizedAccountId) {
+      return false;
+    }
+
+    const state = room.getState();
+    return state.players.some((player) => (
+      player.accountId === normalizedAccountId && player.onlineStatus === "online"
+    )) || state.spectators.some((player) => (
+      player.accountId === normalizedAccountId && player.onlineStatus === "online"
+    ));
   }
 
   private getRoomAndSession(ws: WebSocket): { room: RoomEngine; session: Session } {
@@ -1575,7 +1579,7 @@ export class RoomService {
       player.isOwner &&
       state.phase === "ready" &&
       state.players.length === 1 &&
-      state.waitingPlayers.length === 0
+      state.spectators.length === 0
     );
   }
 

@@ -234,9 +234,19 @@ function requestBackend(options) {
 }
 
 async function checkRoomExists(roomId) {
+  const snapshot = await getRoomEntrySnapshot(roomId);
+  return Boolean(snapshot && snapshot.exists);
+}
+
+async function getRoomEntrySnapshot(roomId) {
   const normalizedRoomId = String(roomId || "").trim();
   if (!/^\d{6}$/.test(normalizedRoomId)) {
-    return false;
+    return {
+      roomId: normalizedRoomId,
+      exists: false,
+      themeId: "",
+      themeVersion: ""
+    };
   }
 
   const response = await requestBackend({
@@ -248,12 +258,18 @@ async function checkRoomExists(roomId) {
   });
 
   const data = response && response.data ? response.data : response;
-  return Boolean(data && data.exists);
+  return {
+    roomId: normalizedRoomId,
+    exists: Boolean(data && data.exists),
+    themeId: String(data && data.themeId || ""),
+    themeVersion: String(data && data.themeVersion || "")
+  };
 }
 
 module.exports = {
   requestBackend,
   checkRoomExists,
+  getRoomEntrySnapshot,
   deriveHttpBaseUrl,
   getRuntimeConnection,
   hasBackendConnection,

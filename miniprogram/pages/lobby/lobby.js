@@ -96,11 +96,16 @@ function buildConnectionState() {
   };
 }
 
-async function checkRoomAvailability(roomId) {
-  if (backendRequest && typeof backendRequest.checkRoomExists === "function") {
-    return backendRequest.checkRoomExists(roomId);
+async function getRoomEntrySnapshot(roomId) {
+  if (backendRequest && typeof backendRequest.getRoomEntrySnapshot === "function") {
+    return backendRequest.getRoomEntrySnapshot(roomId);
   }
-  return true;
+  return {
+    roomId: String(roomId || "").trim(),
+    exists: true,
+    themeId: "",
+    themeVersion: ""
+  };
 }
 
 function buildLoginGateCopy(redirectUrl = "/pages/lobby/lobby") {
@@ -309,21 +314,28 @@ Page({
       return;
     }
 
-    let roomExists = true;
+    let roomEntrySnapshot = {
+      exists: true,
+      themeId: "",
+      themeVersion: ""
+    };
     try {
-      roomExists = await checkRoomAvailability(roomId);
+      roomEntrySnapshot = await getRoomEntrySnapshot(roomId);
     } catch (error) {
       const message = error && error.message ? String(error.message) : "当前服务暂不可用，请稍后再试";
       wx.showToast({ title: message, icon: "none" });
       return;
     }
 
-    if (!roomExists) {
+    if (!roomEntrySnapshot.exists) {
       wx.showToast({ title: "房间不存在或房间号有误", icon: "none", duration: 5000 });
       return;
     }
 
-    const targetUrl = `/pages/room/room?mode=join&forceNew=1&roomId=${encodeURIComponent(roomId)}`;
+    const themeQuery = roomEntrySnapshot.themeId
+      ? `&themeId=${encodeURIComponent(roomEntrySnapshot.themeId)}`
+      : "";
+    const targetUrl = `/pages/room/room?mode=join&forceNew=1&roomId=${encodeURIComponent(roomId)}${themeQuery}`;
     if (!this.data.loggedIn) {
       this.requireLogin(targetUrl);
       return;

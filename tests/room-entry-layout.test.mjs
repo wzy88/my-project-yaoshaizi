@@ -37,8 +37,8 @@ test("room page hides room visuals until the initial theme is resolved", () => {
   assert.match(wxss, /@keyframes room-theme-loader-spin/);
   assert.match(wxss, /\.page\.room-screen\.is-theme-pending \.room-shell,[\s\S]*opacity:\s*0/);
   assert.match(js, /resolveInitialRoomThemeForLoad\(options, cached\)/);
-  assert.match(js, /loadRoomThemeManifest/);
-  assert.match(js, /const shouldWaitForAuthoritativeRoomTheme = mode === "join"/);
+  assert.match(js, /hasInitialRoomThemeHintForLoad\(options, cached\)/);
+  assert.match(js, /const shouldWaitForAuthoritativeRoomTheme = mode === "join" && !hasInitialRoomThemeHint/);
   assert.match(js, /roomThemeReady:\s*!shouldWaitForAuthoritativeRoomTheme,[\s\S]*buildRoomThemePresentation\(initialRoomThemeId\)/);
   assert.match(js, /roomThemeLoadingTitle:\s*"正在进入房间"[\s\S]*roomThemeLoadingStep:\s*text[\s\S]*roomThemeLoadingProgress:\s*28/);
 });
@@ -48,7 +48,7 @@ test("room shell keeps the room id centered while moving invite outside and rule
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
   assert.doesNotMatch(wxml, /class="room-safe-panel"/);
   assert.match(wxml, /class="room-topbar__shortcut" bindtap="onTapMore"/);
-  assert.match(wxml, /class="room-topbar__shortcut-text">设置<\/text>/);
+  assert.match(wxml, /class="room-topbar__shortcut-text">\{\{selfIsOwner \? '管理' : '设置'\}\}<\/text>/);
   assert.match(wxml, /class="room-topbar__shortcut room-topbar__shortcut--ghost room-topbar__shortcut--share" open-type="share" bindtap="onTapShareRoom"/);
   assert.match(wxml, /class="room-topbar__shortcut-text">喊人<\/text>/);
   assert.match(wxml, /class="room-topbar-menu-popover"/);
@@ -123,7 +123,7 @@ test("room join waits for the server theme instead of caching entry hints as fin
   const sendJoinBlock = script.match(/async sendJoinActionAfterThemeLoad\(action\) \{[\s\S]*?\n  \},/);
   assert.ok(sendJoinBlock, "sendJoinActionAfterThemeLoad should exist");
   assert.doesNotMatch(sendJoinBlock[0], /prepareRoomThemeForEntry/);
-  assert.match(sendJoinBlock[0], /同步房间 \$\{roomId\} 的主题/);
+  assert.match(sendJoinBlock[0], /const keepRoomReady = Boolean\(this\.initialRoomThemeHintReady \|\| this\.data\.roomThemeReady\)/);
 
   const ackThemeBlock = script.match(/const nextThemeId = \(ackThemeManifest && ackThemeManifest\.id\)[\s\S]*?;\n/);
   assert.ok(ackThemeBlock, "ack theme selection block should exist");
@@ -404,11 +404,17 @@ test("seating dialog reuses the settlement sheet skin", () => {
   assert.match(wxml, /class="room-sheet room-sheet--seating"/);
   assert.match(wxml, /class="sheet-head sheet-head--settings"/);
   assert.match(wxml, /class="sheet-close sheet-close--pill" bindtap="closeSeatingPanel">完成<\/view>/);
-  assert.match(wxml, /class="seat-hero"/);
-  assert.match(wxml, /class="seat-direction-panel__label">入座方向<\/text>/);
+  assert.match(wxml, /<scroll-view class="sheet-body sheet-body--settings sheet-body--seating" scroll-y="true"/);
+  assert.match(wxml, /class="seat-mode-card"/);
+  assert.match(wxml, /class="seat-summary-strip"/);
+  assert.match(wxml, /class="seat-section__title">8 个座位自由换位<\/text>/);
   assert.match(wxml, /class="seat-grid-panel"/);
-  assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*max-width:\s*682rpx/);
-  assert.match(source, /\.seat-hero\s*\{/);
+  assert.match(wxml, /class="seat-list-panel__title">本局上桌<\/text>/);
+  assert.match(wxml, /class="seat-list-panel__title">旁观席<\/text>/);
+  assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*max-width:\s*650rpx/);
+  assert.match(source, /\.seat-mode-card\s*\{/);
+  assert.match(source, /\.seat-summary-strip\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(source, /\.seat-section\s*\{/);
   assert.match(source, /\.seat-direction-panel,\s*\.seat-grid-panel\s*\{/);
 });
 
@@ -430,7 +436,7 @@ test("seating dialog uses a compact 2-column seat card grid", () => {
   assert.doesNotMatch(wxml, /class="seat-grid__row"/);
   assert.match(wxss, /\.seat-grid\s*\{[\s\S]*display:\s*grid/);
   assert.match(wxss, /\.seat-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(wxss, /\.seat-grid__item\s*\{[\s\S]*min-height:\s*148rpx/);
+  assert.match(wxss, /\.seat-grid__item\s*\{[\s\S]*min-height:\s*120rpx/);
   assert.match(wxss, /\.seat-grid__item\s*\{[\s\S]*flex-direction:\s*column/);
   assert.match(wxss, /\.seat-grid__head\s*\{[\s\S]*justify-content:\s*space-between/);
 });
@@ -525,17 +531,19 @@ test("room page countdown uses the compact numeric style and owner seating entry
 
   assert.match(wxml, /<text class="room-turn-countdown__text">\{\{turnCountdownSec\}\}<\/text>/);
   assert.doesNotMatch(wxml, /\{\{turnCountdownSec\}\}秒/);
-  assert.match(wxml, /wx:if="\{\{selfIsOwner && \(phase === 'ready' \|\| phase === 'ended'\)\}\}" class="room-topbar-menu-popover__item" bindtap="onTapMenuSeating"/);
+  assert.match(wxml, /class="room-topbar__shortcut-text">\{\{selfIsOwner \? '管理' : '设置'\}\}<\/text>/);
+  assert.match(wxml, /wx:if="\{\{selfIsOwner\}\}" class="room-topbar-menu-popover__item" bindtap="onTapMenuSeating"/);
+  assert.doesNotMatch(wxml, /class="room-topbar__shortcut room-topbar__shortcut--ghost" bindtap="onTapMenuSeating"/);
 });
 
 test("room page exposes direct waiting-seat entry and moves spectator identity to the table corner", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
 
-  assert.match(wxml, /wx:if="\{\{selfIsOwner && waitingPlayerCount > 0 && \(phase === 'ready' \|\| phase === 'ended'\)\}\}"\s+class="room-stage__waiting-entry"/);
-  assert.match(wxml, /<text class="room-stage__waiting-entry-text">等待入座\(\{\{waitingPlayerCount\}\}\)<\/text>/);
+  assert.match(wxml, /wx:if="\{\{selfIsOwner && \(waitingPlayerCount > 0 \|\| ownerSeatingRequired\) && \(phase === 'ready' \|\| phase === 'ended'\)\}\}"\s+class="room-stage__waiting-entry"/);
+  assert.match(wxml, /<text class="room-stage__waiting-entry-text">\{\{waitingPlayerCount > 0 \? \('待上桌\(' \+ waitingPlayerCount \+ '\)'\) : '安排下一局'\}\}<\/text>/);
   assert.match(wxml, /wx:if="\{\{selfIsWaiting\}\}" class="room-stage__observer-card"/);
-  assert.match(wxml, /<text class="room-stage__observer-status">等待房主安排入座<\/text>/);
+  assert.match(wxml, /<text class="room-stage__observer-status">\{\{seatingObserverStatusText\}\}<\/text>/);
   assert.match(wxml, /<view wx:if="\{\{!selfIsWaiting\}\}" class="room-self" style="\{\{roomSelfStyle\}\}">/);
   assert.match(wxss, /\.room-stage__waiting-entry\s*\{[\s\S]*top:\s*204rpx;[\s\S]*left:\s*52rpx;/);
   assert.match(wxss, /\.room-stage__observer-card\s*\{[\s\S]*top:\s*196rpx;[\s\S]*left:\s*52rpx;/);

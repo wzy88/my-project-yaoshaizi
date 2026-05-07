@@ -230,7 +230,7 @@ test("room service: resume token rejoin restores the same player without duplica
 
   const beforeDisconnect = getRoomState(ownerSocket);
   assert.equal(beforeDisconnect.players.length, 2);
-  assert.equal(beforeDisconnect.waitingPlayers.length, 1);
+  assert.equal(beforeDisconnect.spectators.length, 1);
 
   service.handleSocketDisconnected(ownerSocket);
 
@@ -247,7 +247,7 @@ test("room service: resume token rejoin restores the same player without duplica
 
   const afterRejoin = getRoomState(resumeSocket);
   assert.equal(afterRejoin.players.length, 2);
-  assert.equal(afterRejoin.waitingPlayers.length, 1);
+  assert.equal(afterRejoin.spectators.length, 1);
   assert.equal(afterRejoin.players.filter((player) => player.id === createAck.playerId).length, 1);
   assert.equal(afterRejoin.players.find((player) => player.id === createAck.playerId).onlineStatus, "online");
 });

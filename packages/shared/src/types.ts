@@ -8,6 +8,7 @@ export type OpenMode = "single" | "multi";
 export type AccountProvider = "wechat";
 export type RoomThemeId = "jade-green" | "ruby-red" | "imperial-red" | "glacier-blue";
 export type RoomThemeDelivery = "bundled" | "remote";
+export type SpectatorIntent = "spectating" | "pendingSeat";
 
 export interface RoomThemeAssetManifestDTO {
   menuIconSrc?: string;
@@ -73,16 +74,19 @@ export interface PlayerState {
   diceCupStatus: DiceCupStatus;
   rollLocked: boolean;
   rollCountThisRound: number;
+  pendingBench?: boolean;
   currentCall?: DiceCall;
 }
 
-export interface WaitingPlayerState {
+export interface SpectatorState {
   id: string;
   accountId?: string;
   accountDisplayId?: string;
   nickname: string;
   avatar: string;
   onlineStatus: OnlineStatus;
+  seatIntent: SpectatorIntent;
+  joinedAt?: number;
 }
 
 export interface RoomStateDTO {
@@ -93,8 +97,9 @@ export interface RoomStateDTO {
   config: RoomConfigDTO;
   themeManifest?: RoomThemeManifestDTO;
   players: PlayerState[];
-  waitingPlayers: WaitingPlayerState[];
+  spectators: SpectatorState[];
   lastCall?: DiceCall;
+  ownerSeatingRequired?: boolean;
   turnDeadlineTs?: number;
   networkHealth: NetworkHealth;
   version: number;
@@ -275,9 +280,13 @@ export interface ClientEventMap {
   };
   "room:rejoin": { roomId: string; playerId: string; resumeToken: string };
   "room:config:update": Partial<Pick<RoomConfigDTO, "direction" | "wildcardOneEnabled" | "dicePerPlayer" | "minOpeningCount">>;
-  "room:seat:set": { playerId: string; seatIndex: number };
-  "room:seat:swap": { playerIdA: string; playerIdB: string };
-  "room:waiting:admit": { playerId: string; seatIndex: number };
+  "room:participant:plan": { playerId: string; target: "bench" | "stay" | "seat" | "spectate" };
+  "room:seating:commit": {
+    direction: RoomDirection;
+    seatedPlayerIds: Array<{ playerId: string; seatIndex: number }>;
+    spectatorPlayerIds: string[];
+    startMode?: "none" | "start" | "restart";
+  };
   "history:list": { limit?: number; beforeRound?: number };
   "room:leave": Record<string, never>;
   "player:update": { nickname?: string; avatar?: string; accountId?: string; accountSessionToken?: string };

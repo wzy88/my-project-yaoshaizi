@@ -38,13 +38,13 @@ test("room engine: startGame requires >=2 players and enters rolling", () => {
   assert.equal(engine.getState().phase, "rolling");
 });
 
-test("room engine: startGame requires seating online waiting players first", () => {
+test("room engine: startGame blocks when online pending-seat spectators still need arrangement", () => {
   const engine = createEngine();
-  engine.addWaitingPlayer({ id: "W_READY", nickname: "waiting", avatar: "" });
+  engine.addSpectator({ id: "W_READY", nickname: "waiting", avatar: "" }, "pendingSeat");
 
   assert.throws(
     () => engine.startGame("P_OWNER"),
-    (err) => err && err.code === ErrorCode.BAD_REQUEST && /请先安排等待玩家入座/.test(err.message)
+    (err) => err && err.code === ErrorCode.BAD_REQUEST && /完成下一局座位安排/.test(err.message)
   );
 
   engine.setPlayerOnlineStatus("W_READY", "offline");
@@ -258,7 +258,7 @@ test("room engine: owner can restart when the losing starter has left after sett
   assert.equal(state.players.some((player) => player.id === "P_B"), false);
 });
 
-test("room engine: owner can adjust seats after settlement before the next round", () => {
+test("room engine: owner can commit next-round seating draft and restart from one action path", () => {
   const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
   engine.addPlayer({ id: "P_C", nickname: "c", avatar: "" });
   engine.startGame("P_OWNER");
@@ -268,30 +268,51 @@ test("room engine: owner can adjust seats after settlement before the next round
   engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
   assert.equal(engine.getState().phase, "ended");
 
-  engine.setSeat("P_OWNER", "P_C", 8);
-  assert.equal(engine.getState().players.find((player) => player.id === "P_C").seatIndex, 8);
+  engine.commitSeating("P_OWNER", {
+    direction: "ccw",
+    seatedPlayerIds: [
+      { playerId: "P_OWNER", seatIndex: 8 },
+      { playerId: "P_B", seatIndex: 2 },
+      { playerId: "P_C", seatIndex: 1 }
+    ],
+    spectatorPlayerIds: []
+  });
 
-  engine.swapSeats("P_OWNER", "P_OWNER", "P_C");
   const state = engine.getState();
+  assert.equal(state.config.direction, "ccw");
   assert.equal(state.players.find((player) => player.id === "P_OWNER").seatIndex, 8);
   assert.equal(state.players.find((player) => player.id === "P_C").seatIndex, 1);
+
+  engine.restartRound(state.currentPlayerId);
+  assert.equal(engine.getState().phase, "rolling");
 });
 
-test("room engine: admitting a waiting player preserves account identity", () => {
+test("room engine: auto-filled pending-seat spectator preserves account identity after owner commit", () => {
   const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
   engine.startGame("P_OWNER");
-  engine.addWaitingPlayer({
+  engine.addSpectator({
     id: "W_ACCOUNT",
     accountId: "account-1",
     accountDisplayId: "display-1",
     nickname: "waiting",
     avatar: ""
-  });
+  }, "pendingSeat");
   engine.finishRolling("P_OWNER");
   engine.makeCall("P_OWNER", 2, 2);
   engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
 
-  engine.admitWaitingPlayer("P_OWNER", "W_ACCOUNT", 3);
+  const draftState = engine.getState();
+  assert.equal(draftState.ownerSeatingRequired, true);
+  assert.equal(draftState.players.find((player) => player.id === "W_ACCOUNT").seatIndex, 3);
+
+  engine.commitSeating("P_OWNER", {
+    direction: "cw",
+    seatedPlayerIds: draftState.players.map((player) => ({
+      playerId: player.id,
+      seatIndex: player.seatIndex
+    })),
+    spectatorPlayerIds: draftState.spectators.map((player) => player.id)
+  });
 
   const admitted = engine.getState().players.find((player) => player.id === "W_ACCOUNT");
   assert.equal(admitted.accountId, "account-1");
@@ -299,51 +320,53 @@ test("room engine: admitting a waiting player preserves account identity", () =>
   assert.equal(admitted.seatIndex, 3);
 });
 
-test("room engine: offline waiting players cannot be admitted into seats", () => {
+test("room engine: pure spectators do not block the next round", () => {
   const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.addSpectator({ id: "S_ONLY", nickname: "spectator", avatar: "" }, "spectating");
   engine.startGame("P_OWNER");
-  engine.addWaitingPlayer({ id: "W_OFFLINE", nickname: "waiting", avatar: "" });
   engine.finishRolling("P_OWNER");
   engine.makeCall("P_OWNER", 2, 2);
   engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
-  engine.setPlayerOnlineStatus("W_OFFLINE", "offline");
 
-  assert.throws(
-    () => engine.admitWaitingPlayer("P_OWNER", "W_OFFLINE", 3),
-    (err) => err && err.code === ErrorCode.BAD_REQUEST
-  );
-  assert.equal(engine.getState().waitingPlayers.find((player) => player.id === "W_OFFLINE").onlineStatus, "offline");
+  const endedState = engine.getState();
+  assert.equal(endedState.ownerSeatingRequired, false);
+  engine.restartRound(endedState.currentPlayerId);
+  assert.equal(engine.getState().phase, "rolling");
 });
 
-test("room engine: waiting players hand next-round start control to the owner without changing the loser starter", () => {
+test("room engine: live bench and seat planning only apply to the next round", () => {
   const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.addPlayer({ id: "P_C", nickname: "c", avatar: "" });
+  engine.addSpectator({ id: "S_PENDING", nickname: "spectator", avatar: "" }, "spectating");
   engine.startGame("P_OWNER");
-  engine.addWaitingPlayer({ id: "W_READY", nickname: "waiting", avatar: "" });
+  engine.planParticipant("P_OWNER", "P_B", "bench");
+  engine.planParticipant("P_OWNER", "S_PENDING", "seat");
+
+  const liveState = engine.getState();
+  assert.equal(liveState.players.find((player) => player.id === "P_B").pendingBench, true);
+  assert.equal(liveState.spectators.find((player) => player.id === "S_PENDING").seatIntent, "pendingSeat");
 
   engine.setNextDice("P_OWNER", [2, 2, 3, 3, 3], "P_OWNER");
   engine.setNextDice("P_OWNER", [1, 4, 5, 6, 6], "P_B");
+  engine.setNextDice("P_OWNER", [3, 4, 5, 6, 6], "P_C");
   engine.finishRolling("P_OWNER");
   engine.makeCall("P_OWNER", 2, 2);
   engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
 
-  assert.equal(engine.getState().phase, "ended");
-  assert.equal(engine.getState().currentPlayerId, "P_OWNER");
+  const endedState = engine.getState();
+  assert.equal(endedState.phase, "ended");
+  assert.equal(endedState.ownerSeatingRequired, true);
+  assert.equal(endedState.players.some((player) => player.id === "P_B"), false);
+  assert.equal(endedState.players.some((player) => player.id === "S_PENDING"), true);
+  assert.equal(endedState.spectators.some((player) => player.id === "P_B"), true);
   assert.throws(() => engine.restartRound("P_B"), (err) => err && err.code === ErrorCode.FORBIDDEN);
   assert.throws(() => engine.restartRound("P_OWNER"), (err) => err && err.code === ErrorCode.BAD_REQUEST);
-
-  engine.admitWaitingPlayer("P_OWNER", "W_READY", 3);
-  assert.equal(engine.getState().currentPlayerId, "P_OWNER");
-
-  engine.restartRound("P_OWNER");
-  const nextState = engine.getState();
-  assert.equal(nextState.phase, "rolling");
-  assert.equal(nextState.currentPlayerId, "P_B");
 });
 
-test("room engine: offline waiting players do not block owner from starting the next round", () => {
+test("room engine: benched player does not auto-return, owner must explicitly queue them again", () => {
   const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
   engine.startGame("P_OWNER");
-  engine.addWaitingPlayer({ id: "W_OFFLINE_START", nickname: "waiting", avatar: "" });
+  engine.planParticipant("P_OWNER", "P_B", "bench");
 
   engine.setNextDice("P_OWNER", [2, 2, 3, 3, 3], "P_OWNER");
   engine.setNextDice("P_OWNER", [1, 4, 5, 6, 6], "P_B");
@@ -351,18 +374,21 @@ test("room engine: offline waiting players do not block owner from starting the 
   engine.makeCall("P_OWNER", 2, 2);
   engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
 
-  engine.setPlayerOnlineStatus("W_OFFLINE_START", "offline");
+  const endedState = engine.getState();
+  assert.equal(endedState.spectators.find((player) => player.id === "P_B").seatIntent, "spectating");
 
-  assert.throws(() => engine.restartRound("P_B"), (err) => err && err.code === ErrorCode.FORBIDDEN);
-  engine.restartRound("P_OWNER");
-
-  const nextState = engine.getState();
-  assert.equal(nextState.phase, "rolling");
-  assert.equal(nextState.currentPlayerId, "P_B");
-  assert.equal(nextState.waitingPlayers.find((player) => player.id === "W_OFFLINE_START").onlineStatus, "offline");
+  engine.commitSeating("P_OWNER", {
+    direction: "cw",
+    seatedPlayerIds: endedState.players.map((player) => ({
+      playerId: player.id,
+      seatIndex: player.seatIndex
+    })).concat([{ playerId: "P_B", seatIndex: 3 }]),
+    spectatorPlayerIds: []
+  });
+  assert.equal(engine.getState().players.some((player) => player.id === "P_B"), true);
 });
 
-test("room engine: total participants cannot exceed eight even when waiting players exist", () => {
+test("room engine: total participants cannot exceed eight even when spectators exist", () => {
   const roomId = "T20009";
   const engine = new RoomEngine(roomId, { id: "P1", nickname: "p1", avatar: "" }, {
     direction: "cw",
@@ -377,10 +403,10 @@ test("room engine: total participants cannot exceed eight even when waiting play
     engine.addPlayer({ id: `P${i}`, nickname: `p${i}`, avatar: "" });
   }
 
-  engine.addWaitingPlayer({ id: "W8", nickname: "w8", avatar: "" });
+  engine.addSpectator({ id: "S8", nickname: "s8", avatar: "" }, "spectating");
 
   assert.equal(engine.getState().players.length, 7);
-  assert.equal(engine.getState().waitingPlayers.length, 1);
+  assert.equal(engine.getState().spectators.length, 1);
   assert.throws(() => engine.addPlayer({ id: "P9", nickname: "p9", avatar: "" }), (err) => err && err.code === ErrorCode.ROOM_FULL);
-  assert.throws(() => engine.addWaitingPlayer({ id: "W9", nickname: "w9", avatar: "" }), (err) => err && err.code === ErrorCode.ROOM_FULL);
+  assert.throws(() => engine.addSpectator({ id: "S9", nickname: "s9", avatar: "" }, "pendingSeat"), (err) => err && err.code === ErrorCode.ROOM_FULL);
 });

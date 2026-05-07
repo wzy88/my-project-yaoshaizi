@@ -602,7 +602,7 @@ page {
 }
 
 .room-sheet--seating {
-  max-width: 682rpx;
+  max-width: 650rpx;
   background:
     radial-gradient(circle at 8% 0%, rgba(245, 219, 126, 0.14) 0%, rgba(245, 219, 126, 0.03) 40%, rgba(245, 219, 126, 0) 58%),
     radial-gradient(circle at 100% 100%, rgba(42, 190, 112, 0.12) 0%, rgba(42, 190, 112, 0) 58%),
@@ -613,6 +613,26 @@ page {
     inset 0 1rpx 0 rgba(255, 248, 220, 0.1),
     inset 0 -22rpx 38rpx rgba(0, 0, 0, 0.16),
     0 0 0 1rpx rgba(255, 255, 255, 0.03);
+}
+
+.room-sheet--seating .sheet-head {
+  padding: 22rpx 20rpx 14rpx;
+}
+
+.room-sheet--seating .sheet-eyebrow {
+  font-size: 16rpx;
+  letter-spacing: 2rpx;
+}
+
+.room-sheet--seating .sheet-title {
+  font-size: 28rpx;
+}
+
+.room-sheet--seating .sheet-close--pill {
+  min-width: 76rpx;
+  height: 46rpx;
+  padding: 0 14rpx;
+  font-size: 22rpx;
 }
 
 .room-sheet--legal {
@@ -726,6 +746,9 @@ page {
 .sheet-body--seating {
   position: relative;
   z-index: 1;
+  max-height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 220rpx);
+  padding: 16rpx 20rpx 22rpx;
+  box-sizing: border-box;
 }
 
 .sheet-body--settlement {
@@ -1351,6 +1374,175 @@ page {
   gap: 14rpx;
 }
 
+.seat-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.seat-mode-card {
+  padding: 18rpx 18rpx 16rpx;
+  border-radius: 24rpx;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(245, 219, 126, 0.12) 0%, rgba(245, 219, 126, 0) 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0.018) 100%);
+  border: 1rpx solid rgba(246, 220, 132, 0.12);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.06),
+    0 14rpx 28rpx rgba(0, 0, 0, 0.16);
+}
+
+.seat-mode-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.seat-mode-card__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.seat-mode-card__eyebrow {
+  display: block;
+  margin-bottom: 6rpx;
+  font-size: 18rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  color: rgba(240, 201, 102, 0.82);
+}
+
+.seat-mode-card__title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #f8f1dc;
+  line-height: 1.35;
+}
+
+.seat-mode-card__desc {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 20rpx;
+  line-height: 1.52;
+  color: rgba(210, 220, 243, 0.72);
+}
+
+.seat-count-badge {
+  flex: 0 0 auto;
+  min-width: 108rpx;
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  text-align: center;
+  font-size: 20rpx;
+  font-weight: 800;
+  color: #ffe39d;
+  background: linear-gradient(180deg, rgba(243, 205, 103, 0.22), rgba(184, 126, 49, 0.12));
+  border: 1rpx solid rgba(243, 205, 103, 0.24);
+  box-shadow: 0 10rpx 18rpx rgba(243, 205, 103, 0.08);
+}
+
+.seat-count-badge--live {
+  color: #9ff2cf;
+  background: linear-gradient(180deg, rgba(51, 180, 116, 0.24), rgba(51, 180, 116, 0.1));
+  border-color: rgba(65, 197, 130, 0.24);
+  box-shadow: 0 10rpx 18rpx rgba(51, 180, 116, 0.08);
+}
+
+.seat-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10rpx;
+}
+
+.seat-summary-chip,
+.seat-section {
+  border-radius: 24rpx;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.018) 100%);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.05),
+    0 12rpx 24rpx rgba(0, 0, 0, 0.14);
+}
+
+.seat-summary-chip {
+  min-height: 96rpx;
+  padding: 14rpx 14rpx 12rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8rpx;
+}
+
+.seat-summary-chip__value {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #f8f1dc;
+  line-height: 1.25;
+}
+
+.seat-summary-chip__label {
+  display: block;
+  font-size: 18rpx;
+  color: rgba(210, 220, 243, 0.68);
+}
+
+.seat-section {
+  padding: 14rpx;
+}
+
+.seat-section__head,
+.seat-list-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18rpx;
+}
+
+.seat-section__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.seat-section__eyebrow {
+  display: block;
+  margin-bottom: 6rpx;
+  font-size: 18rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  color: rgba(240, 201, 102, 0.82);
+}
+
+.seat-section__title {
+  display: block;
+  font-size: 25rpx;
+  font-weight: 800;
+  color: #f8f1dc;
+  line-height: 1.35;
+}
+
+.seat-section__meta,
+.seat-list-panel__meta {
+  flex: 0 0 auto;
+  font-size: 18rpx;
+  line-height: 1.4;
+  color: rgba(210, 220, 243, 0.68);
+}
+
+.seat-section__meta {
+  padding-top: 4rpx;
+}
+
+.seat-stage-lists,
+.seat-live-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
 .seat-hero {
   padding: 24rpx 24rpx 22rpx;
   margin-bottom: 18rpx;
@@ -1395,7 +1587,7 @@ page {
 
 .seat-direction-panel {
   padding: 18rpx 18rpx 16rpx;
-  margin-bottom: 16rpx;
+  margin-top: 16rpx;
 }
 
 .seat-direction-panel__label {
@@ -1500,13 +1692,13 @@ page {
 
 .seat-direction {
   display: flex;
-  gap: 10rpx;
+  gap: 8rpx;
   margin: 0;
 }
 
 .seat-direction__item {
   flex: 1;
-  min-height: 74rpx;
+  min-height: 68rpx;
   border-radius: 18rpx;
   display: flex;
   align-items: center;
@@ -1515,7 +1707,7 @@ page {
     linear-gradient(180deg, rgba(12, 10, 25, 0.92) 0%, rgba(17, 14, 30, 0.84) 100%);
   border: 1rpx solid rgba(255, 255, 255, 0.08);
   color: rgba(214, 222, 244, 0.78);
-  font-size: 24rpx;
+  font-size: 22rpx;
   font-weight: 700;
   box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.03);
 }
@@ -1534,18 +1726,18 @@ page {
 .seat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14rpx;
+  gap: 10rpx;
 }
 
 .seat-grid-panel {
-  padding: 18rpx;
+  padding: 14rpx;
 }
 
 .seat-grid__item {
   position: relative;
   overflow: hidden;
-  min-height: 148rpx;
-  padding: 18rpx 18rpx 16rpx;
+  min-height: 120rpx;
+  padding: 14rpx 14rpx 12rpx;
   border-radius: 20rpx;
   background:
     linear-gradient(180deg, rgba(12, 10, 25, 0.9) 0%, rgba(16, 14, 29, 0.78) 100%);
@@ -1553,7 +1745,7 @@ page {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 14rpx;
+  gap: 10rpx;
   box-sizing: border-box;
   box-shadow:
     inset 0 1rpx 0 rgba(255, 255, 255, 0.04),
@@ -1586,6 +1778,13 @@ page {
   box-shadow:
     inset 0 1rpx 0 rgba(255, 255, 255, 0.05),
     0 12rpx 24rpx rgba(53, 148, 255, 0.08);
+}
+
+.seat-grid__item--pressing,
+.seat-list-row__action--pressing,
+.seat-submit--pressing {
+  transform: scale(0.985);
+  filter: brightness(0.98);
 }
 
 .seat-grid__head {
@@ -2297,6 +2496,129 @@ page {
   background: linear-gradient(180deg, rgba(243, 205, 103, 0.16), rgba(243, 205, 103, 0.08));
   border: 1rpx solid rgba(243, 205, 103, 0.26);
   box-shadow: 0 8rpx 16rpx rgba(243, 205, 103, 0.08);
+}
+
+.seat-list-panel {
+  padding: 14rpx;
+  border-radius: 24rpx;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.018) 100%);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.05),
+    0 12rpx 24rpx rgba(0, 0, 0, 0.14);
+}
+
+.seat-list-panel__title {
+  display: block;
+  font-size: 20rpx;
+  font-weight: 800;
+  letter-spacing: 1rpx;
+  color: rgba(240, 201, 102, 0.82);
+}
+
+.seat-list-panel__head {
+  margin-bottom: 8rpx;
+}
+
+.seat-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  min-height: 68rpx;
+  padding: 10rpx 0;
+  border-top: 1rpx solid rgba(255, 255, 255, 0.06);
+}
+
+.seat-list-row:first-of-type {
+  border-top: none;
+}
+
+.seat-list-row__copy {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.seat-list-row__name {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #f8f1dc;
+}
+
+.seat-list-row__tag {
+  flex: 0 0 auto;
+  padding: 5rpx 10rpx;
+  border-radius: 999rpx;
+  font-size: 16rpx;
+  line-height: 1.1;
+  color: rgba(244, 228, 174, 0.86);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+}
+
+.seat-list-row__action {
+  flex: 0 0 auto;
+  min-width: 122rpx;
+  padding: 11rpx 16rpx;
+  border-radius: 999rpx;
+  text-align: center;
+  font-size: 20rpx;
+  font-weight: 800;
+  color: #f7d36b;
+  background: linear-gradient(180deg, rgba(243, 205, 103, 0.16), rgba(243, 205, 103, 0.08));
+  border: 1rpx solid rgba(243, 205, 103, 0.24);
+}
+
+.seat-list-row__action--ghost,
+.seat-list-row__action--active {
+  color: rgba(225, 232, 247, 0.9);
+  background: linear-gradient(180deg, rgba(95, 132, 224, 0.18), rgba(95, 132, 224, 0.08));
+  border-color: rgba(105, 140, 225, 0.22);
+}
+
+.seat-list-row__action--positive {
+  color: #8ff1c3;
+  background: linear-gradient(180deg, rgba(51, 180, 116, 0.22), rgba(51, 180, 116, 0.08));
+  border-color: rgba(65, 197, 130, 0.26);
+}
+
+.seat-list-row__action--danger {
+  color: #ffb2a7;
+  background: linear-gradient(180deg, rgba(196, 78, 63, 0.22), rgba(196, 78, 63, 0.08));
+  border-color: rgba(213, 93, 79, 0.24);
+}
+
+.seat-list-empty {
+  padding: 18rpx 0 6rpx;
+  font-size: 22rpx;
+  text-align: center;
+  color: rgba(210, 220, 243, 0.62);
+}
+
+.seat-submit {
+  margin-top: 10rpx;
+  min-height: 78rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 243, 194, 0.26) 0%, rgba(255, 243, 194, 0) 42%),
+    linear-gradient(180deg, rgba(243, 205, 103, 0.24) 0%, rgba(184, 126, 49, 0.18) 100%);
+  border: 1rpx solid rgba(243, 205, 103, 0.32);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 248, 220, 0.12),
+    0 16rpx 28rpx rgba(243, 205, 103, 0.12);
+}
+
+.seat-submit__text {
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #ffe7a5;
+  letter-spacing: 1rpx;
 }
 
 /* Room polish from imported design bundle */
@@ -9592,6 +9914,8 @@ button.room-topbar__shortcut::after {
 .sheet-eyebrow,
 .entry-sheet__eyebrow,
 .settlement-summary-card__eyebrow,
+.seat-mode-card__eyebrow,
+.seat-section__eyebrow,
 .seat-direction-panel__label,
 .history-card__round {
   color: rgba(248, 215, 134, 0.9);
@@ -9599,6 +9923,9 @@ button.room-topbar__shortcut::after {
 
 .sheet-title,
 .settings-hero__title,
+.seat-mode-card__title,
+.seat-section__title,
+.seat-summary-chip__value,
 .seat-hero__title,
 .settlement-summary,
 .history-card__summary,
@@ -9610,6 +9937,9 @@ button.room-topbar__shortcut::after {
 .sheet-close--pill,
 .room-topbar-menu-popover__item,
 .settings-hero,
+.seat-mode-card,
+.seat-summary-chip,
+.seat-section,
 .seat-hero,
 .seat-direction-panel,
 .seat-grid-panel,
@@ -9641,6 +9971,10 @@ button.room-topbar__shortcut::after {
 }
 
 .settings-hero__desc,
+.seat-mode-card__desc,
+.seat-summary-chip__label,
+.seat-section__meta,
+.seat-list-panel__meta,
 .seat-hero__desc,
 .settings-row__hint,
 .entry-sheet__desc,
@@ -10856,6 +11190,8 @@ button.room-topbar__shortcut::after {
 .page.room-theme-jade-green .sheet-eyebrow,
 .page.room-theme-jade-green .entry-sheet__eyebrow,
 .page.room-theme-jade-green .settlement-summary-card__eyebrow,
+.page.room-theme-jade-green .seat-mode-card__eyebrow,
+.page.room-theme-jade-green .seat-section__eyebrow,
 .page.room-theme-jade-green .seat-direction-panel__label,
 .page.room-theme-jade-green .history-card__round,
 .page.room-theme-jade-green .call-phase-panel__count.is-active .call-phase-panel__count-text,
@@ -10865,6 +11201,9 @@ button.room-topbar__shortcut::after {
 
 .page.room-theme-jade-green .sheet-title,
 .page.room-theme-jade-green .settings-hero__title,
+.page.room-theme-jade-green .seat-mode-card__title,
+.page.room-theme-jade-green .seat-section__title,
+.page.room-theme-jade-green .seat-summary-chip__value,
 .page.room-theme-jade-green .seat-hero__title,
 .page.room-theme-jade-green .settlement-summary,
 .page.room-theme-jade-green .history-card__summary,
@@ -10877,6 +11216,9 @@ button.room-topbar__shortcut::after {
 
 .page.room-theme-jade-green .room-topbar-menu-popover__item,
 .page.room-theme-jade-green .settings-hero,
+.page.room-theme-jade-green .seat-mode-card,
+.page.room-theme-jade-green .seat-summary-chip,
+.page.room-theme-jade-green .seat-section,
 .page.room-theme-jade-green .seat-hero,
 .page.room-theme-jade-green .seat-direction-panel,
 .page.room-theme-jade-green .seat-grid-panel,
@@ -10908,6 +11250,10 @@ button.room-topbar__shortcut::after {
 }
 
 .page.room-theme-jade-green .settings-hero__desc,
+.page.room-theme-jade-green .seat-mode-card__desc,
+.page.room-theme-jade-green .seat-summary-chip__label,
+.page.room-theme-jade-green .seat-section__meta,
+.page.room-theme-jade-green .seat-list-panel__meta,
 .page.room-theme-jade-green .seat-hero__desc,
 .page.room-theme-jade-green .settings-row__hint,
 .page.room-theme-jade-green .rules-card__item,
@@ -11097,6 +11443,8 @@ button.room-topbar__shortcut::after {
 .page.room-theme-ruby-red .sheet-eyebrow,
 .page.room-theme-ruby-red .entry-sheet__eyebrow,
 .page.room-theme-ruby-red .settlement-summary-card__eyebrow,
+.page.room-theme-ruby-red .seat-mode-card__eyebrow,
+.page.room-theme-ruby-red .seat-section__eyebrow,
 .page.room-theme-ruby-red .seat-direction-panel__label,
 .page.room-theme-ruby-red .history-card__round,
 .page.room-theme-ruby-red .call-phase-panel__count.is-active .call-phase-panel__count-text,
@@ -11106,6 +11454,9 @@ button.room-topbar__shortcut::after {
 
 .page.room-theme-ruby-red .sheet-title,
 .page.room-theme-ruby-red .settings-hero__title,
+.page.room-theme-ruby-red .seat-mode-card__title,
+.page.room-theme-ruby-red .seat-section__title,
+.page.room-theme-ruby-red .seat-summary-chip__value,
 .page.room-theme-ruby-red .seat-hero__title,
 .page.room-theme-ruby-red .settlement-summary,
 .page.room-theme-ruby-red .history-card__summary,
@@ -11118,6 +11469,9 @@ button.room-topbar__shortcut::after {
 
 .page.room-theme-ruby-red .room-topbar-menu-popover__item,
 .page.room-theme-ruby-red .settings-hero,
+.page.room-theme-ruby-red .seat-mode-card,
+.page.room-theme-ruby-red .seat-summary-chip,
+.page.room-theme-ruby-red .seat-section,
 .page.room-theme-ruby-red .seat-hero,
 .page.room-theme-ruby-red .seat-direction-panel,
 .page.room-theme-ruby-red .seat-grid-panel,
@@ -11149,6 +11503,10 @@ button.room-topbar__shortcut::after {
 }
 
 .page.room-theme-ruby-red .settings-hero__desc,
+.page.room-theme-ruby-red .seat-mode-card__desc,
+.page.room-theme-ruby-red .seat-summary-chip__label,
+.page.room-theme-ruby-red .seat-section__meta,
+.page.room-theme-ruby-red .seat-list-panel__meta,
 .page.room-theme-ruby-red .seat-hero__desc,
 .page.room-theme-ruby-red .settings-row__hint,
 .page.room-theme-ruby-red .rules-card__item,
@@ -11343,6 +11701,8 @@ button.room-topbar__shortcut::after {
 .page.room-theme-imperial-red .sheet-eyebrow,
 .page.room-theme-imperial-red .entry-sheet__eyebrow,
 .page.room-theme-imperial-red .settlement-summary-card__eyebrow,
+.page.room-theme-imperial-red .seat-mode-card__eyebrow,
+.page.room-theme-imperial-red .seat-section__eyebrow,
 .page.room-theme-imperial-red .seat-direction-panel__label,
 .page.room-theme-imperial-red .history-card__round,
 .page.room-theme-imperial-red .call-phase-panel__count.is-active .call-phase-panel__count-text,
@@ -11352,6 +11712,9 @@ button.room-topbar__shortcut::after {
 
 .page.room-theme-imperial-red .sheet-title,
 .page.room-theme-imperial-red .settings-hero__title,
+.page.room-theme-imperial-red .seat-mode-card__title,
+.page.room-theme-imperial-red .seat-section__title,
+.page.room-theme-imperial-red .seat-summary-chip__value,
 .page.room-theme-imperial-red .seat-hero__title,
 .page.room-theme-imperial-red .settlement-summary,
 .page.room-theme-imperial-red .history-card__summary,
@@ -11364,6 +11727,9 @@ button.room-topbar__shortcut::after {
 
 .page.room-theme-imperial-red .room-topbar-menu-popover__item,
 .page.room-theme-imperial-red .settings-hero,
+.page.room-theme-imperial-red .seat-mode-card,
+.page.room-theme-imperial-red .seat-summary-chip,
+.page.room-theme-imperial-red .seat-section,
 .page.room-theme-imperial-red .seat-hero,
 .page.room-theme-imperial-red .seat-direction-panel,
 .page.room-theme-imperial-red .seat-grid-panel,
@@ -11395,6 +11761,10 @@ button.room-topbar__shortcut::after {
 }
 
 .page.room-theme-imperial-red .settings-hero__desc,
+.page.room-theme-imperial-red .seat-mode-card__desc,
+.page.room-theme-imperial-red .seat-summary-chip__label,
+.page.room-theme-imperial-red .seat-section__meta,
+.page.room-theme-imperial-red .seat-list-panel__meta,
 .page.room-theme-imperial-red .seat-hero__desc,
 .page.room-theme-imperial-red .settings-row__hint,
 .page.room-theme-imperial-red .rules-card__item,
@@ -11589,6 +11959,8 @@ button.room-topbar__shortcut::after {
 .page.room-theme-glacier-blue .sheet-eyebrow,
 .page.room-theme-glacier-blue .entry-sheet__eyebrow,
 .page.room-theme-glacier-blue .settlement-summary-card__eyebrow,
+.page.room-theme-glacier-blue .seat-mode-card__eyebrow,
+.page.room-theme-glacier-blue .seat-section__eyebrow,
 .page.room-theme-glacier-blue .seat-direction-panel__label,
 .page.room-theme-glacier-blue .history-card__round,
 .page.room-theme-glacier-blue .call-phase-panel__count.is-active .call-phase-panel__count-text,
@@ -11598,6 +11970,9 @@ button.room-topbar__shortcut::after {
 
 .page.room-theme-glacier-blue .sheet-title,
 .page.room-theme-glacier-blue .settings-hero__title,
+.page.room-theme-glacier-blue .seat-mode-card__title,
+.page.room-theme-glacier-blue .seat-section__title,
+.page.room-theme-glacier-blue .seat-summary-chip__value,
 .page.room-theme-glacier-blue .seat-hero__title,
 .page.room-theme-glacier-blue .settlement-summary,
 .page.room-theme-glacier-blue .history-card__summary,
@@ -11610,6 +11985,9 @@ button.room-topbar__shortcut::after {
 
 .page.room-theme-glacier-blue .room-topbar-menu-popover__item,
 .page.room-theme-glacier-blue .settings-hero,
+.page.room-theme-glacier-blue .seat-mode-card,
+.page.room-theme-glacier-blue .seat-summary-chip,
+.page.room-theme-glacier-blue .seat-section,
 .page.room-theme-glacier-blue .seat-hero,
 .page.room-theme-glacier-blue .seat-direction-panel,
 .page.room-theme-glacier-blue .seat-grid-panel,
@@ -11641,6 +12019,10 @@ button.room-topbar__shortcut::after {
 }
 
 .page.room-theme-glacier-blue .settings-hero__desc,
+.page.room-theme-glacier-blue .seat-mode-card__desc,
+.page.room-theme-glacier-blue .seat-summary-chip__label,
+.page.room-theme-glacier-blue .seat-section__meta,
+.page.room-theme-glacier-blue .seat-list-panel__meta,
 .page.room-theme-glacier-blue .seat-hero__desc,
 .page.room-theme-glacier-blue .settings-row__hint,
 .page.room-theme-glacier-blue .rules-card__item,

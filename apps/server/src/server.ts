@@ -157,11 +157,14 @@ async function handleHttpRequest(
         return;
       }
 
+      const snapshot = roomService.getRoomEntrySnapshot(roomId);
       sendJson(res, 200, {
         ok: true,
         data: {
           roomId,
-          exists: roomService.hasRoom(roomId)
+          exists: snapshot.exists,
+          themeId: snapshot.themeId,
+          themeVersion: snapshot.themeVersion
         }
       });
       return;

@@ -21,7 +21,7 @@ test("room call panel switches between count and point selectors", () => {
   assert.match(roomWxml, /class="call-phase-panel__point-option \{\{item\.value === callPoint \? 'is-active' : ''\}\} \{\{callForcedOpen \|\| item\.disabled \? 'is-disabled' : ''\}\}"[\s\S]*hover-class="\{\{callForcedOpen \|\| item\.disabled \? 'none' : 'call-phase-panel__point-option--pressing'\}\}"/);
   assert.match(roomWxml, /class="call-phase-panel__point-box \{\{callForcedOpen \? 'is-disabled' : ''\}\}"[\s\S]*class="call-phase-panel__voice-chip \{\{!callVoiceReady \? 'is-disabled' : ''\}\} \{\{recording \|\| voiceRecognizing \? 'is-active' : ''\}\}"[\s\S]*class="call-phase-panel__btn call-phase-panel__btn--primary/);
   assert.match(roomWxml, /<view[\s\S]*wx:if="\{\{!callForcedOpen\}\}"[\s\S]*class="call-phase-panel__voice-chip \{\{!callVoiceReady \? 'is-disabled' : ''\}\} \{\{recording \|\| voiceRecognizing \? 'is-active' : ''\}\}"[\s\S]*catchtouchstart="onVoiceTouchStart"[\s\S]*catchtouchend="onVoiceTouchEnd"[\s\S]*catchtouchcancel="onVoiceTouchCancel"/);
-  assert.match(roomWxml, /recording \? '松开' : \(voiceRecognizing \? '识别' : '语音'\)/);
+  assert.match(roomWxml, /recording \? '松开' : \(voiceRecognizing \? '识别' : '按住'\)/);
   assert.doesNotMatch(roomWxml, /call-phase-panel__voice-row/);
   assert.doesNotMatch(roomWxml, /call-phase-panel__voice-inline-tip/);
   assert.match(roomWxml, /bindtap="onSelectCallPointOption"/);
@@ -33,7 +33,7 @@ test("room call panel switches between count and point selectors", () => {
   assert.match(roomJs, /callVoiceReady:\s*false,/);
   assert.match(roomJs, /this\.setData\(\{\s*callVoiceReady:\s*Boolean\(/);
   assert.match(roomJs, /callSelectorMode: isMyCallingTurn \? \(this\.data\.callSelectorMode \|\| "count"\) : ""/);
-  assert.match(roomJs, /const DEFAULT_CALL_VOICE_TIP_TEXT = "按住说，识别后再确认";/);
+  assert.match(roomJs, /const DEFAULT_CALL_VOICE_TIP_TEXT = "按住说话，松开发送";/);
   assert.match(roomJs, /const MAX_CALL_VOICE_DURATION_MS = 5000;/);
   assert.match(roomJs, /const VOICE_RECOGNITION_WAIT_MS = 3000;/);
   assert.match(roomJs, /const clientRequestId = `voice_\$\{Date\.now\(\)\}_\$\{Math\.floor\(Math\.random\(\) \* 100000\)\}`;/);

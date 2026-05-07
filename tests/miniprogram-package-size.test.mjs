@@ -79,3 +79,21 @@ test("miniprogram app config keeps custom-component lazy loading disabled for th
     "lazyCodeLoading should stay disabled because the room page has no custom components and DevTools 3.14.x can trip on this subpackage path"
   );
 });
+
+test("miniprogram app config preloads the room subpackage from the main room-entry surfaces", () => {
+  const appConfig = JSON.parse(fs.readFileSync(path.join(MINIPROGRAM_ROOT, "app.json"), "utf8"));
+  const preloadRule = appConfig.preloadRule || {};
+
+  assert.deepEqual(preloadRule["pages/lobby/lobby"], {
+    network: "all",
+    packages: ["pages/room"]
+  });
+  assert.deepEqual(preloadRule["pages/create-room/create-room"], {
+    network: "all",
+    packages: ["pages/room"]
+  });
+  assert.deepEqual(preloadRule["pages/me/me"], {
+    network: "all",
+    packages: ["pages/room"]
+  });
+});
