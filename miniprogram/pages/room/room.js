@@ -978,11 +978,12 @@ function decoratePlayers(playersRaw, selfPlayerId, selectedTargetIds, latestCall
   });
 }
 
-function buildSeatRows(playersRaw, maxSeats = 8, selectedSeatIndex = 0) {
+function buildSeatRows(playersRaw, maxSeats = 8, selectedSeatIndex = 0, options = {}) {
   const players = Array.isArray(playersRaw) ? playersRaw : [];
   const seatMap = new Map(
     players.filter((p) => Number.isInteger(p.seatIndex)).map((p) => [p.seatIndex, p])
   );
+  const mode = options && options.mode === "live" ? "live" : "staging";
 
   const selectedSeat = Number(selectedSeatIndex);
   const selectedOccupant = Number.isInteger(selectedSeat) ? seatMap.get(selectedSeat) : undefined;
@@ -998,25 +999,50 @@ function buildSeatRows(playersRaw, maxSeats = 8, selectedSeatIndex = 0) {
 
     let actionText = "";
     let hintClass = "";
-    const selected = Boolean(selectedSeat && seatIndex === selectedSeat);
+    const selected = mode === "staging" && Boolean(selectedSeat && seatIndex === selectedSeat);
 
-    if (selected) {
-      actionText = "已选中";
-      hintClass = "hint-selected";
-    } else if (selectedSeat) {
-      const occupied = Boolean(occupant && occupant.id);
-      if (!selectedOccupied && occupied) {
-        actionText = "移入";
-        hintClass = "hint-move-in";
-      } else if (selectedOccupied && !occupied) {
-        actionText = "移出";
-        hintClass = "hint-move-out";
-      } else if (selectedOccupied && occupied) {
-        actionText = "交换";
-        hintClass = "hint-swap";
-      } else {
-        actionText = "";
-        hintClass = "";
+    if (mode === "staging") {
+      if (selected) {
+        actionText = "已选中";
+        hintClass = "hint-selected";
+      } else if (selectedSeat) {
+        const occupied = Boolean(occupant && occupant.id);
+        if (!selectedOccupied && occupied) {
+          actionText = "移入";
+          hintClass = "hint-move-in";
+        } else if (selectedOccupied && !occupied) {
+          actionText = "移出";
+          hintClass = "hint-move-out";
+        } else if (selectedOccupied && occupied) {
+          actionText = "交换";
+          hintClass = "hint-swap";
+        } else {
+          actionText = "";
+          hintClass = "";
+        }
+      }
+    }
+
+    const pendingBench = Boolean(occupant && occupant.pendingBench);
+    const tagText = occupant
+      ? (pendingBench
+        ? "下局旁观"
+        : (occupant && occupant.isOwner ? "房主" : ""))
+      : "";
+    let manageActionText = "";
+    let manageActionTarget = "";
+    let manageActionClass = "";
+
+    if (occupant) {
+      if (mode === "live") {
+        if (!occupant.isOwner) {
+          manageActionText = pendingBench ? "取消" : "旁观";
+          manageActionTarget = pendingBench ? "stay" : "bench";
+          manageActionClass = pendingBench ? "is-active" : "is-danger";
+        }
+      } else if (!occupant.isOwner) {
+        manageActionText = "旁观";
+        manageActionClass = "is-ghost";
       }
     }
 
@@ -1027,7 +1053,11 @@ function buildSeatRows(playersRaw, maxSeats = 8, selectedSeatIndex = 0) {
       label,
       selected,
       actionText,
-      hintClass
+      hintClass,
+      tagText,
+      manageActionText,
+      manageActionTarget,
+      manageActionClass
     };
   });
 }
@@ -1095,6 +1125,30 @@ function buildOwnerLiveRows(playersRaw, spectatorsRaw) {
   });
 
   return { players, spectators };
+}
+
+function buildSeatingSpectatorChips(spectatorsRaw, mode = "staging") {
+  const spectators = Array.isArray(spectatorsRaw) ? spectatorsRaw : [];
+  return spectators.map((player) => {
+    const nickname = safeDecodeComponent(player && player.nickname).trim() || "玩家";
+    const pendingSeat = player && player.seatIntent === "pendingSeat";
+    return {
+      id: player.id,
+      label: nickname.slice(0, 8),
+      tagText: mode === "live"
+        ? (pendingSeat ? "待上桌" : "旁观中")
+        : "",
+      actionText: mode === "live"
+        ? (pendingSeat ? "取消" : "上桌")
+        : "上桌",
+      actionTarget: mode === "live"
+        ? (pendingSeat ? "spectate" : "seat")
+        : "",
+      actionClass: mode === "live"
+        ? (pendingSeat ? "is-active" : "is-positive")
+        : "is-positive"
+    };
+  });
 }
 
 function countPendingLivePlans(playersRaw, spectatorsRaw) {
@@ -4260,7 +4314,7 @@ Page({
 
   syncSeatingDraftView(playersRaw = this.data.seatingDraftPlayers, selectedSeatIndex = this.data.seatingSelectedSeatIndex) {
     const seatIndex = Number(selectedSeatIndex || 0);
-    const seatRows = buildSeatRows(playersRaw, 8, seatIndex);
+    const seatRows = buildSeatRows(playersRaw, 8, seatIndex, { mode: "staging" });
     const selectedRow = seatIndex ? seatRows.find((row) => row.seatIndex === seatIndex) : null;
     const seatingSelectedText = seatIndex
       ? (selectedRow && selectedRow.occupied
@@ -4305,8 +4359,9 @@ Page({
     this.setData({
       seatingVisible: true,
       seatingMode: "live",
+      seatRows: buildSeatRows(this.data.playersRaw, 8, 0, { mode: "live" }),
       seatingLivePlayers: liveRows.players,
-      seatingLiveSpectators: liveRows.spectators,
+      seatingLiveSpectators: buildSeatingSpectatorChips(this.data.waitingPlayersRaw, "live"),
       seatingLivePendingCount: countPendingLivePlans(this.data.playersRaw, this.data.waitingPlayersRaw),
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "本局中仅管理下局人员"
@@ -4467,7 +4522,13 @@ Page({
     const spectatorId = String(event.currentTarget.dataset.id || "");
     if (!spectatorId) return;
 
-    const emptySeatIndex = findFirstEmptySeatIndex(this.data.seatingDraftPlayers, 8);
+    const selectedSeatIndex = Number(this.data.seatingSelectedSeatIndex || 0);
+    const selectedSeatEmpty = selectedSeatIndex > 0 && !(this.data.seatRows || []).some((row) => (
+      Number(row && row.seatIndex) === selectedSeatIndex && row.occupied
+    ));
+    const emptySeatIndex = selectedSeatEmpty
+      ? selectedSeatIndex
+      : findFirstEmptySeatIndex(this.data.seatingDraftPlayers, 8);
     if (!emptySeatIndex) {
       wx.showToast({ title: "没有空座位，请先调整桌上玩家", icon: "none" });
       return;
@@ -4576,8 +4637,9 @@ Page({
       waitingPlayerCount,
       selfIsWaiting,
       selfSpectatorIntent,
+      seatRows: buildSeatRows(playersRaw, 8, 0, { mode: "live" }),
       seatingLivePlayers: liveRows.players,
-      seatingLiveSpectators: liveRows.spectators,
+      seatingLiveSpectators: buildSeatingSpectatorChips(waitingPlayersRaw, "live"),
       seatingLivePendingCount: countPendingLivePlans(playersRaw, waitingPlayersRaw),
       seatingObserverStatusText: buildObserverStatusText(phase, selfSpectatorIntent, ownerSeatingRequired)
     });
@@ -5677,7 +5739,10 @@ Page({
         });
 
         const seatingSelectedSeatIndex = Number(this.data.seatingSelectedSeatIndex || 0);
-        const seatRows = buildSeatRows(playersRaw, 8, seatingSelectedSeatIndex);
+        const seatingMode = String(this.data.seatingMode || "staging");
+        const seatRows = seatingMode === "live"
+          ? buildSeatRows(playersRaw, 8, 0, { mode: "live" })
+          : buildSeatRows(playersRaw, 8, seatingSelectedSeatIndex, { mode: "staging" });
         const selectedRow = seatingSelectedSeatIndex ? seatRows.find((r) => r.seatIndex === seatingSelectedSeatIndex) : null;
         const seatingSelectedText = seatingSelectedSeatIndex
           ? (selectedRow && selectedRow.occupied
@@ -5721,6 +5786,8 @@ Page({
           seatRows,
           seatingSelectedSeatIndex,
           seatingSelectedText,
+          seatingLivePlayers: buildOwnerLiveRows(playersRaw, waitingPlayersRaw).players,
+          seatingLiveSpectators: buildSeatingSpectatorChips(waitingPlayersRaw, "live"),
           seatingLivePendingCount: countPendingLivePlans(playersRaw, waitingPlayersRaw),
           seatingObserverStatusText,
           voiceItems: this.decorateVoiceItems(this.data.voiceItemsRaw, playersRaw),

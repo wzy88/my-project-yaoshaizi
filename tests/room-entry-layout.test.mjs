@@ -402,6 +402,7 @@ test("seating dialog reuses the settlement sheet skin", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const source = fs.readFileSync(roomWxssPath, "utf8");
   assert.match(wxml, /class="room-sheet room-sheet--seating"/);
+  assert.match(wxml, /class="room-mask room-mask--seating"/);
   assert.match(wxml, /class="sheet-head sheet-head--settings"/);
   assert.match(wxml, /class="sheet-close sheet-close--pill" bindtap="closeSeatingPanel">完成<\/view>/);
   assert.match(wxml, /<scroll-view class="sheet-body sheet-body--settings sheet-body--seating" scroll-y="true"/);
@@ -409,9 +410,9 @@ test("seating dialog reuses the settlement sheet skin", () => {
   assert.match(wxml, /class="seat-summary-strip"/);
   assert.match(wxml, /class="seat-section__title">8 个座位自由换位<\/text>/);
   assert.match(wxml, /class="seat-grid-panel"/);
-  assert.match(wxml, /class="seat-list-panel__title">本局上桌<\/text>/);
-  assert.match(wxml, /class="seat-list-panel__title">旁观席<\/text>/);
-  assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*max-width:\s*650rpx/);
+  assert.match(wxml, /class="seat-spectator-strip__title">旁观候补<\/text>/);
+  assert.match(source, /\.room-mask--seating\s*\{[\s\S]*align-items:\s*flex-start/);
+  assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*max-width:\s*638rpx/);
   assert.match(source, /\.seat-mode-card\s*\{/);
   assert.match(source, /\.seat-summary-strip\s*\{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(source, /\.seat-section\s*\{/);
@@ -433,12 +434,15 @@ test("seating dialog uses a compact 2-column seat card grid", () => {
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
   assert.match(wxml, /class="seat-grid__head"/);
   assert.match(wxml, /wx:if="\{\{item\.actionText\}\}" class="seat-grid__action"/);
+  assert.match(wxml, /class="seat-grid__manage seat-grid__manage--\{\{item\.manageActionClass\}\}"/);
+  assert.match(wxml, /class="seat-spectator-strip__list"/);
   assert.doesNotMatch(wxml, /class="seat-grid__row"/);
   assert.match(wxss, /\.seat-grid\s*\{[\s\S]*display:\s*grid/);
   assert.match(wxss, /\.seat-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(wxss, /\.seat-grid__item\s*\{[\s\S]*min-height:\s*120rpx/);
   assert.match(wxss, /\.seat-grid__item\s*\{[\s\S]*flex-direction:\s*column/);
   assert.match(wxss, /\.seat-grid__head\s*\{[\s\S]*justify-content:\s*space-between/);
+  assert.match(wxss, /\.seat-grid__footer\s*\{[\s\S]*justify-content:\s*flex-end/);
 });
 
 test("room self dice render above the glass layer for crisp visibility", () => {
