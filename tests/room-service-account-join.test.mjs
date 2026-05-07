@@ -109,6 +109,37 @@ test("room service: same online account joining reuses the existing player socke
   assert.equal(joined.accountId, "acct-shared");
 });
 
+test("room service: debug multi-join can keep same-account mobile and devtools in one room", async () => {
+  const accountStore = createAccountStore();
+  const service = new RoomService(accountStore, undefined, {
+    allowSameAccountMultiJoin: true
+  });
+  const ownerSocket = createSocket("mobile");
+  const joinSocket = createSocket("devtools");
+
+  await service.handleRoomCreate(ownerSocket, createRoomPayload("ruby-red"), "create-1");
+  const createAck = getAck(ownerSocket, "create-1");
+  assert.equal(createAck.ok, true);
+
+  await service.handleRoomJoin(joinSocket, {
+    roomId: createAck.roomId,
+    nickname: "调试器玩家",
+    avatar: "",
+    accountId: "acct-shared",
+    accountSessionToken: "token-shared"
+  }, "join-1");
+
+  const joinAck = getAck(joinSocket, "join-1");
+  assert.equal(joinAck.ok, true);
+  assert.notEqual(joinAck.playerId, createAck.playerId);
+  assert.equal(ownerSocket.closeCount, 0);
+
+  const joinState = getRoomState(joinSocket);
+  assert.equal(joinState.players.length, 2);
+  assert.equal(joinState.players.filter((player) => player.id === createAck.playerId).length, 1);
+  assert.equal(joinState.players.filter((player) => player.id === joinAck.playerId).length, 1);
+});
+
 test("room service: same account can still restore an offline participant", async () => {
   const accountStore = createAccountStore();
   const service = new RoomService(accountStore);
@@ -138,6 +169,38 @@ test("room service: same account can still restore an offline participant", asyn
   assert.equal(restoredState.players.length, 1);
   assert.equal(restoredState.players[0].onlineStatus, "online");
   assert.equal(restoredState.players[0].accountId, "acct-shared");
+});
+
+test("room service: debug multi-join still restores the offline participant instead of duplicating it", async () => {
+  const accountStore = createAccountStore();
+  const service = new RoomService(accountStore, undefined, {
+    allowSameAccountMultiJoin: true
+  });
+  const ownerSocket = createSocket("mobile");
+  const restoreSocket = createSocket("resume");
+
+  await service.handleRoomCreate(ownerSocket, createRoomPayload("ruby-red"), "create-1");
+  const createAck = getAck(ownerSocket, "create-1");
+  const room = service.rooms.get(createAck.roomId);
+  room.setPlayerOnlineStatus(createAck.playerId, "offline");
+  service.sessions.delete(ownerSocket);
+  service.socketsByPlayerKey.delete(`${createAck.roomId}:${createAck.playerId}`);
+
+  await service.handleRoomJoin(restoreSocket, {
+    roomId: createAck.roomId,
+    nickname: "恢复玩家",
+    avatar: "",
+    accountId: "acct-shared",
+    accountSessionToken: "token-shared"
+  }, "join-1");
+
+  const joinAck = getAck(restoreSocket, "join-1");
+  assert.equal(joinAck.ok, true);
+  assert.equal(joinAck.playerId, createAck.playerId);
+
+  const restoredState = getRoomState(restoreSocket);
+  assert.equal(restoredState.players.length, 1);
+  assert.equal(restoredState.players[0].onlineStatus, "online");
 });
 
 test("room service: resume token rejoin restores the same player without duplicating around waiting users", async () => {

@@ -13,6 +13,7 @@ import {
 import WebSocket from "ws";
 
 import {
+  ALLOW_SAME_ACCOUNT_MULTI_JOIN,
   CALL_TIMEOUT_MS,
   MAX_PLAYERS,
   MAX_VOICE_BASE64_SIZE,
@@ -247,15 +248,21 @@ export class RoomService {
   private turnTimerKeys = new Map<string, string>();
   private turnDeadlineTsByRoom = new Map<string, number>();
   private voiceTurnGuards = new Map<string, VoiceTurnGuard>();
+  private readonly allowSameAccountMultiJoin: boolean;
   private readonly accountStore: AccountStore;
   private historyStore = new HistoryStore();
   private voiceStore = new VoiceStore();
   private chatStore = new ChatStore();
   private readonly voiceTranscriber: VoiceTranscriber;
 
-  constructor(accountStore = new AccountStore(), voiceTranscriber: VoiceTranscriber = new TencentAsrService()) {
+  constructor(
+    accountStore = new AccountStore(),
+    voiceTranscriber: VoiceTranscriber = new TencentAsrService(),
+    options: { allowSameAccountMultiJoin?: boolean } = {}
+  ) {
     this.accountStore = accountStore;
     this.voiceTranscriber = voiceTranscriber;
+    this.allowSameAccountMultiJoin = options.allowSameAccountMultiJoin ?? ALLOW_SAME_ACCOUNT_MULTI_JOIN;
   }
 
   hasRoom(roomId: string): boolean {
@@ -598,7 +605,9 @@ export class RoomService {
     const boundAccount = await this.resolveBoundAccount(payload);
 
     const restoredParticipant = boundAccount
-      ? this.findRoomParticipantByAccountId(room, boundAccount.accountId)
+      ? this.findRoomParticipantByAccountId(room, boundAccount.accountId, {
+        includeOnline: !this.allowSameAccountMultiJoin
+      })
       : null;
     if (restoredParticipant) {
       const restoredPlayerId = restoredParticipant.id;
@@ -1372,16 +1381,27 @@ export class RoomService {
     ));
   }
 
-  private findRoomParticipantByAccountId(room: RoomEngine, accountId: string): { id: string; kind: "player" | "waiting" } | null {
+  private findRoomParticipantByAccountId(
+    room: RoomEngine,
+    accountId: string,
+    options: { includeOnline?: boolean } = {}
+  ): { id: string; kind: "player" | "waiting" } | null {
     const normalizedAccountId = String(accountId || "").trim();
     if (!normalizedAccountId) {
       return null;
     }
 
+    const includeOnline = options.includeOnline !== false;
     const state = room.getState();
-    const active = state.players.find((player) => (
-      player.accountId === normalizedAccountId
-    ));
+    const active = state.players.find((player) => {
+      if (player.accountId !== normalizedAccountId) {
+        return false;
+      }
+      if (includeOnline) {
+        return true;
+      }
+      return player.onlineStatus !== "online";
+    });
     if (active) {
       return {
         id: active.id,

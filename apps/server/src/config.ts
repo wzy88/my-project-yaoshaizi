@@ -20,6 +20,7 @@ export const WECHAT_CODE2SESSION_URL = String(
   process.env.WECHAT_CODE2SESSION_URL || "https://api.weixin.qq.com/sns/jscode2session"
 ).trim();
 export const WECHAT_AUTH_MOCK = process.env.WECHAT_AUTH_MOCK === "1";
+export const ALLOW_SAME_ACCOUNT_MULTI_JOIN = process.env.ALLOW_SAME_ACCOUNT_MULTI_JOIN === "1";
 export const TENCENT_ASR_SECRET_ID = String(
   process.env.TENCENT_ASR_SECRET_ID || process.env.TENCENTCLOUD_SECRET_ID || ""
 ).trim();
