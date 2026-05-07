@@ -5241,7 +5241,7 @@ test("room page: live seating actions update the next-round tags immediately aft
       }
     }]);
     assert.equal(page.data.seatingLivePlayers.find((item) => item.id === "P2").tagText, "下局旁观");
-    assert.equal(page.data.seatingLivePlayers.find((item) => item.id === "P2").actionText, "取消旁观");
+    assert.equal(page.data.seatingLivePlayers.find((item) => item.id === "P2").actionText, "保持在桌");
     assert.equal(page.data.seatingLivePendingCount, 1);
     assert.equal(toasts.at(-1), "已设为下局旁观");
   } finally {

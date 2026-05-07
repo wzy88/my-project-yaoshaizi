@@ -993,6 +993,9 @@ function buildSeatRows(playersRaw, maxSeats = 8, selectedSeatIndex = 0, options 
     const seatIndex = index + 1;
     const occupant = seatMap.get(seatIndex);
     const occupantName = occupant ? (safeDecodeComponent(occupant.nickname).trim() || "玩家") : "";
+    const avatar = occupant
+      ? getSeatAvatarPresentation(occupant.avatar, Math.max(0, seatIndex - 1))
+      : null;
     const label = occupant
       ? occupantName.slice(0, 6)
       : "空";
@@ -1051,6 +1054,9 @@ function buildSeatRows(playersRaw, maxSeats = 8, selectedSeatIndex = 0, options 
       occupied: Boolean(occupant),
       occupantId: occupant ? occupant.id : "",
       label,
+      avatarUrl: avatar ? avatar.src : "",
+      avatarMode: avatar ? avatar.mode : "aspectFill",
+      avatarFitClass: avatar ? avatar.fitClass : "",
       selected,
       actionText,
       hintClass,
@@ -1100,12 +1106,18 @@ function buildOwnerLiveRows(playersRaw, spectatorsRaw) {
   const players = (Array.isArray(playersRaw) ? playersRaw : []).map((player) => {
     const nickname = safeDecodeComponent(player && player.nickname).trim() || "玩家";
     const pendingBench = Boolean(player && player.pendingBench);
+    const avatar = getSeatAvatarPresentation(player && player.avatar, Math.max(0, Number(player && player.seatIndex || 1) - 1));
     return {
       id: player.id,
       seatIndex: Number(player.seatIndex) || 0,
       label: `${Number(player.seatIndex) || "-"}号 ${nickname.slice(0, 8)}`,
+      nickname: nickname.slice(0, 10),
+      avatarUrl: avatar.src,
+      avatarMode: avatar.mode,
+      avatarFitClass: avatar.fitClass,
+      seatText: `当前座位：${Number(player.seatIndex) || "-"}号位`,
       tagText: pendingBench ? "下局旁观" : (player && player.isOwner ? "房主" : ""),
-      actionText: pendingBench ? "取消旁观" : "下局旁观",
+      actionText: pendingBench ? "保持在桌" : "下局旁观",
       actionTarget: pendingBench ? "stay" : "bench",
       actionClass: pendingBench ? "is-active" : "is-danger"
     };
@@ -1114,9 +1126,15 @@ function buildOwnerLiveRows(playersRaw, spectatorsRaw) {
   const spectators = (Array.isArray(spectatorsRaw) ? spectatorsRaw : []).map((player) => {
     const nickname = safeDecodeComponent(player && player.nickname).trim() || "玩家";
     const pendingSeat = player && player.seatIntent === "pendingSeat";
+    const avatar = getSeatAvatarPresentation(player && player.avatar, Math.max(0, Array.from(nickname).length));
     return {
       id: player.id,
       label: nickname.slice(0, 8),
+      nickname: nickname.slice(0, 10),
+      avatarUrl: avatar.src,
+      avatarMode: avatar.mode,
+      avatarFitClass: avatar.fitClass,
+      statusText: pendingSeat ? "移上桌筹备中" : "纯旁观",
       tagText: pendingSeat ? "待上桌" : "旁观中",
       actionText: pendingSeat ? "取消上桌" : "下局上桌",
       actionTarget: pendingSeat ? "spectate" : "seat",
@@ -1132,9 +1150,15 @@ function buildSeatingSpectatorChips(spectatorsRaw, mode = "staging") {
   return spectators.map((player) => {
     const nickname = safeDecodeComponent(player && player.nickname).trim() || "玩家";
     const pendingSeat = player && player.seatIntent === "pendingSeat";
+    const avatar = getSeatAvatarPresentation(player && player.avatar, Math.max(0, Array.from(nickname).length));
     return {
       id: player.id,
       label: nickname.slice(0, 8),
+      nickname: nickname.slice(0, 10),
+      avatarUrl: avatar.src,
+      avatarMode: avatar.mode,
+      avatarFitClass: avatar.fitClass,
+      statusText: pendingSeat ? "移上桌筹备中" : "纯旁观",
       tagText: mode === "live"
         ? (pendingSeat ? "待上桌" : "旁观中")
         : "",
@@ -1149,6 +1173,20 @@ function buildSeatingSpectatorChips(spectatorsRaw, mode = "staging") {
         : "is-positive"
     };
   });
+}
+
+function buildSeatingDraftSpectatorGroups(spectatorsRaw) {
+  const rows = buildSeatingSpectatorChips(spectatorsRaw, "staging");
+  return {
+    pendingRows: rows.filter((item, index) => {
+      const raw = Array.isArray(spectatorsRaw) ? spectatorsRaw[index] : null;
+      return raw && raw.seatIntent === "pendingSeat";
+    }),
+    spectatingRows: rows.filter((item, index) => {
+      const raw = Array.isArray(spectatorsRaw) ? spectatorsRaw[index] : null;
+      return !raw || raw.seatIntent !== "pendingSeat";
+    })
+  };
 }
 
 function countPendingLivePlans(playersRaw, spectatorsRaw) {
@@ -1844,6 +1882,8 @@ Page({
     seatingMode: "staging",
     seatingDraftPlayers: [],
     seatingDraftSpectators: [],
+    seatingDraftPendingRows: [],
+    seatingDraftSpectatingRows: [],
     seatingDraftDirection: "cw",
     seatingSelectedSeatIndex: 0,
     seatingSelectedText: "未选择",
@@ -4312,9 +4352,14 @@ Page({
     this.updateSelectedTargets([...current]);
   },
 
-  syncSeatingDraftView(playersRaw = this.data.seatingDraftPlayers, selectedSeatIndex = this.data.seatingSelectedSeatIndex) {
+  syncSeatingDraftView(
+    playersRaw = this.data.seatingDraftPlayers,
+    selectedSeatIndex = this.data.seatingSelectedSeatIndex,
+    spectatorsRaw = this.data.seatingDraftSpectators
+  ) {
     const seatIndex = Number(selectedSeatIndex || 0);
     const seatRows = buildSeatRows(playersRaw, 8, seatIndex, { mode: "staging" });
+    const draftSpectatorGroups = buildSeatingDraftSpectatorGroups(spectatorsRaw);
     const selectedRow = seatIndex ? seatRows.find((row) => row.seatIndex === seatIndex) : null;
     const seatingSelectedText = seatIndex
       ? (selectedRow && selectedRow.occupied
@@ -4324,6 +4369,8 @@ Page({
 
     this.setData({
       seatRows,
+      seatingDraftPendingRows: draftSpectatorGroups.pendingRows,
+      seatingDraftSpectatingRows: draftSpectatorGroups.spectatingRows,
       seatingSelectedSeatIndex: seatIndex,
       seatingSelectedText
     });
@@ -4348,10 +4395,12 @@ Page({
         seatingMode: "staging",
         seatingDraftPlayers,
         seatingDraftSpectators,
+        seatingDraftPendingRows: buildSeatingDraftSpectatorGroups(seatingDraftSpectators).pendingRows,
+        seatingDraftSpectatingRows: buildSeatingDraftSpectatorGroups(seatingDraftSpectators).spectatingRows,
         seatingDraftDirection: this.data.roomConfig && this.data.roomConfig.direction === "ccw" ? "ccw" : "cw",
         seatingSelectedSeatIndex: pickedSeatIndex
       });
-      this.syncSeatingDraftView(seatingDraftPlayers, pickedSeatIndex);
+      this.syncSeatingDraftView(seatingDraftPlayers, pickedSeatIndex, seatingDraftSpectators);
       return;
     }
 
@@ -4366,6 +4415,23 @@ Page({
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "本局中仅管理下局人员"
     });
+  },
+
+  resetSeatingDraft() {
+    const phase = String(this.data.phase || "ready");
+    if (this.data.seatingMode !== "staging" || !this.data.selfIsOwner || (phase !== "ready" && phase !== "ended")) {
+      return;
+    }
+    const seatingDraftPlayers = cloneDraftPlayers(this.data.playersRaw);
+    const seatingDraftSpectators = cloneDraftSpectators(this.data.waitingPlayersRaw);
+    this.haptic("light");
+    this.setData({
+      seatingDraftPlayers,
+      seatingDraftSpectators,
+      seatingDraftDirection: this.data.roomConfig && this.data.roomConfig.direction === "ccw" ? "ccw" : "cw",
+      seatingSelectedSeatIndex: 0
+    });
+    this.syncSeatingDraftView(seatingDraftPlayers, 0, seatingDraftSpectators);
   },
 
   closeSeatingPanel() {
@@ -4509,7 +4575,7 @@ Page({
       seatingDraftPlayers: nextPlayers,
       seatingDraftSpectators: cloneDraftSpectators(nextSpectators)
     });
-    this.syncSeatingDraftView(nextPlayers, 0);
+    this.syncSeatingDraftView(nextPlayers, 0, nextSpectators);
   },
 
   onTapSeatingDraftSpectatorAction(event) {
@@ -4554,7 +4620,7 @@ Page({
       seatingDraftPlayers: cloneDraftPlayers(nextPlayers),
       seatingDraftSpectators: spectators
     });
-    this.syncSeatingDraftView(nextPlayers, emptySeatIndex);
+    this.syncSeatingDraftView(nextPlayers, emptySeatIndex, spectators);
   },
 
   onTapSeatingLiveAction(event) {
@@ -5784,6 +5850,8 @@ Page({
           selfAvatarUrl,
           playerCount,
           seatRows,
+          seatingDraftPendingRows: buildSeatingDraftSpectatorGroups(waitingPlayersRaw).pendingRows,
+          seatingDraftSpectatingRows: buildSeatingDraftSpectatorGroups(waitingPlayersRaw).spectatingRows,
           seatingSelectedSeatIndex,
           seatingSelectedText,
           seatingLivePlayers: buildOwnerLiveRows(playersRaw, waitingPlayersRaw).players,
@@ -6802,6 +6870,8 @@ Page({
       seatingMode: "staging",
       seatingDraftPlayers: [],
       seatingDraftSpectators: [],
+      seatingDraftPendingRows: [],
+      seatingDraftSpectatingRows: [],
       seatingDraftDirection: "cw",
       seatingSelectedSeatIndex: 0,
       seatingSelectedText: "未选择",

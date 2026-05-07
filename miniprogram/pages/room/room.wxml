@@ -592,179 +592,149 @@
     <view class="room-sheet room-sheet--seating">
       <view class="room-sheet__glow room-sheet__glow--settings-a"></view>
       <view class="room-sheet__glow room-sheet__glow--settings-b"></view>
-      <view class="sheet-head sheet-head--settings">
-        <view class="sheet-heading">
-          <text class="sheet-eyebrow">{{seatingMode === 'staging' ? '下局预排' : '本局管理'}}</text>
-          <text class="sheet-title">{{seatingMode === 'staging' ? '安排座位' : '下局上下桌'}}</text>
-        </view>
-        <view class="sheet-close sheet-close--pill" bindtap="closeSeatingPanel">完成</view>
+      <view class="seat-topbar">
+        <view class="seat-topbar__back" bindtap="closeSeatingPanel">‹</view>
+        <view class="seat-topbar__title">{{seatingMode === 'staging' ? '安排座位' : '房主管理'}}</view>
+        <view class="seat-topbar__spacer"></view>
       </view>
       <scroll-view class="sheet-body sheet-body--settings sheet-body--seating" scroll-y="true" enhanced="true" show-scrollbar="false">
         <view wx:if="{{seatingMode === 'staging'}}" class="seat-panel seat-panel--staging">
-          <view class="seat-mode-card">
-            <view class="seat-mode-card__head">
-              <view class="seat-mode-card__copy">
-                <text class="seat-mode-card__eyebrow">桌位调整</text>
-                <text class="seat-mode-card__title">{{seatingSelectedText === '未选择' ? '先选座位，再点目标位' : seatingSelectedText}}</text>
-              </view>
-            </view>
-            <text class="seat-mode-card__desc">点两个座位即可移动或交换；桌上玩家可移到旁观，旁观者可补到空座。</text>
+          <view class="seat-header-copy">
+            <text class="seat-header-copy__title">下一局开始前统一排位</text>
           </view>
 
-          <view class="seat-summary-strip">
-            <view class="seat-summary-chip">
-              <text class="seat-summary-chip__value">{{seatingDraftPlayers.length}}</text>
-              <text class="seat-summary-chip__label">桌上人数</text>
-            </view>
-            <view class="seat-summary-chip">
-              <text class="seat-summary-chip__value">{{seatingDraftSpectators.length}}</text>
-              <text class="seat-summary-chip__label">旁观人数</text>
-            </view>
-            <view class="seat-summary-chip">
-              <text class="seat-summary-chip__value">{{seatingDraftDirection === 'ccw' ? '逆时针' : '顺时针'}}</text>
-              <text class="seat-summary-chip__label">下一局顺序</text>
-            </view>
+          <view class="seat-direction-switch">
+            <view class="seat-direction-switch__item {{seatingDraftDirection === 'cw' ? 'is-active' : ''}}" data-dir="cw" bindtap="onSeatingSelectDirection">顺时针</view>
+            <view class="seat-direction-switch__item {{seatingDraftDirection === 'ccw' ? 'is-active' : ''}}" data-dir="ccw" bindtap="onSeatingSelectDirection">逆时针</view>
           </view>
 
-          <view class="seat-section">
-            <view class="seat-section__head">
-              <view class="seat-section__copy">
-                <text class="seat-section__eyebrow">主桌布局</text>
-                <text class="seat-section__title">8 个座位自由换位</text>
+          <view class="seat-auto-fill-tip">已自动补空座，可继续微调</view>
+
+          <view class="seat-staging-layout">
+            <view class="seat-staging-sidebar">
+              <view class="seat-sidebar-panel">
+                <view class="seat-sidebar-panel__head">
+                  <text class="seat-sidebar-panel__title">待上桌（{{seatingDraftPendingRows.length}}）</text>
+                </view>
+                <block wx:if="{{seatingDraftPendingRows.length}}">
+                  <block wx:for="{{seatingDraftPendingRows}}" wx:key="id">
+                    <view class="seat-side-card" data-id="{{item.id}}" bindtap="onTapSeatingDraftSpectatorAction" hover-class="seat-side-card--pressing" hover-start-time="0" hover-stay-time="60">
+                      <image class="seat-side-card__avatar {{item.avatarFitClass}}" src="{{item.avatarUrl}}" mode="{{item.avatarMode}}"></image>
+                      <view class="seat-side-card__copy">
+                        <text class="seat-side-card__name">{{item.nickname}}</text>
+                        <text class="seat-side-card__status">{{item.statusText}}</text>
+                      </view>
+                    </view>
+                  </block>
+                </block>
+                <view wx:else class="seat-sidebar-panel__empty">暂无待上桌玩家</view>
               </view>
-              <text class="seat-section__meta">点击两个座位即可交换</text>
+
+              <view class="seat-sidebar-panel">
+                <view class="seat-sidebar-panel__head">
+                  <text class="seat-sidebar-panel__title">旁观中（{{seatingDraftSpectatingRows.length}}）</text>
+                </view>
+                <block wx:if="{{seatingDraftSpectatingRows.length}}">
+                  <block wx:for="{{seatingDraftSpectatingRows}}" wx:key="id">
+                    <view class="seat-side-card" data-id="{{item.id}}" bindtap="onTapSeatingDraftSpectatorAction" hover-class="seat-side-card--pressing" hover-start-time="0" hover-stay-time="60">
+                      <image class="seat-side-card__avatar {{item.avatarFitClass}}" src="{{item.avatarUrl}}" mode="{{item.avatarMode}}"></image>
+                      <view class="seat-side-card__copy">
+                        <text class="seat-side-card__name">{{item.nickname}}</text>
+                        <text class="seat-side-card__status">{{item.statusText}}</text>
+                      </view>
+                      <text class="seat-side-card__action">下局上桌</text>
+                    </view>
+                  </block>
+                </block>
+                <view wx:else class="seat-sidebar-panel__empty">当前没有旁观者</view>
+              </view>
+
+              <view class="seat-sidebar-note">拖动或点击点位后，可进行调换</view>
             </view>
-            <view class="seat-grid-panel">
-              <view class="seat-grid">
+
+            <view class="seat-board">
+              <view class="seat-grid seat-grid--board">
                 <block wx:for="{{seatRows}}" wx:key="seatIndex">
-                  <view class="seat-grid__item {{item.selected ? 'is-selected' : ''}} {{item.occupied ? 'is-occupied' : ''}} {{item.hintClass}}" data-seat="{{item.seatIndex}}" bindtap="onTapSeatRow" hover-class="seat-grid__item--pressing" hover-start-time="0" hover-stay-time="60">
-                    <view class="seat-grid__head">
-                      <text class="seat-grid__num">{{item.seatIndex}}号</text>
-                      <text wx:if="{{item.actionText}}" class="seat-grid__action">{{item.actionText}}</text>
+                  <view class="seat-board-card {{item.selected ? 'is-selected' : ''}} {{item.occupied ? 'is-occupied' : 'is-empty'}} {{item.hintClass}}" data-seat="{{item.seatIndex}}" bindtap="onTapSeatRow" hover-class="seat-grid__item--pressing" hover-start-time="0" hover-stay-time="60">
+                    <view class="seat-board-card__head">
+                      <text class="seat-board-card__num">{{item.seatIndex}}号位</text>
+                      <text wx:if="{{item.tagText}}" class="seat-board-card__tag">{{item.tagText}}</text>
                     </view>
-                    <view class="seat-grid__main">
-                      <text class="seat-grid__label">{{item.label}}</text>
-                      <text wx:if="{{item.tagText}}" class="seat-grid__tag">{{item.tagText}}</text>
-                    </view>
-                    <view wx:if="{{item.manageActionText}}" class="seat-grid__footer">
-                      <view class="seat-grid__manage seat-grid__manage--{{item.manageActionClass}}" data-id="{{item.occupantId}}" catchtap="onTapSeatingDraftPlayerAction">{{item.manageActionText}}</view>
-                    </view>
+                    <block wx:if="{{item.occupied}}">
+                      <image class="seat-board-card__avatar {{item.avatarFitClass}}" src="{{item.avatarUrl}}" mode="{{item.avatarMode}}"></image>
+                      <text class="seat-board-card__name">{{item.label}}</text>
+                    </block>
+                    <block wx:else>
+                      <view class="seat-board-card__empty-avatar"></view>
+                      <text class="seat-board-card__empty-text">空位</text>
+                    </block>
                   </view>
                 </block>
               </view>
             </view>
           </view>
 
-          <view class="seat-spectator-strip">
-            <view class="seat-spectator-strip__head">
-              <text class="seat-spectator-strip__title">旁观候补</text>
-              <text class="seat-spectator-strip__meta">{{seatingDraftSpectators.length}} 人</text>
+          <view class="seat-footer seat-footer--dual">
+            <view class="seat-footer__ghost" bindtap="resetSeatingDraft">恢复默认补位</view>
+            <view class="seat-submit" bindtap="submitSeatingCommit" hover-class="seat-submit--pressing" hover-start-time="0" hover-stay-time="60">
+              <text class="seat-submit__text">完成安排并开始</text>
             </view>
-            <block wx:if="{{seatingDraftSpectators.length}}">
-              <view class="seat-spectator-strip__list">
-                <block wx:for="{{seatingDraftSpectators}}" wx:key="id">
-                  <view class="seat-spectator-chip" data-id="{{item.id}}" bindtap="onTapSeatingDraftSpectatorAction" hover-class="seat-spectator-chip--pressing" hover-start-time="0" hover-stay-time="60">
-                    <text class="seat-spectator-chip__name">{{item.nickname}}</text>
-                    <text class="seat-spectator-chip__action">上桌</text>
-                  </view>
-                </block>
-              </view>
-            </block>
-            <view wx:else class="seat-list-empty">当前没有旁观者</view>
-          </view>
-
-          <view class="seat-section">
-            <view class="seat-section__head">
-              <view class="seat-section__copy">
-                <text class="seat-section__eyebrow">顺序设置</text>
-                <text class="seat-section__title">决定下一局的游戏方向</text>
-              </view>
-              <text class="seat-section__meta">仅下一局生效</text>
-            </view>
-            <view class="seat-direction-panel">
-              <view class="seat-direction">
-                <view class="seat-direction__item {{seatingDraftDirection === 'cw' ? 'is-active' : ''}}" data-dir="cw" bindtap="onSeatingSelectDirection">顺时针</view>
-                <view class="seat-direction__item {{seatingDraftDirection === 'ccw' ? 'is-active' : ''}}" data-dir="ccw" bindtap="onSeatingSelectDirection">逆时针</view>
-              </view>
-            </view>
-          </view>
-
-          <view class="seat-submit" bindtap="submitSeatingCommit" hover-class="seat-submit--pressing" hover-start-time="0" hover-stay-time="60">
-            <text class="seat-submit__text">完成安排并开始</text>
           </view>
         </view>
 
         <view wx:else class="seat-panel seat-panel--live">
-          <view class="seat-mode-card seat-mode-card--live">
-            <view class="seat-mode-card__head">
-              <view class="seat-mode-card__copy">
-                <text class="seat-mode-card__eyebrow">下局预排</text>
-                <text class="seat-mode-card__title">这里只标记下一局，本局牌桌不会立刻变化</text>
-              </view>
-            </view>
-            <text class="seat-mode-card__desc">点一下就会记为下局旁观或上桌，等本局结束后统一生效。</text>
+          <view class="seat-header-copy seat-header-copy--live">
+            <text class="seat-header-copy__title">本局进行中，仅支持管理下局人员</text>
           </view>
 
-          <view class="seat-summary-strip">
-            <view class="seat-summary-chip">
-              <text class="seat-summary-chip__value">{{seatingLivePlayers.length}}</text>
-              <text class="seat-summary-chip__label">桌上人数</text>
-            </view>
-            <view class="seat-summary-chip">
-              <text class="seat-summary-chip__value">{{seatingLiveSpectators.length}}</text>
-              <text class="seat-summary-chip__label">旁观人数</text>
-            </view>
-            <view class="seat-summary-chip">
-              <text class="seat-summary-chip__value">{{seatingLivePendingCount}}</text>
-              <text class="seat-summary-chip__label">已标记</text>
-            </view>
-          </view>
-
-          <view class="seat-section">
-            <view class="seat-section__head">
-              <view class="seat-section__copy">
-                <text class="seat-section__eyebrow">本局桌位</text>
-                <text class="seat-section__title">直接在座位卡上标记下局变化</text>
+          <view class="seat-live-panel">
+            <view class="seat-live-section">
+              <view class="seat-live-section__head">
+                <text class="seat-live-section__title">桌上玩家（{{seatingLivePlayers.length}}）</text>
               </view>
-              <text class="seat-section__meta">本局牌桌不会立刻变化</text>
-            </view>
-            <view class="seat-grid-panel">
-              <view class="seat-grid">
-                <block wx:for="{{seatRows}}" wx:key="seatIndex">
-                  <view class="seat-grid__item {{item.occupied ? 'is-occupied' : ''}}">
-                    <view class="seat-grid__head">
-                      <text class="seat-grid__num">{{item.seatIndex}}号</text>
+              <block wx:for="{{seatingLivePlayers}}" wx:key="id">
+                <view class="seat-live-row {{item.tagText === '下局旁观' ? 'is-marked' : ''}}">
+                  <view class="seat-live-row__mark {{item.tagText === '下局旁观' ? 'is-active' : ''}}">{{item.tagText === '下局旁观' ? '✓' : ''}}</view>
+                  <image class="seat-live-row__avatar {{item.avatarFitClass}}" src="{{item.avatarUrl}}" mode="{{item.avatarMode}}"></image>
+                  <view class="seat-live-row__copy">
+                    <view class="seat-live-row__line">
+                      <text class="seat-live-row__name">{{item.nickname}}</text>
+                      <text wx:if="{{item.tagText && item.tagText !== '下局旁观'}}" class="seat-live-row__badge">{{item.tagText}}</text>
                     </view>
-                    <view class="seat-grid__main">
-                      <text class="seat-grid__label">{{item.label}}</text>
-                      <text wx:if="{{item.tagText}}" class="seat-grid__tag">{{item.tagText}}</text>
-                    </view>
-                    <view wx:if="{{item.manageActionText}}" class="seat-grid__footer">
-                      <view class="seat-grid__manage seat-grid__manage--{{item.manageActionClass}}" data-id="{{item.occupantId}}" data-target="{{item.manageActionTarget}}" catchtap="onTapSeatingLiveAction">{{item.manageActionText}}</view>
-                    </view>
+                    <text class="seat-live-row__seat">{{item.seatText}}</text>
+                    <text wx:if="{{item.tagText === '下局旁观'}}" class="seat-live-row__state">下局将旁观</text>
                   </view>
-                </block>
+                  <view class="seat-live-row__action seat-live-row__action--{{item.actionClass}}" data-id="{{item.id}}" data-target="{{item.actionTarget}}" bindtap="onTapSeatingLiveAction">{{item.actionText}}</view>
+                </view>
+              </block>
+            </view>
+
+            <view class="seat-live-section">
+              <view class="seat-live-section__head">
+                <text class="seat-live-section__title">旁观者（{{seatingLiveSpectators.length}}）</text>
               </view>
+              <block wx:for="{{seatingLiveSpectators}}" wx:key="id">
+                <view class="seat-live-row">
+                  <view class="seat-live-row__mark {{item.tagText === '待上桌' ? 'is-active' : ''}}">{{item.tagText === '待上桌' ? '✓' : ''}}</view>
+                  <image class="seat-live-row__avatar {{item.avatarFitClass}}" src="{{item.avatarUrl}}" mode="{{item.avatarMode}}"></image>
+                  <view class="seat-live-row__copy">
+                    <view class="seat-live-row__line">
+                      <text class="seat-live-row__name">{{item.nickname}}</text>
+                      <text class="seat-live-row__badge">{{item.statusText}}</text>
+                    </view>
+                    <text wx:if="{{item.tagText === '待上桌'}}" class="seat-live-row__state">下局将上桌</text>
+                  </view>
+                  <view class="seat-live-row__action seat-live-row__action--{{item.actionClass}}" data-id="{{item.id}}" data-target="{{item.actionTarget}}" bindtap="onTapSeatingLiveAction">{{item.actionText}}</view>
+                </view>
+              </block>
             </view>
           </view>
 
-          <view class="seat-spectator-strip">
-            <view class="seat-spectator-strip__head">
-              <text class="seat-spectator-strip__title">旁观候补</text>
-              <text class="seat-spectator-strip__meta">点击标记下局上桌</text>
+          <view class="seat-live-note">本局中不能换座位，也不能改顺逆时针，上述变更将在下一局生效。</view>
+          <view class="seat-footer">
+            <view class="seat-submit seat-submit--single" bindtap="closeSeatingPanel" hover-class="seat-submit--pressing" hover-start-time="0" hover-stay-time="60">
+              <text class="seat-submit__text">完成</text>
             </view>
-            <block wx:if="{{seatingLiveSpectators.length}}">
-              <view class="seat-spectator-strip__list">
-                <block wx:for="{{seatingLiveSpectators}}" wx:key="id">
-                  <view class="seat-spectator-chip" data-id="{{item.id}}" data-target="{{item.actionTarget}}" bindtap="onTapSeatingLiveAction" hover-class="seat-spectator-chip--pressing" hover-start-time="0" hover-stay-time="60">
-                    <text class="seat-spectator-chip__name">{{item.label}}</text>
-                    <text wx:if="{{item.tagText}}" class="seat-spectator-chip__tag">{{item.tagText}}</text>
-                    <text class="seat-spectator-chip__action">{{item.actionText}}</text>
-                  </view>
-                </block>
-              </view>
-            </block>
-            <view wx:else class="seat-list-empty">当前没有旁观者</view>
           </view>
         </view>
       </scroll-view>
