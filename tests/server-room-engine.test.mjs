@@ -199,6 +199,29 @@ test("room engine: openDice settles and loser starts next round", () => {
   assert.equal(engine.getState().phase, "rolling");
 });
 
+test("room engine: openDice snapshot keeps settlement dice before next-round reset", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.startGame("P_OWNER");
+
+  engine.setNextDice("P_OWNER", [2, 2, 3, 3, 3], "P_OWNER");
+  engine.setNextDice("P_OWNER", [1, 4, 5, 6, 6], "P_B");
+
+  engine.finishRolling("P_OWNER");
+  const bidder = engine.getState().currentPlayerId;
+  assert.ok(bidder);
+
+  engine.makeCall(bidder, 2, 2);
+  const opener = engine.getState().currentPlayerId;
+  assert.ok(opener && opener !== bidder);
+
+  const { roundSummary } = engine.openDice(opener, engine.getRuleOptionsForCurrentRound());
+  const ownerSummary = roundSummary.players.find((player) => player.playerId === "P_OWNER");
+  const opponentSummary = roundSummary.players.find((player) => player.playerId === "P_B");
+
+  assert.deepEqual(ownerSummary?.dice, [2, 2, 3, 3, 3]);
+  assert.deepEqual(opponentSummary?.dice, [1, 4, 5, 6, 6]);
+});
+
 test("room engine: settlement treats 5-5-5-5-1 as a 5 leopard while wildcard one remains active", () => {
   const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
   engine.startGame("P_OWNER");

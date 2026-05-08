@@ -789,7 +789,6 @@ export class RoomEngine {
 
     this.phase = "ended";
     this.currentPlayerId = loserId;
-    this.prepareNextRoundParticipants();
 
     const openResult: OpenResultDTO = {
       round: this.round,
@@ -812,6 +811,8 @@ export class RoomEngine {
       openResult,
       serverTs: Date.now()
     };
+
+    this.prepareNextRoundParticipants();
 
     this.bumpVersion();
 
