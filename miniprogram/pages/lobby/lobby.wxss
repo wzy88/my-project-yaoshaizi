@@ -1579,6 +1579,8 @@ page {
 }
 
 .join-input-shell {
+  flex: 1;
+  min-width: 0;
   position: relative;
   height: 66rpx;
   display: flex;
