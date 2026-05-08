@@ -67,15 +67,26 @@
             <text class="join-card__sub">输入房间号，快速加入</text>
           </view>
           <view class="join-card__row">
-            <input
-              class="join-input"
-              value="{{joinRoomId}}"
-              bindinput="onJoinRoomIdChange"
-              placeholder="输入房间号"
-              maxlength="6"
-              type="number"
-              placeholder-class="join-placeholder"
-            />
+            <view class="join-input-shell">
+              <view class="join-code-board" aria-hidden="true">
+                <view
+                  wx:for="{{joinRoomDigits}}"
+                  wx:key="index"
+                  class="join-code-board__cell join-code-board__cell--{{item.tone}} {{item.value ? 'is-filled' : ''}}"
+                >
+                  <text class="join-code-board__digit">{{item.value}}</text>
+                </view>
+              </view>
+              <input
+                class="join-input"
+                value="{{joinRoomId}}"
+                bindinput="onJoinRoomIdChange"
+                placeholder="输入房间号"
+                maxlength="6"
+                type="number"
+                placeholder-class="join-placeholder"
+              />
+            </view>
             <button class="join-btn" bindtap="goJoinRoom">
               <text class="join-btn__text">加入房间</text>
             </button>

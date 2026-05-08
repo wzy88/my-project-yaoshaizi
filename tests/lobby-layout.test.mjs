@@ -61,7 +61,13 @@ test("lobby keeps a fixed full-screen hero with create and join as the primary a
   assert.match(wxss, /\.login-gate__sheet\s*\{[\s\S]*bottom:\s*0[\s\S]*border-radius:\s*42rpx 42rpx 0 0/);
   assert.match(wxss, /@keyframes login-gate-sheet-in/);
   assert.match(wxss, /\.join-card\s*\{[\s\S]*flex-direction:\s*column[\s\S]*min-height:\s*238rpx/);
-  assert.match(wxss, /\.join-card__row\s*\{[\s\S]*display:\s*flex[\s\S]*background:\s*rgba\(6,\s*5,\s*15,\s*0\.74\)/);
+  assert.match(wxml, /class="join-input-shell"[\s\S]*class="join-input"/);
+  assert.match(wxml, /wx:for="\{\{joinRoomDigits\}\}"[\s\S]*join-code-board__cell--\{\{item\.tone\}\} \{\{item\.value \? 'is-filled' : ''\}\}/);
+  assert.match(wxss, /\.join-card__row\s*\{[\s\S]*display:\s*flex[\s\S]*border:\s*1rpx solid rgba\(218,\s*183,\s*111,\s*0\.22\)/);
+  assert.match(wxss, /\.join-input-shell\s*\{[\s\S]*overflow:\s*visible/);
+  assert.match(wxss, /\.join-code-board__cell--gold\s*\{[\s\S]*border-color:\s*rgba\(226,\s*178,\s*86,\s*0\.34\)/);
+  assert.match(wxss, /\.join-code-board__cell--green\.is-filled\s*\{[\s\S]*border-color:\s*rgba\(255,\s*225,\s*148,\s*0\.58\)/);
+  assert.match(wxss, /\.join-code-board__cell--gold\.is-filled\s*\{[\s\S]*border-color:\s*rgba\(255,\s*221,\s*139,\s*0\.62\)/);
   assert.match(tabWxml, /class="tab-notch"/);
   assert.match(tabWxml, /class="tab-center-dice" src="\/assets\/tab-dice\.png"/);
   assert.doesNotMatch(tabWxml, /class="dice-cube"/);

@@ -411,3 +411,35 @@ test("lobby page checks room existence before asking an unauthenticated user to 
     cleanup();
   }
 });
+
+test("lobby page formats join room id as six display digits", () => {
+  const { page, cleanup } = instantiateLobbyPage();
+
+  try {
+    page.onJoinRoomIdChange({ detail: { value: "12a34567" } });
+
+    assert.equal(page.data.joinRoomId, "123456");
+    assert.deepEqual(page.data.joinRoomDigits, [
+      { value: "1", tone: "green" },
+      { value: "2", tone: "gold" },
+      { value: "3", tone: "green" },
+      { value: "4", tone: "gold" },
+      { value: "5", tone: "green" },
+      { value: "6", tone: "gold" }
+    ]);
+
+    page.onJoinRoomIdChange({ detail: { value: "98" } });
+
+    assert.equal(page.data.joinRoomId, "98");
+    assert.deepEqual(page.data.joinRoomDigits, [
+      { value: "9", tone: "green" },
+      { value: "8", tone: "gold" },
+      { value: "", tone: "green" },
+      { value: "", tone: "gold" },
+      { value: "", tone: "green" },
+      { value: "", tone: "gold" }
+    ]);
+  } finally {
+    cleanup();
+  }
+});

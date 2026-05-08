@@ -20,6 +20,14 @@ function buildTimeText() {
   return `${hh}:${mm}`;
 }
 
+function buildRoomCodeDigits(roomId) {
+  const digits = String(roomId || "").replace(/\D/g, "").slice(0, 6);
+  return Array.from({ length: 6 }, (_, index) => ({
+    value: digits[index] || "",
+    tone: index % 2 === 0 ? "green" : "gold"
+  }));
+}
+
 function decodeRedirect(raw) {
   const value = String(raw || "").trim();
   if (!value) {
@@ -182,6 +190,7 @@ Page({
     avatarUrl: "",
     profileDisplayNo: "--",
     joinRoomId: "",
+    joinRoomDigits: buildRoomCodeDigits(""),
     loggedIn: false,
     showLoginGate: false,
     loginBusy: false,
@@ -298,7 +307,11 @@ Page({
   noop() {},
 
   onJoinRoomIdChange(event) {
-    this.setData({ joinRoomId: String(event.detail.value || "").trim() });
+    const joinRoomId = String(event.detail.value || "").replace(/\D/g, "").slice(0, 6);
+    this.setData({
+      joinRoomId,
+      joinRoomDigits: buildRoomCodeDigits(joinRoomId)
+    });
   },
 
   goCreateRoom() {
