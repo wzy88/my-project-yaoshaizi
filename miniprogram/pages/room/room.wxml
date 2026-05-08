@@ -25,6 +25,7 @@
     <view class="room-theme-loader__copy">
       <text class="room-theme-loader__title">{{roomThemeLoadingTitle}}</text>
       <text class="room-theme-loader__step">{{roomThemeLoadingStep}}</text>
+      <text wx:if="{{roomThemeManifest.label}}" class="room-theme-loader__theme">主题 {{roomThemeManifest.label}}</text>
     </view>
     <view class="room-theme-loader__bar">
       <view class="room-theme-loader__bar-fill" style="width: {{roomThemeLoadingProgress}}%;"></view>
@@ -436,7 +437,7 @@
           <text class="sheet-eyebrow">ROUND RESULT</text>
           <text class="sheet-title">本局结算</text>
         </view>
-        <view class="sheet-close sheet-close--placeholder"></view>
+        <view class="sheet-close sheet-close--pill" bindtap="onTapSettlementLeave">离开</view>
       </view>
       <view class="sheet-body sheet-body--settlement">
         <view class="settlement-summary-card">

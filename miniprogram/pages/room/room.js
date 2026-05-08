@@ -2110,11 +2110,14 @@ Page({
       });
 
       this.audioContext.onError(() => {
+        const hadActiveVoice = Boolean(this.data.playingVoiceId || this.pendingVoiceFileId);
         this.setData({
           playingVoiceId: "",
           playingVoiceTip: "语音播放失败"
         });
-        wx.showToast({ title: "语音播放失败", icon: "none" });
+        if (hadActiveVoice && !this.suppressVoicePlaybackErrorToast) {
+          wx.showToast({ title: "语音播放失败", icon: "none" });
+        }
       });
     }
 
@@ -2932,6 +2935,28 @@ Page({
     return steps[Math.max(0, Math.min(steps.length - 1, index))] || "同步主题配置";
   },
 
+  buildRoomEntryLoadingTitle(manifest, fallback = "正在进入房间") {
+    const normalized = normalizeRoomThemeManifest(manifest || this.data.roomThemeManifest || buildLocalRoomThemeManifest(this.data.roomThemeId));
+    return String(normalized.loading && normalized.loading.title || fallback || "正在进入房间");
+  },
+
+  showRoomEntryLoading({ title = "", step = "", progress = 52, manifest = null, themeReady = true } = {}) {
+    const normalized = manifest
+      ? this.rememberRoomThemeManifest(manifest)
+      : normalizeRoomThemeManifest(this.data.roomThemeManifest || buildLocalRoomThemeManifest(this.data.roomThemeId));
+    this.setData({
+      roomThemeReady: Boolean(themeReady),
+      roomThemeLoading: true,
+      roomThemeLoadingTitle: title || this.buildRoomEntryLoadingTitle(normalized),
+      roomThemeLoadingStep: step || this.getThemeLoadingStep(normalized, 2),
+      roomThemeLoadingProgress: Math.max(18, Math.min(96, Number(progress) || 52)),
+      roomThemeLoadError: "",
+      roomThemeManifest: normalized,
+      ...buildRoomThemePresentation(normalized.id)
+    });
+    return normalized;
+  },
+
   startRoomThemeLoading(themeId, manifest = null) {
     const normalized = normalizeRoomThemeManifest(manifest || buildLocalRoomThemeManifest(themeId));
     this.roomThemeLoadSeq = (this.roomThemeLoadSeq || 0) + 1;
@@ -3011,12 +3036,16 @@ Page({
     }
 
     this.pendingRoomAction = action;
+    const currentManifest = normalizeRoomThemeManifest(
+      this.data.roomThemeManifest || buildLocalRoomThemeManifest(this.data.roomThemeId)
+    );
+    const hasThemeHint = Boolean(this.initialRoomThemeHintReady || this.data.roomThemeReady);
     const text = action.kind === "create"
       ? "连接成功后将自动创建房间"
       : `连接成功后将自动加入房间 ${action.roomId}`;
     this.setData({
       pendingActionText: text,
-      roomThemeLoadingTitle: "正在进入房间",
+      roomThemeLoadingTitle: hasThemeHint ? this.buildRoomEntryLoadingTitle(currentManifest) : "正在进入房间",
       roomThemeLoadingStep: text,
       roomThemeLoadingProgress: 28
     });
@@ -3075,6 +3104,13 @@ Page({
       return;
     }
 
+    this.showRoomEntryLoading({
+      manifest,
+      themeReady: true,
+      step: "创建房间并同步主题",
+      progress: 56
+    });
+
     this.sendEvent("room:create", {
       nickname: this.data.nickname || "玩家",
       avatar: this.data.avatarUrl || "",
@@ -3094,15 +3130,15 @@ Page({
     }
 
     const keepRoomReady = Boolean(this.initialRoomThemeHintReady || this.data.roomThemeReady);
-    this.setData(keepRoomReady ? {
-      roomThemeLoadError: ""
-    } : {
-      roomThemeReady: false,
-      roomThemeLoading: true,
-      roomThemeLoadingTitle: "正在进入房间",
-      roomThemeLoadingStep: `同步房间 ${roomId} 的主题`,
-      roomThemeLoadingProgress: Math.max(28, Number(this.data.roomThemeLoadingProgress || 0)),
-      roomThemeLoadError: ""
+    const currentManifest = normalizeRoomThemeManifest(
+      this.data.roomThemeManifest || buildLocalRoomThemeManifest(this.data.roomThemeId)
+    );
+    this.showRoomEntryLoading({
+      manifest: currentManifest,
+      themeReady: keepRoomReady,
+      title: keepRoomReady ? this.buildRoomEntryLoadingTitle(currentManifest) : "正在进入房间",
+      step: keepRoomReady ? `进入「${currentManifest.label}」主题房间` : `同步房间 ${roomId} 的主题`,
+      progress: Math.max(36, Number(this.data.roomThemeLoadingProgress || 0))
     });
 
     if (!this.data.connected || !this.socketTask) {
@@ -3573,11 +3609,59 @@ Page({
       roomId: this.data.roomId,
       playerId: this.data.playerId
     });
+    const currentManifest = normalizeRoomThemeManifest(
+      this.data.roomThemeManifest || buildLocalRoomThemeManifest(this.data.roomThemeId)
+    );
+    this.showRoomEntryLoading({
+      manifest: currentManifest,
+      themeReady: true,
+      step: `恢复房间 ${this.data.roomId} 的现场`,
+      progress: 62
+    });
     this.sendEvent("room:rejoin", {
       roomId: this.data.roomId,
       playerId: this.data.playerId,
       resumeToken: this.data.resumeToken
     }, { silentLog: true });
+  },
+
+  exitAfterFailedRejoin(reason = "重连失败，请重新加入") {
+    const message = String(reason || "重连失败，请重新加入");
+    this.debugClientEvent("room:rejoin_exit", {
+      roomId: this.data.roomId,
+      playerId: this.data.playerId,
+      reason: message
+    });
+
+    this.skipAutoReconnectOnce = true;
+    this.manualClose = true;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    if (this.socketTask) {
+      try {
+        this.socketTask.close({});
+      } catch (error) {
+        // ignore
+      }
+      this.socketTask = null;
+    }
+    this.stopHeartbeat();
+
+    this.clearSession();
+    this.resetRoomView();
+    this.setData({
+      connected: false,
+      connecting: false,
+      networkStatusText: "重连失败",
+      lastWsError: message
+    });
+    this.refreshWsHint(message);
+    wx.showToast({ title: message, icon: "none", duration: 3000 });
+    wx.reLaunch({ url: "/pages/lobby/lobby" });
   },
 
   leaveRoom() {
@@ -4071,6 +4155,10 @@ Page({
     this.clearSettlementCountdown();
     this.setData({ recentSettlementAvailable: Boolean(this.latestOpenResult) });
     this.sendEvent("round:restart", {});
+  },
+
+  onTapSettlementLeave() {
+    this.leaveRoom();
   },
 
   onPrimaryAction() {
@@ -6013,6 +6101,10 @@ Page({
             : (
               {}
             );
+          const isRoomEntryAck = Boolean(
+            payload.ok &&
+            (actionEvent === "room:create" || actionEvent === "room:join" || actionEvent === "room:rejoin")
+          );
           const nextData = {
             roomId: nextRoomId,
             displayRoomId: formatRoomIdDisplay(nextRoomId),
@@ -6022,13 +6114,13 @@ Page({
             joinRoomThemeId: actionEvent === "room:create" ? "" : (nextThemeId || this.data.joinRoomThemeId),
             hasCreatedRoomLocally: actionEvent === "room:create" ? true : this.data.hasCreatedRoomLocally,
             hasReceivedAuthoritativeRoomTheme: Boolean(nextThemeId) || this.data.hasReceivedAuthoritativeRoomTheme,
-            roomThemeReady: actionEvent === "room:join" || actionEvent === "room:rejoin" ? Boolean(nextThemeId) : true,
-            roomThemeLoading: actionEvent === "room:join" || actionEvent === "room:rejoin" ? !nextThemeId : false,
-            roomThemeLoadingProgress: nextThemeId ? 100 : Math.max(48, Number(this.data.roomThemeLoadingProgress || 0)),
+            roomThemeReady: (actionEvent === "room:join" || actionEvent === "room:rejoin") ? Boolean(nextThemeId) : true,
+            roomThemeLoading: isRoomEntryAck,
+            roomThemeLoadingProgress: isRoomEntryAck ? Math.max(88, Number(this.data.roomThemeLoadingProgress || 0)) : (nextThemeId ? 100 : Math.max(48, Number(this.data.roomThemeLoadingProgress || 0))),
             ...(activeThemeManifest ? {
               roomThemeManifest: activeThemeManifest,
               roomThemeLoadingTitle: activeThemeManifest.loading.title,
-              roomThemeLoadingStep: this.getThemeLoadingStep(activeThemeManifest, 3)
+              roomThemeLoadingStep: isRoomEntryAck ? "同步房间现场" : this.getThemeLoadingStep(activeThemeManifest, 3)
             } : {}),
             ...nextThemePresentation
           };
@@ -6055,8 +6147,8 @@ Page({
             actionEvent === "room:rejoin" &&
             (payload.code === "ROOM_NOT_FOUND" || payload.code === "PLAYER_NOT_IN_ROOM" || payload.code === "FORBIDDEN")
           ) {
-            this.clearSession();
-            this.resetRoomView();
+            this.exitAfterFailedRejoin("重连失败，请重新加入");
+            break;
           }
 
           const code = String(payload.code || "");
@@ -6765,7 +6857,15 @@ Page({
 
   resetRoomView() {
     if (this.audioContext) {
-      this.audioContext.stop();
+      this.suppressVoicePlaybackErrorToast = true;
+      try {
+        this.audioContext.stop();
+      } catch (error) {
+        // ignore
+      }
+      setTimeout(() => {
+        this.suppressVoicePlaybackErrorToast = false;
+      }, 0);
     }
     this.clearMyDiceTimers();
     this.resetSelfRollTransientState();
@@ -6796,6 +6896,13 @@ Page({
       roomConfig: null,
       hasCreatedRoomLocally: false,
       hasReceivedAuthoritativeRoomTheme: false,
+      roomThemeReady: true,
+      roomThemeLoading: false,
+      roomThemeLoadingTitle: "正在布置房间",
+      roomThemeLoadingStep: "同步主题配置",
+      roomThemeLoadingProgress: 0,
+      roomThemeLoadError: "",
+      roomThemeManifest: buildLocalRoomThemeManifest(DEFAULT_ROOM_THEME_ID),
       ...buildRoomThemePresentation(DEFAULT_ROOM_THEME_ID),
       playersRaw: [],
       playersDecorated: [],

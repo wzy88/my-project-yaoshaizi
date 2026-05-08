@@ -957,6 +957,46 @@ test("room page: system error packets no longer surface generic toast prompts", 
   }
 });
 
+test("room page: idle audio context errors do not surface voice playback failure toasts", () => {
+  let createdAudioContexts = 0;
+  let audioErrorHandler = null;
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    apiAvailability: {
+      createInnerAudioContext: () => {
+        createdAudioContexts += 1;
+        const audioContextIndex = createdAudioContexts;
+        return {
+          obeyMuteSwitch: true,
+          onEnded() {},
+          onError(handler) {
+            if (audioContextIndex === 1) {
+              audioErrorHandler = handler;
+            }
+          },
+          destroy() {},
+          stop() {},
+          play() {},
+          src: ""
+        };
+      }
+    }
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({});
+
+    assert.equal(typeof audioErrorHandler, "function");
+    audioErrorHandler();
+
+    assert.deepEqual(toasts, []);
+    assert.equal(page.data.playingVoiceId, "");
+    assert.equal(page.data.playingVoiceTip, "语音播放失败");
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: invalid pending join is discarded before flush can send it", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -1549,6 +1589,70 @@ test("room page: action ack applies the server theme immediately before room sta
     assert.equal(page.data.roomThemeId, "ruby-red");
     assert.equal(page.data.roomThemeClass, "room-theme-ruby-red");
     assert.equal(page.data.joinRoomId, "123456");
+    assert.equal(page.data.roomThemeLoading, true);
+    assert.equal(page.data.roomThemeLoadingTitle, "正在布置「玄曜」房间");
+    assert.equal(page.data.roomThemeLoadingStep, "同步房间现场");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: room entry loader stays up until the first room state paints", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.actionEventMap = {
+      "join-1": "room:join"
+    };
+
+    page.handleServerPacket(JSON.stringify({
+      event: "action:ack",
+      payload: {
+        ok: true,
+        actionId: "join-1",
+        roomId: "778899",
+        playerId: "P2",
+        resumeToken: "resume-token",
+        themeId: "glacier-blue",
+        themeManifest: buildLocalRoomThemeManifest("glacier-blue")
+      }
+    }));
+
+    assert.equal(page.data.roomThemeId, "glacier-blue");
+    assert.equal(page.data.roomThemeReady, true);
+    assert.equal(page.data.roomThemeLoading, true);
+    assert.equal(page.data.roomThemeLoadingTitle, "正在布置「霁雪」房间");
+    assert.equal(page.data.roomThemeLoadingStep, "同步房间现场");
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        ...buildRoomStatePayload({
+          currentPlayerId: "P1",
+          lastCall: null
+        }),
+        themeManifest: buildLocalRoomThemeManifest("glacier-blue"),
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 5,
+          testMode: false,
+          themeId: "glacier-blue"
+        }
+      }
+    }));
+
+    assert.equal(page.data.roomThemeLoading, false);
+    assert.equal(page.data.displayRoomId, "778899");
+    assert.equal(page.data.playersRaw.length, 2);
   } finally {
     cleanup();
   }
@@ -2001,8 +2105,8 @@ test("room page: cold-start resume reconnects and rejoins the cached room sessio
   }
 });
 
-test("room page: failed rejoin ack clears the cached session and resets the room shell", () => {
-  const { page, storageState, cleanup } = instantiateRoomPage({
+test("room page: failed rejoin ack exits the stale room instead of leaving a fake connected shell", () => {
+  const { page, storageState, reLaunches, toasts, cleanup } = instantiateRoomPage({
     storage: {
       [LEGAL_ACCEPT_KEY]: { accepted: true },
       [NICKNAME_KEY]: "手机玩家",
@@ -2016,7 +2120,14 @@ test("room page: failed rejoin ack clears the cached session and resets the room
   });
 
   try {
+    let closeCalls = 0;
+    page.socketTask = {
+      close() {
+        closeCalls += 1;
+      }
+    };
     page.setData({
+      connected: true,
       roomId: "123456",
       displayRoomId: "123456",
       joinRoomId: "123456",
@@ -2044,6 +2155,13 @@ test("room page: failed rejoin ack clears the cached session and resets the room
     assert.equal(page.data.resumeToken, "");
     assert.equal(page.data.displayRoomId, "------");
     assert.equal(page.data.pendingActionText, "");
+    assert.equal(page.data.connected, false);
+    assert.equal(page.data.networkStatusText, "重连失败");
+    assert.equal(closeCalls, 1);
+    assert.equal(page.manualClose, true);
+    assert.equal(page.skipAutoReconnectOnce, true);
+    assert.deepEqual(reLaunches, ["/pages/lobby/lobby"]);
+    assert.equal(toasts.includes("重连失败，请重新加入"), true);
   } finally {
     cleanup();
   }
@@ -4369,6 +4487,86 @@ test("room page: settlement lets the owner continue when the loser is offline", 
   }
 });
 
+test("room page: pending next-round plans do not turn the losing player into a spectator before commit", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.startSettlementCountdown = () => {
+      page.setData({ settlementContinueSec: 2 });
+    };
+    page.setData({ playerId: "loser" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "778899",
+        phase: "ended",
+        round: 2,
+        currentPlayerId: "owner",
+        ownerSeatingRequired: true,
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        },
+        players: [
+          { id: "owner", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "active", seatIndex: 1, diceCupStatus: "open", rollLocked: true, pendingBench: false },
+          { id: "loser", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "open", rollLocked: true, pendingBench: true }
+        ],
+        waitingPlayers: [
+          { id: "W1", nickname: "待上桌", avatar: "", onlineStatus: "online", seatIntent: "pendingSeat" }
+        ],
+        networkHealth: "good",
+        version: 6,
+        serverTs: Date.now()
+      }
+    }));
+
+    assert.equal(page.data.selfIsWaiting, false);
+    assert.equal(page.data.playersRaw.some((player) => player.id === "loser"), true);
+    assert.equal(page.data.primaryActionText, "等待房主安排");
+    assert.equal(page.data.canPrimaryAction, false);
+
+    const openResult = {
+      round: 2,
+      openerId: "owner",
+      targets: [
+        {
+          targetId: "loser",
+          declared: { count: 6, point: 4 },
+          actual: 4,
+          winnerId: "owner"
+        }
+      ],
+      serverTs: Date.now()
+    };
+
+    page.showSettlementPanel(openResult, {
+      round: 2,
+      roomId: "778899",
+      players: [
+        { playerId: "owner", dice: [4, 4, 2, 3, 6] },
+        { playerId: "loser", dice: [1, 2, 3, 5, 6] }
+      ],
+      openResult,
+      serverTs: Date.now()
+    });
+
+    assert.equal(page.data.settlementVisible, true);
+    assert.equal(page.data.settlementCanContinue, true);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: settlement fallback highlights wildcard ones when they are counted", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -4551,6 +4749,30 @@ test("room page: settlement continue restarts only from the settlement permissio
     });
     page.onSettlementContinue();
     assert.deepEqual(calls, ["restart", "hide"]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: settlement dialog always exposes a leave escape hatch", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    let leaveCalls = 0;
+    page.leaveRoom = () => {
+      leaveCalls += 1;
+    };
+    page.setData({ settlementVisible: true });
+
+    page.onTapSettlementLeave();
+
+    assert.equal(leaveCalls, 1);
   } finally {
     cleanup();
   }

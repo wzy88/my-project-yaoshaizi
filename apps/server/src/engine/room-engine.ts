@@ -54,6 +54,24 @@ interface CommitSeatingInput {
   spectatorPlayerIds: string[];
 }
 
+type SeatingCommitStartMode = "none" | "start" | "restart";
+
+interface RoomEngineSnapshot {
+  players: Map<string, InternalPlayer>;
+  spectators: Map<string, SpectatorState>;
+  phase: RoomPhase;
+  round: number;
+  currentPlayerId?: string;
+  lastCall?: DiceCall;
+  config: RoomConfigDTO;
+  configLocked: boolean;
+  wildcardOneLockedOff: boolean;
+  nextRoundStarterId?: string;
+  ownerRestartRequired: boolean;
+  nextDiceOverride: Map<string, number[]>;
+  version: number;
+}
+
 class SeededRng {
   private state: number;
 
@@ -514,6 +532,30 @@ export class RoomEngine {
     this.bumpVersion();
   }
 
+  commitSeatingAndStart(
+    actorId: string,
+    payload: CommitSeatingInput,
+    startMode: SeatingCommitStartMode = "none"
+  ): void {
+    if (startMode === "none") {
+      this.commitSeating(actorId, payload);
+      return;
+    }
+
+    const snapshot = this.createSnapshot();
+    try {
+      this.commitSeating(actorId, payload);
+      if (startMode === "start") {
+        this.startGame(actorId);
+      } else if (startMode === "restart") {
+        this.restartRound(actorId);
+      }
+    } catch (error) {
+      this.restoreSnapshot(snapshot);
+      throw error;
+    }
+  }
+
   setTestSeed(actorId: string, seed: number): void {
     this.ensureOwner(actorId);
     if (!this.config.testMode) {
@@ -812,7 +854,17 @@ export class RoomEngine {
       serverTs: Date.now()
     };
 
-    this.prepareNextRoundParticipants();
+    const hasPendingBench = [...this.players.values()].some((player) => player.pendingBench);
+    const hasOnlinePendingSeat = this.getOnlinePendingSeatCount() > 0;
+    this.ownerRestartRequired = hasPendingBench || hasOnlinePendingSeat;
+    if (this.ownerRestartRequired) {
+      this.promoteOwnerAsRestartControllerIfNeeded();
+    } else if (this.nextRoundStarterId && this.players.has(this.nextRoundStarterId)) {
+      const starter = this.players.get(this.nextRoundStarterId);
+      if (starter) {
+        starter.turnStatus = starter.onlineStatus === "online" ? "active" : "idle";
+      }
+    }
 
     this.bumpVersion();
 
@@ -1149,6 +1201,48 @@ export class RoomEngine {
       ...this.getOrderedPlayers(),
       ...[...this.spectators.values()].sort((a, b) => a.nickname.localeCompare(b.nickname))
     ];
+  }
+
+  private createSnapshot(): RoomEngineSnapshot {
+    return {
+      players: new Map([...this.players.entries()].map(([id, player]) => [id, this.cloneInternalPlayer(player)])),
+      spectators: new Map([...this.spectators.entries()].map(([id, spectator]) => [id, { ...spectator }])),
+      phase: this.phase,
+      round: this.round,
+      currentPlayerId: this.currentPlayerId,
+      lastCall: this.lastCall ? { ...this.lastCall } : undefined,
+      config: { ...this.config },
+      configLocked: this.configLocked,
+      wildcardOneLockedOff: this.wildcardOneLockedOff,
+      nextRoundStarterId: this.nextRoundStarterId,
+      ownerRestartRequired: this.ownerRestartRequired,
+      nextDiceOverride: new Map([...this.nextDiceOverride.entries()].map(([id, dice]) => [id, [...dice]])),
+      version: this.version
+    };
+  }
+
+  private restoreSnapshot(snapshot: RoomEngineSnapshot): void {
+    this.players = new Map([...snapshot.players.entries()].map(([id, player]) => [id, this.cloneInternalPlayer(player)]));
+    this.spectators = new Map([...snapshot.spectators.entries()].map(([id, spectator]) => [id, { ...spectator }]));
+    this.phase = snapshot.phase;
+    this.round = snapshot.round;
+    this.currentPlayerId = snapshot.currentPlayerId;
+    this.lastCall = snapshot.lastCall ? { ...snapshot.lastCall } : undefined;
+    this.config = { ...snapshot.config };
+    this.configLocked = snapshot.configLocked;
+    this.wildcardOneLockedOff = snapshot.wildcardOneLockedOff;
+    this.nextRoundStarterId = snapshot.nextRoundStarterId;
+    this.ownerRestartRequired = snapshot.ownerRestartRequired;
+    this.nextDiceOverride = new Map([...snapshot.nextDiceOverride.entries()].map(([id, dice]) => [id, [...dice]]));
+    this.version = snapshot.version;
+  }
+
+  private cloneInternalPlayer(player: InternalPlayer): InternalPlayer {
+    return {
+      ...player,
+      privateDice: [...player.privateDice],
+      currentCall: player.currentCall ? { ...player.currentCall } : undefined
+    };
   }
 
   private buildPlayerFromParticipant(participant: InternalPlayer | SpectatorState, seatIndex: number): InternalPlayer {

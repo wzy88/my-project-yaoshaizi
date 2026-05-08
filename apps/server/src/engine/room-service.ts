@@ -844,14 +844,9 @@ export class RoomService {
   ): void {
     const { room, session } = this.getRoomAndSession(ws);
     this.ensureActivePlayer(room, session.playerId);
-    room.commitSeating(session.playerId, payload);
 
     const startMode = payload.startMode || "none";
-    if (startMode === "start") {
-      room.startGame(session.playerId);
-    } else if (startMode === "restart") {
-      room.restartRound(session.playerId);
-    }
+    room.commitSeatingAndStart(session.playerId, payload, startMode);
 
     this.sendAck(ws, {
       actionId,

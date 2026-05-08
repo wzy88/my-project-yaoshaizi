@@ -100,6 +100,15 @@ async function getRoomEntrySnapshot(roomId) {
   if (backendRequest && typeof backendRequest.getRoomEntrySnapshot === "function") {
     return backendRequest.getRoomEntrySnapshot(roomId);
   }
+  if (backendRequest && typeof backendRequest.checkRoomExists === "function") {
+    const exists = await backendRequest.checkRoomExists(roomId);
+    return {
+      roomId: String(roomId || "").trim(),
+      exists: Boolean(exists),
+      themeId: "",
+      themeVersion: ""
+    };
+  }
   return {
     roomId: String(roomId || "").trim(),
     exists: true,

@@ -34,7 +34,10 @@ test("room page hides room visuals until the initial theme is resolved", () => {
   assert.match(wxml, /class="room-theme-loader"/);
   assert.equal([...wxml.matchAll(/class="room-theme-loader"/g)].length, 1);
   assert.match(wxml, /wx:if="\{\{!roomThemeReady \|\| roomThemeLoading \|\| \(legalAccepted && pendingActionText && connecting\)\}\}" class="room-theme-loader"/);
+  assert.match(wxml, /class="room-theme-loader__theme">主题 \{\{roomThemeManifest\.label\}\}<\/text>/);
   assert.match(wxss, /@keyframes room-theme-loader-spin/);
+  assert.match(wxss, /\.page\.room-screen\.is-theme-ready\.room-theme-ruby-red \.room-theme-loader__bar-fill/);
+  assert.match(wxss, /\.page\.room-screen\.is-theme-ready\.room-theme-glacier-blue \.room-theme-loader__theme/);
   assert.match(wxss, /\.page\.room-screen\.is-theme-pending \.room-shell,[\s\S]*opacity:\s*0/);
   assert.match(js, /resolveInitialRoomThemeForLoad\(options, cached\)/);
   assert.match(js, /hasInitialRoomThemeHintForLoad\(options, cached\)/);
@@ -376,6 +379,7 @@ test("settlement dialog keeps only the bottom continue action", () => {
   assert.doesNotMatch(source, /sheet-close"\s+bindtap="onSettlementContinue">继续/);
   assert.doesNotMatch(source, /继续\(\{\{settlementContinueSec/);
   assert.doesNotMatch(source, />返回</);
+  assert.match(source, /sheet-close sheet-close--pill"\s+bindtap="onTapSettlementLeave">离开/);
   assert.match(source, /wx:if="\{\{settlementCanContinue\}\}" class="sheet-actions"/);
 });
 
@@ -439,7 +443,9 @@ test("seating dialog uses a compact 2-column seat card grid", () => {
   assert.match(wxss, /\.seat-board-card\s*\{[\s\S]*min-height:\s*200rpx/);
   assert.match(wxss, /\.seat-board-card\s*\{[\s\S]*flex-direction:\s*column/);
   assert.match(wxss, /\.seat-board-card__head\s*\{[\s\S]*justify-content:\s*space-between/);
-  assert.match(wxss, /\.seat-staging-sidebar\s*\{[\s\S]*flex:\s*0 0 178rpx/);
+  assert.match(wxss, /\.seat-staging-sidebar\s*\{[\s\S]*flex:\s*0 0 196rpx/);
+  assert.match(wxss, /\.seat-side-card__action\s*\{[\s\S]*flex:\s*0 0 100%/);
+  assert.match(wxss, /\.seat-footer--dual \.seat-submit__text\s*\{[\s\S]*font-size:\s*23rpx/);
 });
 
 test("room self dice render above the glass layer for crisp visibility", () => {
