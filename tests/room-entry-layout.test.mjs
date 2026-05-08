@@ -195,6 +195,14 @@ test("room shell wires dynamic safe-area styles for top and bottom chrome", () =
   assert.match(wxml, /class="call-phase-overlay" style="\{\{callPhaseOverlayStyle\}\}"/);
 });
 
+test("room owner live seating only renders the mark badge for actual next-round changes", () => {
+  const wxml = fs.readFileSync(roomWxmlPath, "utf8");
+  assert.match(wxml, /<view wx:if="\{\{item\.tagText === '下局旁观'\}\}" class="seat-live-row__mark is-active">✓<\/view>/);
+  assert.match(wxml, /<view wx:if="\{\{item\.tagText === '待上桌'\}\}" class="seat-live-row__mark is-active">✓<\/view>/);
+  assert.doesNotMatch(wxml, /<view class="seat-live-row__mark \{\{item\.tagText === '下局旁观' \? 'is-active' : ''\}\}">\{\{item\.tagText === '下局旁观' \? '✓' : ''\}\}<\/view>/);
+  assert.doesNotMatch(wxml, /<view class="seat-live-row__mark \{\{item\.tagText === '待上桌' \? 'is-active' : ''\}\}">\{\{item\.tagText === '待上桌' \? '✓' : ''\}\}<\/view>/);
+});
+
 test("room shell removes the old horizontal self-cup shadow slab", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const wxss = fs.readFileSync(roomWxssPath, "utf8");

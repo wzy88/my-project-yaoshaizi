@@ -695,7 +695,7 @@
               </view>
               <block wx:for="{{seatingLivePlayers}}" wx:key="id">
                 <view class="seat-live-row {{item.tagText === '下局旁观' ? 'is-marked' : ''}}">
-                  <view class="seat-live-row__mark {{item.tagText === '下局旁观' ? 'is-active' : ''}}">{{item.tagText === '下局旁观' ? '✓' : ''}}</view>
+                  <view wx:if="{{item.tagText === '下局旁观'}}" class="seat-live-row__mark is-active">✓</view>
                   <image class="seat-live-row__avatar {{item.avatarFitClass}}" src="{{item.avatarUrl}}" mode="{{item.avatarMode}}"></image>
                   <view class="seat-live-row__copy">
                     <view class="seat-live-row__line">
@@ -716,7 +716,7 @@
               </view>
               <block wx:for="{{seatingLiveSpectators}}" wx:key="id">
                 <view class="seat-live-row">
-                  <view class="seat-live-row__mark {{item.tagText === '待上桌' ? 'is-active' : ''}}">{{item.tagText === '待上桌' ? '✓' : ''}}</view>
+                  <view wx:if="{{item.tagText === '待上桌'}}" class="seat-live-row__mark is-active">✓</view>
                   <image class="seat-live-row__avatar {{item.avatarFitClass}}" src="{{item.avatarUrl}}" mode="{{item.avatarMode}}"></image>
                   <view class="seat-live-row__copy">
                     <view class="seat-live-row__line">
