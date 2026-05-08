@@ -187,7 +187,7 @@
             <text class="room-fab-secondary__text">{{secondaryActionText}}</text>
           </view>
           <view
-            class="room-fab {{phase === 'rolling' && secondaryActionKind === 'reroll' ? 'room-fab--left room-fab--paired' : ''}} {{canPrimaryAction ? '' : 'is-disabled'}} {{primaryActionText === '叫牌' ? roomThemeAssets.primaryButtonClass : ''}} {{roomThemeId === 'ruby-red' && primaryActionText && primaryActionText !== '叫牌' && primaryActionText !== '开牌' ? 'room-fab--ruby-open-slice' : ''}}"
+            class="room-fab {{phase === 'rolling' && secondaryActionKind === 'reroll' ? 'room-fab--left room-fab--paired' : ''}} {{canPrimaryAction ? '' : 'is-disabled'}} {{primaryActionText === '叫牌' ? roomThemeAssets.primaryButtonClass : ''}} {{roomThemeId === 'ruby-red' && primaryActionText && primaryActionText !== '叫牌' ? 'room-fab--ruby-open-slice' : ''}}"
             bindtap="onHudPrimaryAction"
             hover-class="{{canPrimaryAction ? 'room-fab--pressing' : 'none'}}"
             hover-start-time="0"
@@ -505,7 +505,7 @@
           </view>
         </view>
         <view wx:if="{{settlementCanContinue}}" class="sheet-actions">
-          <view class="dock-btn dock-btn--settlement" bindtap="onSettlementContinue" hover-class="dock-btn--pressing" hover-start-time="0" hover-stay-time="70">
+          <view class="dock-btn dock-btn--settlement" bindtap="onSettlementContinue">
             <text class="dock-btn__label">继续</text>
           </view>
         </view>
