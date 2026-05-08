@@ -102,9 +102,21 @@ function instantiateRoomPage({
         options.success({ confirm: true, cancel: false, content: "" });
       }
     },
-    authorize() {},
-    openSetting() {},
-    getSetting() {},
+    authorize: apiAvailability.authorize || ((options = {}) => {
+      if (typeof options.success === "function") {
+        options.success();
+      }
+    }),
+    openSetting: apiAvailability.openSetting || ((options = {}) => {
+      if (typeof options.success === "function") {
+        options.success({ authSetting: { "scope.record": true } });
+      }
+    }),
+    getSetting: apiAvailability.getSetting || ((options = {}) => {
+      if (typeof options.success === "function") {
+        options.success({ authSetting: { "scope.record": true } });
+      }
+    }),
     navigateTo() {},
     reLaunch({ url }) {
       reLaunches.push(String(url || ""));
@@ -5016,6 +5028,88 @@ test("room page: failed voice upload now surfaces a toast instead of failing sil
   }
 });
 
+test("room page: failed voice recognition releases the voice touch lock for retry", async () => {
+  const recorderHandlers = {};
+  let recorderStartCount = 0;
+  let recorderStopCount = 0;
+  let lastStopPromise = null;
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws",
+    apiAvailability: {
+      getRecorderManager() {
+        return {
+          onStart(handler) {
+            recorderHandlers.start = handler;
+          },
+          onStop(handler) {
+            recorderHandlers.stop = handler;
+          },
+          onError(handler) {
+            recorderHandlers.error = handler;
+          },
+          start() {
+            recorderStartCount += 1;
+            if (typeof recorderHandlers.start === "function") {
+              recorderHandlers.start();
+            }
+          },
+          stop() {
+            recorderStopCount += 1;
+            lastStopPromise = typeof recorderHandlers.stop === "function"
+              ? recorderHandlers.stop({ duration: 1000, tempFilePath: "/tmp/voice.mp3" })
+              : null;
+          }
+        };
+      },
+      getFileSystemManager() {
+        return {
+          readFile({ success }) {
+            success({ data: "Zm9v" });
+          }
+        };
+      }
+    }
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({});
+    page.setData({
+      phase: "calling",
+      currentPlayerId: "player-a",
+      playerId: "player-a",
+      selfIsWaiting: false,
+      connected: true,
+      legalAccepted: true
+    });
+    page.sendEvent = () => {};
+    page.waitForVoiceTranscript = () => Promise.reject(new Error("语音识别失败，请重试"));
+
+    await page.onVoiceTouchStart();
+    assert.equal(recorderStartCount, 1);
+    assert.equal(page.data.recording, true);
+
+    page.onVoiceTouchEnd();
+    await lastStopPromise;
+
+    assert.equal(recorderStopCount, 1);
+    assert.equal(page.data.recording, false);
+    assert.equal(page.data.voiceRecognizing, false);
+    assert.equal(page.voiceStopLocked, false);
+    assert.ok(toasts.includes("语音识别失败，请重试"));
+
+    await page.onVoiceTouchStart();
+    assert.equal(recorderStartCount, 2);
+    assert.equal(page.data.recording, true);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: calling-turn room state routes open into the left secondary action when opening is allowed", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -5466,6 +5560,76 @@ test("room page: live seating actions update the next-round tags immediately aft
     assert.equal(page.data.seatingLivePlayers.find((item) => item.id === "P2").actionText, "保持在桌");
     assert.equal(page.data.seatingLivePendingCount, 1);
     assert.equal(toasts.at(-1), "已设为下局旁观");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: owner row in live seating does not expose a next-round spectator action", () => {
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sent = [];
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.socketTask = {
+      send() {}
+    };
+    page.setData({
+      connected: true,
+      legalAccepted: true,
+      playerId: "P1",
+      selfIsOwner: true,
+      seatingMode: "live"
+    });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "778899",
+        phase: "calling",
+        round: 1,
+        currentPlayerId: "P2",
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        },
+        players: [
+          { id: "P1", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", seatIndex: 1, pendingBench: false, turnStatus: "idle", diceCupStatus: "closed", rollLocked: true },
+          { id: "P2", nickname: "玩家二", avatar: "", isOwner: false, onlineStatus: "online", seatIndex: 2, pendingBench: false, turnStatus: "active", diceCupStatus: "closed", rollLocked: true }
+        ],
+        waitingPlayers: [],
+        networkHealth: "good",
+        version: 7,
+        serverTs: Date.now()
+      }
+    }));
+    const ownerRow = page.data.seatingLivePlayers.find((item) => item.id === "P1");
+
+    assert.equal(ownerRow.actionVisible, false);
+    assert.equal(ownerRow.actionText, "");
+
+    page.onTapSeatingLiveAction({
+      currentTarget: {
+        dataset: {
+          id: "P1",
+          target: "bench"
+        }
+      }
+    });
+
+    assert.deepEqual(sent, []);
+    assert.equal(toasts.at(-1), "房主暂不能下局旁观");
   } finally {
     cleanup();
   }

@@ -1106,6 +1106,7 @@ function buildOwnerLiveRows(playersRaw, spectatorsRaw) {
   const players = (Array.isArray(playersRaw) ? playersRaw : []).map((player) => {
     const nickname = safeDecodeComponent(player && player.nickname).trim() || "玩家";
     const pendingBench = Boolean(player && player.pendingBench);
+    const isOwner = Boolean(player && player.isOwner);
     const avatar = getSeatAvatarPresentation(player && player.avatar, Math.max(0, Number(player && player.seatIndex || 1) - 1));
     return {
       id: player.id,
@@ -1116,10 +1117,11 @@ function buildOwnerLiveRows(playersRaw, spectatorsRaw) {
       avatarMode: avatar.mode,
       avatarFitClass: avatar.fitClass,
       seatText: `当前座位：${Number(player.seatIndex) || "-"}号位`,
-      tagText: pendingBench ? "下局旁观" : (player && player.isOwner ? "房主" : ""),
-      actionText: pendingBench ? "保持在桌" : "下局旁观",
-      actionTarget: pendingBench ? "stay" : "bench",
-      actionClass: pendingBench ? "is-active" : "is-danger"
+      tagText: pendingBench ? "下局旁观" : (isOwner ? "房主" : ""),
+      actionText: isOwner ? "" : (pendingBench ? "保持在桌" : "下局旁观"),
+      actionTarget: isOwner ? "" : (pendingBench ? "stay" : "bench"),
+      actionClass: isOwner ? "" : (pendingBench ? "is-active" : "is-danger"),
+      actionVisible: !isOwner
     };
   });
 
@@ -2138,15 +2140,23 @@ Page({
           voiceTipText: "识别中..."
         });
 
-        const durationMs = Number(res.duration || Math.max(0, Date.now() - this.voiceStartTs));
-        if (!res.tempFilePath || durationMs < 300) {
-          wx.showToast({ title: "录音太短", icon: "none" });
-          return;
-        }
-
         try {
+          const durationMs = Number(res.duration || Math.max(0, Date.now() - this.voiceStartTs));
+          if (!res.tempFilePath || durationMs < 300) {
+            this.setData({
+              voiceRecognizing: false,
+              voiceTipText: "录音太短，按住重说"
+            });
+            wx.showToast({ title: "录音太短", icon: "none" });
+            return;
+          }
+
           const base64 = await readFileBase64(res.tempFilePath);
           if (!base64 || base64.length > 2000000) {
+            this.setData({
+              voiceRecognizing: false,
+              voiceTipText: "录音过长，请缩短"
+            });
             wx.showToast({ title: "录音过长，请缩短", icon: "none" });
             return;
           }
@@ -2240,10 +2250,13 @@ Page({
           if (!silentToast) {
             wx.showToast({ title: message, icon: "none" });
           }
+        } finally {
+          this.voiceStopLocked = false;
         }
       });
 
       this.recorderManager.onError(() => {
+        this.voiceStopLocked = false;
         this.setData({
           recording: false,
           voiceRecognizing: false,
@@ -4719,6 +4732,12 @@ Page({
     const playerId = String(event.currentTarget.dataset.id || "");
     const target = String(event.currentTarget.dataset.target || "");
     if (!playerId || !target) {
+      return;
+    }
+
+    const player = (this.data.playersRaw || []).find((item) => String(item.id || "") === playerId);
+    if (player && player.isOwner) {
+      wx.showToast({ title: "房主暂不能下局旁观", icon: "none" });
       return;
     }
 

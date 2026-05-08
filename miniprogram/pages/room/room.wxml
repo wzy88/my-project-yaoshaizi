@@ -705,7 +705,7 @@
                     <text class="seat-live-row__seat">{{item.seatText}}</text>
                     <text wx:if="{{item.tagText === '下局旁观'}}" class="seat-live-row__state">下局将旁观</text>
                   </view>
-                  <view class="seat-live-row__action seat-live-row__action--{{item.actionClass}}" data-id="{{item.id}}" data-target="{{item.actionTarget}}" bindtap="onTapSeatingLiveAction">{{item.actionText}}</view>
+                  <view wx:if="{{item.actionVisible}}" class="seat-live-row__action seat-live-row__action--{{item.actionClass}}" data-id="{{item.id}}" data-target="{{item.actionTarget}}" bindtap="onTapSeatingLiveAction">{{item.actionText}}</view>
                 </view>
               </block>
             </view>
