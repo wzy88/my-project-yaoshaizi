@@ -4499,6 +4499,81 @@ test("room page: settlement lets the owner continue when the loser is offline", 
   }
 });
 
+test("room page: owner can continue from settlement when next-round seating is required", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.startSettlementCountdown = () => {
+      page.setData({ settlementContinueSec: 2 });
+    };
+    page.setData({ playerId: "owner" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "778899",
+        phase: "ended",
+        round: 2,
+        currentPlayerId: "owner",
+        ownerSeatingRequired: true,
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        },
+        players: [
+          { id: "owner", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "active", seatIndex: 1, diceCupStatus: "open", rollLocked: true, pendingBench: false },
+          { id: "loser", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "open", rollLocked: true, pendingBench: true }
+        ],
+        waitingPlayers: [
+          { id: "W1", nickname: "待上桌", avatar: "", onlineStatus: "online", seatIntent: "pendingSeat" }
+        ],
+        networkHealth: "good",
+        version: 6,
+        serverTs: Date.now()
+      }
+    }));
+
+    const openResult = {
+      round: 2,
+      openerId: "owner",
+      targets: [
+        {
+          targetId: "loser",
+          declared: { count: 6, point: 4 },
+          actual: 4,
+          winnerId: "owner"
+        }
+      ],
+      serverTs: Date.now()
+    };
+
+    page.showSettlementPanel(openResult, {
+      round: 2,
+      roomId: "778899",
+      players: [
+        { playerId: "owner", dice: [4, 4, 2, 3, 6] },
+        { playerId: "loser", dice: [1, 2, 3, 5, 6] }
+      ],
+      openResult,
+      serverTs: Date.now()
+    });
+
+    assert.equal(page.data.settlementVisible, true);
+    assert.equal(page.data.settlementCanContinue, true);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: pending next-round plans do not turn the losing player into a spectator before commit", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -4573,7 +4648,7 @@ test("room page: pending next-round plans do not turn the losing player into a s
     });
 
     assert.equal(page.data.settlementVisible, true);
-    assert.equal(page.data.settlementCanContinue, true);
+    assert.equal(page.data.settlementCanContinue, false);
   } finally {
     cleanup();
   }

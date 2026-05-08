@@ -4077,10 +4077,13 @@ Page({
     const winner = model.rows.find((row) => row.kind === "winner") || null;
     const winnerId = winner ? String(winner.playerId || "") : "";
     const loserUnavailable = Boolean(model.loserId) && (!loser || loser.onlineStatus === "offline");
-    const settlementCanContinue = Boolean(model.loserId) && (
-      selfId === String(model.loserId)
-      || (Boolean(self && self.isOwner) && loserUnavailable)
-    );
+    const requiresOwnerSeating = Boolean(this.data.ownerSeatingRequired);
+    const settlementCanContinue = requiresOwnerSeating
+      ? Boolean(self && self.isOwner)
+      : Boolean(model.loserId) && (
+        selfId === String(model.loserId)
+        || (Boolean(self && self.isOwner) && loserUnavailable)
+      );
     let settlementSfxKind = "";
     if (selfId && selfId === String(model.loserId || "")) {
       settlementSfxKind = "loseAlert";
