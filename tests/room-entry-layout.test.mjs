@@ -417,16 +417,21 @@ test("seating dialog reuses the settlement sheet skin", () => {
   assert.match(wxml, /class="room-mask room-mask--seating"/);
   assert.match(wxml, /class="seat-topbar__back" bindtap="closeSeatingPanel">‹<\/view>/);
   assert.match(wxml, /class="seat-topbar__title">\{\{seatingMode === 'staging' \? '安排座位' : '房主管理'\}\}<\/view>/);
-  assert.match(wxml, /<scroll-view class="sheet-body sheet-body--settings sheet-body--seating" scroll-y="true"/);
+  assert.match(wxml, /class="seat-sheet__body seat-sheet__body--staging"/);
+  assert.match(wxml, /<scroll-view class="seat-sheet__body-scroll seat-sheet__body-scroll--live" scroll-y="true"/);
   assert.match(wxml, /class="seat-header-copy__title">下一局开始前统一排位<\/text>/);
   assert.match(wxml, /class="seat-live-section__title">桌上玩家（\{\{seatingLivePlayers.length\}\}）<\/text>/);
   assert.match(wxml, /class="seat-staging-layout"/);
   assert.match(wxml, /class="seat-sidebar-panel__title">待上桌（\{\{seatingDraftPendingRows.length\}\}）<\/text>/);
-  assert.match(source, /\.room-mask--seating\s*\{[\s\S]*align-items:\s*flex-start/);
-  assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*max-width:\s*638rpx/);
+  assert.match(wxml, /<scroll-view class="seat-sidebar-panel__scroll" scroll-y="true"/);
+  assert.match(wxml, /<scroll-view class="seat-board__scroll" scroll-y="true"/);
+  assert.match(source, /\.room-mask--seating\s*\{[\s\S]*align-items:\s*flex-end[\s\S]*justify-content:\s*flex-end/);
+  assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*max-width:\s*none/);
+  assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*border-radius:\s*34rpx 34rpx 0 0/);
   assert.match(source, /\.seat-topbar__title\s*\{/);
+  assert.match(source, /\.seat-sheet__body\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0/);
   assert.match(source, /\.seat-direction-switch\s*\{/);
-  assert.match(source, /\.seat-staging-layout\s*\{[\s\S]*display:\s*flex/);
+  assert.match(source, /\.seat-staging-layout\s*\{[\s\S]*display:\s*flex[\s\S]*flex:\s*1[\s\S]*min-height:\s*0/);
 });
 
 test("seating dialog keeps only clockwise and counterclockwise shortcuts", () => {
@@ -448,12 +453,15 @@ test("seating dialog uses a compact 2-column seat card grid", () => {
   assert.doesNotMatch(wxml, /class="seat-grid__row"/);
   assert.match(wxss, /\.seat-grid\s*\{[\s\S]*display:\s*grid/);
   assert.match(wxss, /\.seat-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(wxss, /\.seat-board-card\s*\{[\s\S]*min-height:\s*200rpx/);
+  assert.match(wxss, /\.seat-board-card\s*\{[\s\S]*min-height:\s*168rpx/);
   assert.match(wxss, /\.seat-board-card\s*\{[\s\S]*flex-direction:\s*column/);
   assert.match(wxss, /\.seat-board-card__head\s*\{[\s\S]*justify-content:\s*space-between/);
-  assert.match(wxss, /\.seat-staging-sidebar\s*\{[\s\S]*flex:\s*0 0 196rpx/);
+  assert.match(wxss, /\.seat-staging-sidebar\s*\{[\s\S]*flex:\s*0 0 186rpx/);
+  assert.match(wxss, /\.seat-sidebar-panel__scroll\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0/);
+  assert.match(wxss, /\.seat-board__scroll\s*\{[\s\S]*height:\s*100%/);
   assert.match(wxss, /\.seat-side-card__action\s*\{[\s\S]*flex:\s*0 0 100%/);
-  assert.match(wxss, /\.seat-footer--dual \.seat-submit__text\s*\{[\s\S]*font-size:\s*23rpx/);
+  assert.match(wxss, /\.seat-footer\s*\{[\s\S]*padding:\s*14rpx 18rpx calc\(18rpx \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(wxss, /\.seat-footer--dual \.seat-submit__text\s*\{[\s\S]*font-size:\s*22rpx/);
 });
 
 test("room self dice render above the glass layer for crisp visibility", () => {
