@@ -533,7 +533,7 @@ page {
 }
 
 .room-mask--seating {
-  padding: calc(env(safe-area-inset-top) + 128rpx) 0 0;
+  padding: calc(env(safe-area-inset-top) + 164rpx) 0 0;
   align-items: flex-end;
   justify-content: flex-end;
   background:
@@ -613,8 +613,8 @@ page {
 
 .room-sheet--seating {
   max-width: none;
-  height: calc(100vh - env(safe-area-inset-top) - 128rpx);
-  max-height: calc(100vh - env(safe-area-inset-top) - 128rpx);
+  height: calc(100vh - env(safe-area-inset-top) - 164rpx);
+  max-height: calc(100vh - env(safe-area-inset-top) - 164rpx);
   display: flex;
   flex-direction: column;
   border-radius: 34rpx 34rpx 0 0;
@@ -626,7 +626,6 @@ page {
   box-shadow:
     0 30rpx 82rpx rgba(0, 0, 0, 0.56),
     inset 0 1rpx 0 rgba(255, 248, 220, 0.1),
-    inset 0 -22rpx 38rpx rgba(0, 0, 0, 0.16),
     0 0 0 1rpx rgba(255, 255, 255, 0.03);
 }
 
@@ -2211,10 +2210,8 @@ page {
   gap: 10rpx;
   margin-top: 0;
   padding: 10rpx 16rpx calc(12rpx + env(safe-area-inset-bottom));
-  border-top: 1rpx solid rgba(255, 244, 205, 0.08);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(12, 9, 21, 0.18) 100%),
-    rgba(15, 12, 24, 0.9);
+  border-top: none;
+  background: transparent;
 }
 
 .seat-footer--dual {
@@ -13715,4 +13712,409 @@ button.room-topbar__shortcut::after {
     repeating-linear-gradient(135deg, rgba(216, 250, 255, 0.052) 0 2rpx, rgba(216, 250, 255, 0) 2rpx 10rpx),
     linear-gradient(180deg, rgba(32, 65, 88, 0.7) 0%, rgba(9, 27, 44, 0.86) 100%);
   border-color: rgba(140, 180, 198, 0.38);
+}
+
+/* Seating sheet theme pass: keep the seating surface in the same material family as each room theme. */
+.page.room-theme-jade-green .seat-topbar__title {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(240, 222, 170, 0.22) 0%, rgba(240, 222, 170, 0) 60%),
+    linear-gradient(180deg, rgba(26, 83, 67, 0.94) 0%, rgba(12, 49, 40, 0.96) 100%);
+  border-color: rgba(206, 176, 110, 0.34);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 248, 220, 0.16),
+    0 10rpx 22rpx rgba(4, 34, 27, 0.22);
+}
+
+.page.room-theme-jade-green .room-sheet--seating {
+  box-shadow:
+    0 30rpx 82rpx rgba(0, 0, 0, 0.5),
+    inset 0 1rpx 0 rgba(250, 244, 216, 0.12),
+    0 0 0 1rpx rgba(111, 175, 153, 0.06);
+}
+
+.page.room-theme-jade-green .seat-sidebar-panel,
+.page.room-theme-jade-green .seat-live-section {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(222, 205, 153, 0.14) 0%, rgba(222, 205, 153, 0) 42%),
+    linear-gradient(180deg, rgba(24, 58, 49, 0.94) 0%, rgba(10, 33, 29, 0.96) 100%);
+  border-color: rgba(182, 156, 100, 0.26);
+  box-shadow:
+    inset 0 1rpx 0 rgba(250, 244, 216, 0.08),
+    0 12rpx 24rpx rgba(5, 30, 25, 0.2);
+}
+
+.page.room-theme-jade-green .seat-side-card {
+  background: linear-gradient(180deg, rgba(42, 81, 67, 0.54) 0%, rgba(18, 43, 37, 0.62) 100%);
+  border-color: rgba(120, 174, 148, 0.18);
+}
+
+.page.room-theme-jade-green .seat-sidebar-panel__title,
+.page.room-theme-jade-green .seat-live-section__title,
+.page.room-theme-jade-green .seat-side-card__name,
+.page.room-theme-jade-green .seat-live-row__name {
+  color: #efead7;
+}
+
+.page.room-theme-jade-green .seat-side-card__status,
+.page.room-theme-jade-green .seat-sidebar-panel__empty,
+.page.room-theme-jade-green .seat-sidebar-note,
+.page.room-theme-jade-green .seat-live-note,
+.page.room-theme-jade-green .seat-live-row__seat,
+.page.room-theme-jade-green .seat-live-row__state {
+  color: rgba(226, 234, 218, 0.76);
+}
+
+.page.room-theme-jade-green .seat-board-card {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(240, 225, 176, 0.16) 0%, rgba(240, 225, 176, 0) 42%),
+    linear-gradient(180deg, rgba(68, 94, 70, 0.94) 0%, rgba(29, 61, 50, 0.96) 100%);
+  border-color: rgba(208, 181, 119, 0.46);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 248, 220, 0.14),
+    0 12rpx 24rpx rgba(10, 42, 34, 0.22);
+}
+
+.page.room-theme-jade-green .seat-board-card.is-empty {
+  background: linear-gradient(180deg, rgba(18, 44, 37, 0.8) 0%, rgba(10, 27, 24, 0.88) 100%);
+  border-color: rgba(151, 193, 167, 0.26);
+}
+
+.page.room-theme-jade-green .seat-board-card__num,
+.page.room-theme-jade-green .seat-board-card__tag {
+  color: #ead19a;
+}
+
+.page.room-theme-jade-green .seat-board-card__name,
+.page.room-theme-jade-green .seat-board-card__empty-text {
+  color: #f4ecd3;
+}
+
+.page.room-theme-jade-green .seat-footer {
+  border-top: none;
+  background: transparent;
+}
+
+.page.room-theme-jade-green .seat-footer__ghost {
+  background:
+    radial-gradient(circle at 28% 12%, rgba(244, 236, 199, 0.12) 0%, rgba(244, 236, 199, 0) 40%),
+    linear-gradient(180deg, rgba(42, 84, 67, 0.96) 0%, rgba(20, 49, 41, 0.98) 100%);
+  border-color: rgba(181, 155, 99, 0.34);
+  color: #ead8aa;
+}
+
+.page.room-theme-jade-green .seat-submit {
+  background:
+    radial-gradient(circle at 32% 14%, rgba(255, 251, 220, 0.4) 0%, rgba(255, 251, 220, 0) 36%),
+    linear-gradient(180deg, #ead07d 0%, #b78d43 52%, #6a5f2d 100%);
+  border-color: rgba(236, 214, 145, 0.74);
+  box-shadow:
+    0 14rpx 28rpx rgba(34, 69, 53, 0.2),
+    inset 0 2rpx 0 rgba(255, 251, 220, 0.22);
+}
+
+.page.room-theme-jade-green .seat-submit__text {
+  color: #1e1708;
+}
+
+.page.room-theme-ruby-red .seat-topbar__title {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(247, 220, 152, 0.2) 0%, rgba(247, 220, 152, 0) 60%),
+    linear-gradient(180deg, rgba(43, 35, 27, 0.96) 0%, rgba(16, 13, 13, 0.98) 100%);
+  border-color: rgba(237, 201, 119, 0.34);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 240, 190, 0.12),
+    0 10rpx 22rpx rgba(0, 0, 0, 0.28);
+}
+
+.page.room-theme-ruby-red .room-sheet--seating {
+  box-shadow:
+    0 32rpx 88rpx rgba(0, 0, 0, 0.62),
+    inset 0 1rpx 0 rgba(255, 236, 194, 0.13),
+    0 0 0 1rpx rgba(145, 30, 24, 0.08);
+}
+
+.page.room-theme-ruby-red .seat-sidebar-panel,
+.page.room-theme-ruby-red .seat-live-section {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(237, 201, 119, 0.12) 0%, rgba(237, 201, 119, 0) 42%),
+    linear-gradient(180deg, rgba(35, 28, 24, 0.94) 0%, rgba(10, 10, 11, 0.97) 100%);
+  border-color: rgba(181, 145, 83, 0.24);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 240, 190, 0.06),
+    0 12rpx 26rpx rgba(0, 0, 0, 0.28);
+}
+
+.page.room-theme-ruby-red .seat-side-card {
+  background: linear-gradient(180deg, rgba(55, 41, 31, 0.58) 0%, rgba(18, 17, 18, 0.7) 100%);
+  border-color: rgba(237, 201, 119, 0.14);
+}
+
+.page.room-theme-ruby-red .seat-sidebar-panel__title,
+.page.room-theme-ruby-red .seat-live-section__title,
+.page.room-theme-ruby-red .seat-side-card__name,
+.page.room-theme-ruby-red .seat-live-row__name {
+  color: #fff0d7;
+}
+
+.page.room-theme-ruby-red .seat-side-card__status,
+.page.room-theme-ruby-red .seat-sidebar-panel__empty,
+.page.room-theme-ruby-red .seat-sidebar-note,
+.page.room-theme-ruby-red .seat-live-note,
+.page.room-theme-ruby-red .seat-live-row__seat,
+.page.room-theme-ruby-red .seat-live-row__state {
+  color: rgba(233, 221, 193, 0.72);
+}
+
+.page.room-theme-ruby-red .seat-board-card {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(243, 212, 141, 0.14) 0%, rgba(243, 212, 141, 0) 42%),
+    linear-gradient(180deg, rgba(66, 47, 26, 0.94) 0%, rgba(24, 17, 14, 0.96) 100%);
+  border-color: rgba(237, 201, 119, 0.44);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 240, 190, 0.11),
+    0 12rpx 24rpx rgba(0, 0, 0, 0.28);
+}
+
+.page.room-theme-ruby-red .seat-board-card.is-empty {
+  background: linear-gradient(180deg, rgba(26, 23, 22, 0.84) 0%, rgba(9, 9, 10, 0.9) 100%);
+  border-color: rgba(177, 150, 107, 0.24);
+}
+
+.page.room-theme-ruby-red .seat-board-card__num,
+.page.room-theme-ruby-red .seat-board-card__tag {
+  color: #f0d188;
+}
+
+.page.room-theme-ruby-red .seat-board-card__name,
+.page.room-theme-ruby-red .seat-board-card__empty-text {
+  color: #fff2d7;
+}
+
+.page.room-theme-ruby-red .seat-footer {
+  border-top: none;
+  background: transparent;
+}
+
+.page.room-theme-ruby-red .seat-footer__ghost {
+  background:
+    radial-gradient(circle at 26% 10%, rgba(255, 240, 190, 0.1) 0%, rgba(255, 240, 190, 0) 40%),
+    linear-gradient(180deg, rgba(47, 37, 29, 0.96) 0%, rgba(18, 16, 16, 0.98) 100%);
+  border-color: rgba(237, 201, 119, 0.3);
+  color: #f0d188;
+}
+
+.page.room-theme-ruby-red .seat-submit {
+  background:
+    radial-gradient(circle at 32% 14%, rgba(255, 246, 214, 0.42) 0%, rgba(255, 246, 214, 0) 36%),
+    linear-gradient(180deg, #f3d596 0%, #b37e39 50%, #35281c 100%);
+  border-color: rgba(245, 216, 143, 0.76);
+  box-shadow:
+    0 14rpx 30rpx rgba(0, 0, 0, 0.28),
+    inset 0 2rpx 0 rgba(255, 246, 214, 0.2);
+}
+
+.page.room-theme-ruby-red .seat-submit__text {
+  color: #211405;
+}
+
+.page.room-theme-imperial-red .seat-topbar__title {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 232, 153, 0.22) 0%, rgba(255, 232, 153, 0) 60%),
+    linear-gradient(180deg, rgba(109, 34, 31, 0.94) 0%, rgba(48, 16, 19, 0.97) 100%);
+  border-color: rgba(248, 221, 177, 0.4);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 238, 174, 0.14),
+    0 10rpx 24rpx rgba(83, 20, 21, 0.24);
+}
+
+.page.room-theme-imperial-red .room-sheet--seating {
+  box-shadow:
+    0 32rpx 88rpx rgba(74, 10, 12, 0.54),
+    inset 0 1rpx 0 rgba(255, 238, 174, 0.14),
+    0 0 0 1rpx rgba(42, 143, 94, 0.07);
+}
+
+.page.room-theme-imperial-red .seat-sidebar-panel,
+.page.room-theme-imperial-red .seat-live-section {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(255, 232, 153, 0.14) 0%, rgba(255, 232, 153, 0) 42%),
+    linear-gradient(180deg, rgba(89, 28, 26, 0.94) 0%, rgba(30, 12, 15, 0.97) 100%);
+  border-color: rgba(248, 221, 177, 0.26);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 238, 174, 0.08),
+    0 12rpx 24rpx rgba(74, 10, 12, 0.22);
+}
+
+.page.room-theme-imperial-red .seat-side-card {
+  background: linear-gradient(180deg, rgba(118, 39, 35, 0.54) 0%, rgba(48, 19, 22, 0.68) 100%);
+  border-color: rgba(248, 221, 177, 0.16);
+}
+
+.page.room-theme-imperial-red .seat-sidebar-panel__title,
+.page.room-theme-imperial-red .seat-live-section__title,
+.page.room-theme-imperial-red .seat-side-card__name,
+.page.room-theme-imperial-red .seat-live-row__name {
+  color: #fff0d4;
+}
+
+.page.room-theme-imperial-red .seat-side-card__status,
+.page.room-theme-imperial-red .seat-sidebar-panel__empty,
+.page.room-theme-imperial-red .seat-sidebar-note,
+.page.room-theme-imperial-red .seat-live-note,
+.page.room-theme-imperial-red .seat-live-row__seat,
+.page.room-theme-imperial-red .seat-live-row__state {
+  color: rgba(246, 224, 205, 0.74);
+}
+
+.page.room-theme-imperial-red .seat-board-card {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 240, 190, 0.16) 0%, rgba(255, 240, 190, 0) 42%),
+    linear-gradient(180deg, rgba(138, 56, 38, 0.92) 0%, rgba(74, 25, 22, 0.96) 100%);
+  border-color: rgba(255, 228, 159, 0.46);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 238, 174, 0.12),
+    0 12rpx 24rpx rgba(95, 20, 18, 0.26);
+}
+
+.page.room-theme-imperial-red .seat-board-card.is-empty {
+  background: linear-gradient(180deg, rgba(63, 20, 24, 0.82) 0%, rgba(24, 10, 13, 0.9) 100%);
+  border-color: rgba(164, 122, 104, 0.26);
+}
+
+.page.room-theme-imperial-red .seat-board-card__num,
+.page.room-theme-imperial-red .seat-board-card__tag {
+  color: #ffe1a3;
+}
+
+.page.room-theme-imperial-red .seat-board-card__name,
+.page.room-theme-imperial-red .seat-board-card__empty-text {
+  color: #fff0d4;
+}
+
+.page.room-theme-imperial-red .seat-footer {
+  border-top: none;
+  background: transparent;
+}
+
+.page.room-theme-imperial-red .seat-footer__ghost {
+  background:
+    radial-gradient(circle at 28% 12%, rgba(255, 238, 174, 0.12) 0%, rgba(255, 238, 174, 0) 40%),
+    linear-gradient(180deg, rgba(115, 36, 33, 0.96) 0%, rgba(46, 18, 21, 0.98) 100%);
+  border-color: rgba(248, 221, 177, 0.34);
+  color: #ffe1a3;
+}
+
+.page.room-theme-imperial-red .seat-submit {
+  background:
+    radial-gradient(circle at 32% 14%, rgba(255, 246, 214, 0.46) 0%, rgba(255, 246, 214, 0) 36%),
+    linear-gradient(180deg, #ffe19c 0%, #cf8f39 48%, #8a271f 100%);
+  border-color: rgba(255, 232, 153, 0.82);
+  box-shadow:
+    0 14rpx 30rpx rgba(95, 20, 18, 0.28),
+    inset 0 2rpx 0 rgba(255, 246, 214, 0.22);
+}
+
+.page.room-theme-imperial-red .seat-submit__text {
+  color: #331506;
+}
+
+.page.room-theme-glacier-blue .seat-topbar__title {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(244, 255, 255, 0.22) 0%, rgba(244, 255, 255, 0) 60%),
+    linear-gradient(180deg, rgba(74, 141, 171, 0.92) 0%, rgba(22, 72, 102, 0.96) 100%);
+  border-color: rgba(216, 250, 255, 0.44);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.18),
+    0 10rpx 24rpx rgba(8, 31, 52, 0.18);
+}
+
+.page.room-theme-glacier-blue .room-sheet--seating {
+  box-shadow:
+    0 32rpx 86rpx rgba(4, 15, 28, 0.52),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.16),
+    0 0 0 1rpx rgba(245, 132, 98, 0.05);
+}
+
+.page.room-theme-glacier-blue .seat-sidebar-panel,
+.page.room-theme-glacier-blue .seat-live-section {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(180deg, rgba(43, 97, 128, 0.9) 0%, rgba(10, 36, 58, 0.94) 100%);
+  border-color: rgba(216, 250, 255, 0.26);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.12),
+    0 12rpx 24rpx rgba(5, 23, 42, 0.18);
+}
+
+.page.room-theme-glacier-blue .seat-side-card {
+  background: linear-gradient(180deg, rgba(110, 180, 206, 0.18) 0%, rgba(24, 67, 94, 0.52) 100%);
+  border-color: rgba(216, 250, 255, 0.16);
+}
+
+.page.room-theme-glacier-blue .seat-sidebar-panel__title,
+.page.room-theme-glacier-blue .seat-live-section__title,
+.page.room-theme-glacier-blue .seat-side-card__name,
+.page.room-theme-glacier-blue .seat-live-row__name {
+  color: #f7ffff;
+}
+
+.page.room-theme-glacier-blue .seat-side-card__status,
+.page.room-theme-glacier-blue .seat-sidebar-panel__empty,
+.page.room-theme-glacier-blue .seat-sidebar-note,
+.page.room-theme-glacier-blue .seat-live-note,
+.page.room-theme-glacier-blue .seat-live-row__seat,
+.page.room-theme-glacier-blue .seat-live-row__state {
+  color: rgba(229, 250, 255, 0.78);
+}
+
+.page.room-theme-glacier-blue .seat-board-card {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(245, 255, 255, 0.18) 0%, rgba(245, 255, 255, 0) 42%),
+    linear-gradient(180deg, rgba(112, 181, 207, 0.9) 0%, rgba(35, 98, 130, 0.96) 100%);
+  border-color: rgba(216, 250, 255, 0.52);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.16),
+    0 12rpx 24rpx rgba(5, 23, 42, 0.18);
+}
+
+.page.room-theme-glacier-blue .seat-board-card.is-empty {
+  background: linear-gradient(180deg, rgba(25, 67, 96, 0.82) 0%, rgba(8, 29, 47, 0.9) 100%);
+  border-color: rgba(177, 223, 236, 0.3);
+}
+
+.page.room-theme-glacier-blue .seat-board-card__num,
+.page.room-theme-glacier-blue .seat-board-card__tag {
+  color: #e7fcff;
+}
+
+.page.room-theme-glacier-blue .seat-board-card__name,
+.page.room-theme-glacier-blue .seat-board-card__empty-text {
+  color: #f7ffff;
+}
+
+.page.room-theme-glacier-blue .seat-footer {
+  border-top: none;
+  background: transparent;
+}
+
+.page.room-theme-glacier-blue .seat-footer__ghost {
+  background:
+    radial-gradient(circle at 28% 12%, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 40%),
+    linear-gradient(180deg, rgba(82, 147, 179, 0.92) 0%, rgba(24, 75, 103, 0.98) 100%);
+  border-color: rgba(216, 250, 255, 0.36);
+  color: #f1fdff;
+}
+
+.page.room-theme-glacier-blue .seat-submit {
+  background:
+    radial-gradient(circle at 32% 14%, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0) 36%),
+    linear-gradient(180deg, #ebfdff 0%, #8bd7e9 50%, #2d7b98 100%);
+  border-color: rgba(220, 251, 255, 0.84);
+  box-shadow:
+    0 14rpx 30rpx rgba(8, 31, 52, 0.22),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.24);
+}
+
+.page.room-theme-glacier-blue .seat-submit__text {
+  color: #123b5e;
 }

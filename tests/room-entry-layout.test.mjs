@@ -413,6 +413,7 @@ test("settlement dialog compresses row density for crowded eight-player results"
 test("seating dialog reuses the settlement sheet skin", () => {
   const wxml = fs.readFileSync(roomWxmlPath, "utf8");
   const source = fs.readFileSync(roomWxssPath, "utf8");
+  const seatingSheetBlock = source.match(/\.room-sheet--seating\s*\{[\s\S]*?\n\}/)?.[0] || "";
   assert.match(wxml, /class="room-sheet room-sheet--seating"/);
   assert.match(wxml, /class="room-mask room-mask--seating"/);
   assert.match(wxml, /class="seat-topbar__back" bindtap="closeSeatingPanel">‹<\/view>/);
@@ -427,9 +428,10 @@ test("seating dialog reuses the settlement sheet skin", () => {
   assert.match(wxml, /<scroll-view class="seat-board__scroll" scroll-y="true"/);
   assert.match(source, /\.room-mask--seating\s*\{[\s\S]*align-items:\s*flex-end[\s\S]*justify-content:\s*flex-end/);
   assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*max-width:\s*none/);
-  assert.match(source, /\.room-mask--seating\s*\{[\s\S]*padding:\s*calc\(env\(safe-area-inset-top\) \+ 128rpx\) 0 0/);
+  assert.match(source, /\.room-mask--seating\s*\{[\s\S]*padding:\s*calc\(env\(safe-area-inset-top\) \+ 164rpx\) 0 0/);
   assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*border-radius:\s*34rpx 34rpx 0 0/);
-  assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*height:\s*calc\(100vh - env\(safe-area-inset-top\) - 128rpx\)/);
+  assert.match(source, /\.room-sheet--seating\s*\{[\s\S]*height:\s*calc\(100vh - env\(safe-area-inset-top\) - 164rpx\)/);
+  assert.doesNotMatch(seatingSheetBlock, /inset 0 -22rpx 38rpx/);
   assert.match(source, /\.seat-topbar__title\s*\{/);
   assert.match(source, /\.seat-sheet__body\s*\{[\s\S]*flex:\s*1[\s\S]*min-height:\s*0/);
   assert.match(source, /\.seat-direction-switch\s*\{/);
@@ -464,7 +466,24 @@ test("seating dialog uses a compact 2-column seat card grid", () => {
   assert.match(wxss, /\.seat-board__scroll\s*\{[\s\S]*height:\s*100%/);
   assert.match(wxss, /\.seat-side-card__action\s*\{[\s\S]*flex:\s*0 0 100%/);
   assert.match(wxss, /\.seat-footer\s*\{[\s\S]*padding:\s*10rpx 16rpx calc\(12rpx \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(wxss, /\.seat-footer\s*\{[\s\S]*background:\s*transparent/);
   assert.match(wxss, /\.seat-footer--dual \.seat-submit__text\s*\{[\s\S]*font-size:\s*20rpx/);
+});
+
+test("seating dialog adapts its cards and footer to each room theme", () => {
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxss, /\.page\.room-theme-jade-green\s+\.seat-sidebar-panel,\s*[\s\S]*\.page\.room-theme-jade-green\s+\.seat-live-section/);
+  assert.match(wxss, /\.page\.room-theme-jade-green\s+\.room-sheet--seating\s*\{[\s\S]*box-shadow:/);
+  assert.match(wxss, /\.page\.room-theme-jade-green\s+\.seat-submit\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-ruby-red\s+\.seat-board-card\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-ruby-red\s+\.room-sheet--seating\s*\{[\s\S]*box-shadow:/);
+  assert.match(wxss, /\.page\.room-theme-ruby-red\s+\.seat-footer__ghost\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-imperial-red\s+\.seat-topbar__title\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-imperial-red\s+\.room-sheet--seating\s*\{[\s\S]*box-shadow:/);
+  assert.match(wxss, /\.page\.room-theme-imperial-red\s+\.seat-submit__text\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-glacier-blue\s+\.seat-side-card\s*\{/);
+  assert.match(wxss, /\.page\.room-theme-glacier-blue\s+\.room-sheet--seating\s*\{[\s\S]*box-shadow:/);
+  assert.match(wxss, /\.page\.room-theme-glacier-blue\s+\.seat-footer__ghost\s*\{/);
 });
 
 test("room self dice render above the glass layer for crisp visibility", () => {
