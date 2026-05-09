@@ -14128,3 +14128,37 @@ button.room-topbar__shortcut::after {
 .page.room-theme-glacier-blue .seat-submit__text {
   color: #123b5e;
 }
+
+/* Seating manager avatars must not inherit the larger table-seat avatar fit. */
+.seat-side-card__avatar.seat__avatar--fit,
+.seat-side-card__avatar.seat__avatar--photo {
+  width: 48rpx;
+  height: 48rpx;
+  flex: 0 0 48rpx;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  filter: none;
+}
+
+.seat-board-card__avatar.seat__avatar--fit,
+.seat-board-card__avatar.seat__avatar--photo {
+  width: 68rpx;
+  height: 68rpx;
+  flex: 0 0 68rpx;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  filter: none;
+}
+
+.seat-live-row__avatar.seat__avatar--fit,
+.seat-live-row__avatar.seat__avatar--photo {
+  width: 72rpx;
+  height: 72rpx;
+  flex: 0 0 72rpx;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  filter: none;
+}

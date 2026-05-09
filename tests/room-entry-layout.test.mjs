@@ -486,6 +486,13 @@ test("seating dialog adapts its cards and footer to each room theme", () => {
   assert.match(wxss, /\.page\.room-theme-glacier-blue\s+\.seat-footer__ghost\s*\{/);
 });
 
+test("seating dialog avatars do not inherit the large table-seat fit", () => {
+  const wxss = fs.readFileSync(roomWxssPath, "utf8");
+  assert.match(wxss, /\.seat-side-card__avatar\.seat__avatar--fit,[\s\S]*\.seat-side-card__avatar\.seat__avatar--photo\s*\{[\s\S]*width:\s*48rpx[\s\S]*height:\s*48rpx[\s\S]*box-shadow:\s*none[\s\S]*filter:\s*none/);
+  assert.match(wxss, /\.seat-board-card__avatar\.seat__avatar--fit,[\s\S]*\.seat-board-card__avatar\.seat__avatar--photo\s*\{[\s\S]*width:\s*68rpx[\s\S]*height:\s*68rpx[\s\S]*box-shadow:\s*none[\s\S]*filter:\s*none/);
+  assert.match(wxss, /\.seat-live-row__avatar\.seat__avatar--fit,[\s\S]*\.seat-live-row__avatar\.seat__avatar--photo\s*\{[\s\S]*width:\s*72rpx[\s\S]*height:\s*72rpx[\s\S]*box-shadow:\s*none[\s\S]*filter:\s*none/);
+});
+
 test("room self dice render above the glass layer for crisp visibility", () => {
   const source = fs.readFileSync(roomWxssPath, "utf8");
   assert.match(source, /\.room-self__dice-pile\s*\{[\s\S]*z-index:\s*4/);
