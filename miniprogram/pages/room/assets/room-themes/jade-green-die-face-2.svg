@@ -1,1 +1,44 @@
-<svg preserveAspectRatio="xMidYMid meet" width="100%" height="100%" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="woodBody" x1="4.2" y1="3.8" x2="21.8" y2="22.4" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#FFF1C9"/><stop offset="0.42" stop-color="#EBCB8A"/><stop offset="1" stop-color="#C9954F"/></linearGradient><radialGradient id="woodGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(8.6 6.8) rotate(38) scale(14 10.6)"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.62"/><stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.16"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient><filter id="softLift" x="-38%" y="-38%" width="176%" height="186%" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="1.6" stdDeviation="1.05" flood-color="#102820" flood-opacity="0.22"/></filter></defs><g filter="url(#softLift)" transform="rotate(2.5 13 13)"><rect x="3.35" y="3.35" width="19.3" height="19.3" rx="5.1" fill="#B87939"/><rect x="3.75" y="3.75" width="18.5" height="18.5" rx="4.72" fill="url(#woodBody)" stroke="#8F5E31" stroke-width="0.7"/><path d="M5.5 7.05C8.25 5.75 12.1 5.45 16.62 6.08C18.74 6.38 20.08 6.95 21 7.82" stroke="#9D6A38" stroke-width="0.46" stroke-linecap="round" opacity="0.42"/><path d="M4.95 11.48C8.18 10.16 12.56 9.94 17.7 10.78C19.26 11.04 20.34 11.42 21.1 11.9" stroke="#F7DEAB" stroke-width="0.46" stroke-linecap="round" opacity="0.55"/><path d="M5.2 15.88C8.65 17.05 12.74 17.26 17.5 16.54C19.02 16.31 20.22 15.92 21.04 15.38" stroke="#7B4D2B" stroke-width="0.44" stroke-linecap="round" opacity="0.28"/><path d="M6.02 19.16C9.32 20.42 13.42 20.58 18.08 19.62" stroke="#FFE9B8" stroke-width="0.42" stroke-linecap="round" opacity="0.46"/><path d="M5.1 6.4C6.52 4.92 8.6 4.18 11.32 4.18C8.96 5.9 7.62 8.34 7.34 11.48C7.04 14.82 8.02 17.88 10.25 20.66C7.74 19.58 6 17.68 5.12 14.96C4.22 12.19 4.22 9.34 5.1 6.4Z" fill="url(#woodGlow)" opacity="0.72"/><rect x="4.15" y="4.15" width="17.7" height="17.7" rx="4.35" stroke="#FFF1C9" stroke-width="0.42" opacity="0.6"/><circle cx="8.2" cy="8.35" r="2.05" fill="#143C35"/><ellipse cx="7.78" cy="7.75" rx="0.8" ry="0.58" fill="#F0F7D8" opacity="0.68"/><ellipse cx="8.42" cy="8.82" rx="1.34" ry="1" fill="#061F1B" opacity="0.23"/><circle cx="17.8" cy="17.65" r="2.05" fill="#143C35"/><ellipse cx="17.38" cy="17.05" rx="0.8" ry="0.58" fill="#F0F7D8" opacity="0.68"/><ellipse cx="18.02" cy="18.12" rx="1.34" ry="1" fill="#061F1B" opacity="0.23"/></g></svg>
+<svg preserveAspectRatio="xMidYMid meet" width="100%" height="100%" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="dieFaceBevel" x1="4.1" y1="3.8" x2="22.1" y2="22.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF6D4"/>
+      <stop offset="0.46" stop-color="#EBCB8A"/>
+      <stop offset="1" stop-color="#C9954F"/>
+    </linearGradient>
+    <radialGradient id="dieFaceGloss" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(8.2 6.3) rotate(38) scale(13.4 10.4)">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.82"/>
+      <stop offset="0.34" stop-color="#FFFFFF" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="dieLowerEdge" x1="5" y1="16" x2="21.8" y2="21.8" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7D4D25" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#7D4D25" stop-opacity="0.44"/>
+    </linearGradient>
+    <filter id="dieCastShadow" x="-42%" y="-42%" width="184%" height="196%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="1.8" stdDeviation="1.15" flood-color="#102820" flood-opacity="0.26"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="0.38" flood-color="#EBCB8A" flood-opacity="0.12"/>
+    </filter>
+    <filter id="pipInset" x="-90%" y="-90%" width="280%" height="280%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="0.35" stdDeviation="0.22" flood-color="#000000" flood-opacity="0.42"/>
+    </filter>
+  </defs>
+  <g data-dice-style="beveled-high-contrast" filter="url(#dieCastShadow)" transform="rotate(-3.2 13 13)">
+    <rect x="2.95" y="2.95" width="20.1" height="20.1" rx="5.35" fill="#A66F37" opacity="0.96"/>
+    <rect x="3.45" y="3.45" width="19.1" height="19.1" rx="4.86" fill="url(#dieFaceBevel)" stroke="#9D6A38" stroke-width="0.72"/>
+    <path d="M5.5 6.7C8.16 4.92 12.16 4.42 16.92 5.18C19.04 5.52 20.58 6.26 21.54 7.38V10.2C20.02 9.1 18.02 8.44 15.54 8.2C11.58 7.82 8.24 8.34 5.5 9.74V6.7Z" fill="url(#dieFaceGloss)" opacity="0.82"/>
+    <path d="M5.04 16.08C8.3 17.62 12.54 18.02 17.68 17.3C19.4 17.06 20.72 16.6 21.68 15.94V19.34C20.52 20.38 18.88 21.02 16.78 21.3C12.12 21.9 8.18 21.38 5.04 19.66V16.08Z" fill="url(#dieLowerEdge)"/>
+    <path d="M4.62 8.12C5.66 5.96 7.44 4.5 9.96 3.86C7.86 5.68 6.66 8.18 6.42 11.4C6.2 14.48 7.1 17.32 9.1 19.92C6.74 18.9 5.2 17.1 4.5 14.56C3.92 12.38 3.96 10.24 4.62 8.12Z" fill="#FFFFFF" opacity="0.2"/>
+    <rect x="4.02" y="4.02" width="17.96" height="17.96" rx="4.48" stroke="#FFF1C9" stroke-width="0.46" opacity="0.62"/>
+
+      <g class="pip pip-0" filter="url(#pipInset)">
+        <circle class="pip-core" cx="8.05" cy="8.05" r="2.34" fill="#143C35"/>
+        <ellipse cx="7.63" cy="7.47" rx="0.9" ry="0.62" fill="#F0F7D8" opacity="0.62"/>
+        <ellipse cx="8.39" cy="8.57" rx="1.42" ry="1.02" fill="#061F1B" opacity="0.3"/>
+      </g>
+      <g class="pip pip-1" filter="url(#pipInset)">
+        <circle class="pip-core" cx="17.95" cy="17.95" r="2.34" fill="#143C35"/>
+        <ellipse cx="17.53" cy="17.37" rx="0.9" ry="0.62" fill="#F0F7D8" opacity="0.62"/>
+        <ellipse cx="18.29" cy="18.47" rx="1.42" ry="1.02" fill="#061F1B" opacity="0.3"/>
+      </g>
+  </g>
+</svg>

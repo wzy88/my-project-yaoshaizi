@@ -22,7 +22,12 @@ function resolveMiniprogramAssetPath(asset) {
 }
 
 function countVisiblePips(svgSource) {
-  return [...String(svgSource || "").matchAll(/fill="(?:var\(--fill-0,\s*)?#(?:1A1A2E|CC2020|55766D|143C35|1C1A20|0A0504|1F2E58|C92A2A|C99729|B92B24|7B0D0B|423730|C8A04A|893F2E|D4333D|3658A4|102A5A|252936)\)?"|fill="#(?:55766D|143C35|1C1A20|0A0504|1F2E58|C92A2A|C99729|B92B24|7B0D0B|423730|C8A04A|893F2E|D4333D|3658A4|102A5A|252936)"/g)].length;
+  const source = String(svgSource || "");
+  const taggedPips = [...source.matchAll(/class="pip-core"/g)].length;
+  if (taggedPips > 0) {
+    return taggedPips;
+  }
+  return [...source.matchAll(/fill="(?:var\(--fill-0,\s*)?#(?:1A1A2E|CC2020|55766D|143C35|1C1A20|0A0504|1F2E58|C92A2A|C99729|B92B24|7B0D0B|423730|C8A04A|893F2E|D4333D|3658A4|102A5A|252936)\)?"|fill="#(?:55766D|143C35|1C1A20|0A0504|1F2E58|C92A2A|C99729|B92B24|7B0D0B|423730|C8A04A|893F2E|D4333D|3658A4|102A5A|252936)"/g)].length;
 }
 
 test("shared dice assets: all stage dice map to complete dice bodies", () => {
@@ -51,8 +56,8 @@ test("shared dice assets: themed self dice resolve to the premium room assets", 
   const diceAssets = loadSharedDiceAssets();
   const themedExpectations = [
     ["jade-green", "/pages/room/assets/room-themes/jade-green-die-face-3.svg", /stop-color="#EBCB8A"/],
-    ["ruby-red", "/pages/room/assets/room-themes/ruby-red-die-face-3.svg", /stop-color="#F8D978"/],
-    ["imperial-red", "/pages/room/assets/room-themes/imperial-red-die-face-3.svg", /fill="#F7F0D8"/],
+    ["ruby-red", "/pages/room/assets/room-themes/ruby-red-die-face-3.svg", /stop-color="#D99A36"/],
+    ["imperial-red", "/pages/room/assets/room-themes/imperial-red-die-face-3.svg", /stop-color="#FFF8E6"/],
     ["glacier-blue", "/pages/room/assets/room-themes/glacier-blue-die-face-3.svg", /stop-color="#F7FCFF"/]
   ];
 
@@ -62,11 +67,13 @@ test("shared dice assets: themed self dice resolve to the premium room assets", 
     const svg = fs.readFileSync(assetPath, "utf8");
     assert.equal(asset, expectedAsset);
     assert.match(svg, bodyColorPattern);
+    assert.match(svg, /data-dice-style="beveled-high-contrast"/);
+    assert.match(svg, /id="dieFaceBevel"/);
+    assert.match(svg, /id="dieCastShadow"/);
     assert.equal(countVisiblePips(svg), 3, `${themeId} should render 3 visible pip(s)`);
     if (themeId === "jade-green") {
       assert.match(svg, /stroke="#9D6A38"/);
       assert.match(svg, /fill="#143C35"/);
-      assert.doesNotMatch(svg, /fill="#B92B24"/);
       assert.doesNotMatch(svg, /fill="#C99729"/);
       assert.doesNotMatch(svg, /fill="#252936"/);
     }
@@ -77,7 +84,6 @@ test("shared dice assets: themed self dice resolve to the premium room assets", 
       assert.doesNotMatch(svg, /fill="#2F754F"/);
       assert.doesNotMatch(svg, /fill="#D7E8BC"/);
       assert.doesNotMatch(svg, /fill="#E3B64A"/);
-      assert.doesNotMatch(svg, /flood-color="#000000"/);
       assert.doesNotMatch(svg, /fill="#C99729"/);
     }
     if (themeId === "glacier-blue") {
@@ -91,6 +97,31 @@ test("shared dice assets: themed self dice resolve to the premium room assets", 
   }
 
   assert.equal(diceAssets.getSelfDieAsset(3, "unsupported-theme"), diceAssets.DICE_FACE_ASSETS[3]);
+});
+
+test("shared dice assets: every themed face uses clear 3d pips and red one-four accents", () => {
+  const diceAssets = loadSharedDiceAssets();
+  const themeAccentPips = new Map([
+    ["jade-green", "#B92B24"],
+    ["ruby-red", "#C92A2A"],
+    ["imperial-red", "#D4333D"],
+    ["glacier-blue", "#C92A2A"]
+  ]);
+
+  for (const [themeId, accentColor] of themeAccentPips.entries()) {
+    for (let point = 1; point <= 6; point += 1) {
+      const asset = diceAssets.getSelfDieAsset(point, themeId);
+      const svg = fs.readFileSync(resolveMiniprogramAssetPath(asset), "utf8");
+      assert.match(svg, /data-dice-style="beveled-high-contrast"/, `${themeId} ${point} should use the clarity dice style`);
+      assert.equal(countVisiblePips(svg), point, `${themeId} ${point} should render ${point} visible pip(s)`);
+    }
+
+    for (const point of [1, 4]) {
+      const asset = diceAssets.getSelfDieAsset(point, themeId);
+      const svg = fs.readFileSync(resolveMiniprogramAssetPath(asset), "utf8");
+      assert.match(svg, new RegExp(`fill="${accentColor}"`), `${themeId} ${point} should keep the red accent pip convention`);
+    }
+  }
 });
 
 test("shared dice assets: room, index, and lobby all consume the common module", () => {

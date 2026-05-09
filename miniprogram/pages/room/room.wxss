@@ -1214,17 +1214,21 @@ page {
 .settlement-dice-list {
   display: flex;
   align-items: center;
-  gap: 6rpx;
+  gap: 7rpx;
 }
 
 .settlement-die-wrap {
   position: relative;
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 11rpx;
+  width: 46rpx;
+  height: 46rpx;
+  border-radius: 13rpx;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow:
+    inset 0 0 0 1rpx rgba(255, 255, 255, 0.05),
+    0 2rpx 6rpx rgba(0, 0, 0, 0.1);
 }
 
 .settlement-die-wrap.is-counted {
@@ -1252,9 +1256,9 @@ page {
 }
 
 .settlement-die {
-  width: 36rpx;
-  height: 36rpx;
-  filter: drop-shadow(0 3rpx 6rpx rgba(0, 0, 0, 0.18));
+  width: 42rpx;
+  height: 42rpx;
+  filter: drop-shadow(0 2rpx 4rpx rgba(0, 0, 0, 0.22));
 }
 
 .settlement-dice-bonus {
@@ -1331,8 +1335,8 @@ page {
 }
 
 .settlement-matrix__die {
-  width: 38rpx;
-  height: 38rpx;
+  width: 44rpx;
+  height: 44rpx;
 }
 
 .dock-btn--settlement {
@@ -10191,7 +10195,13 @@ button.room-topbar__shortcut::after {
 .call-phase-panel__point-option-die,
 .call-phase-panel__point-die,
 .settlement-matrix__die {
-  filter: drop-shadow(0 1rpx 2rpx rgba(0, 0, 0, 0.12));
+  filter: drop-shadow(0 2rpx 3rpx rgba(0, 0, 0, 0.18));
+}
+
+.seat__bubble-die,
+.room-self__bubble-die {
+  width: 34rpx;
+  height: 34rpx;
 }
 
 .settlement-scroll {

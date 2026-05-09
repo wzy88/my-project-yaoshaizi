@@ -406,7 +406,7 @@ test("settlement dialog compresses row density for crowded eight-player results"
   const wxss = fs.readFileSync(roomWxssPath, "utf8");
   assert.match(wxss, /\.settlement-row\s*\{[\s\S]*gap:\s*10rpx[\s\S]*padding:\s*12rpx 14rpx/);
   assert.match(wxss, /\.settlement-avatar\s*\{[\s\S]*width:\s*52rpx[\s\S]*height:\s*52rpx/);
-  assert.match(wxss, /\.settlement-die-wrap\s*\{[\s\S]*width:\s*40rpx[\s\S]*height:\s*40rpx/);
+  assert.match(wxss, /\.settlement-die-wrap\s*\{[\s\S]*width:\s*46rpx[\s\S]*height:\s*46rpx/);
   assert.match(wxss, /\.settlement-matrix__row\s*\{[\s\S]*min-height:\s*82rpx/);
 });
 
