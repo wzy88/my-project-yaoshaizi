@@ -613,7 +613,7 @@
 
           <view class="seat-staging-layout">
             <view class="seat-staging-sidebar">
-              <view class="seat-sidebar-panel">
+              <view class="seat-sidebar-panel {{seatingDraftPendingRows.length ? '' : 'is-empty'}}">
                 <view class="seat-sidebar-panel__head">
                   <text class="seat-sidebar-panel__title">待上桌（{{seatingDraftPendingRows.length}}）</text>
                 </view>
@@ -633,7 +633,7 @@
                 <view wx:else class="seat-sidebar-panel__empty">暂无待上桌玩家</view>
               </view>
 
-              <view class="seat-sidebar-panel">
+              <view class="seat-sidebar-panel {{seatingDraftSpectatingRows.length ? '' : 'is-empty'}}">
                 <view class="seat-sidebar-panel__head">
                   <text class="seat-sidebar-panel__title">旁观中（{{seatingDraftSpectatingRows.length}}）</text>
                 </view>
