@@ -2121,9 +2121,12 @@ page {
 
 .seat-grid--board {
   gap: 8rpx;
+  grid-auto-rows: 156rpx;
+  align-items: stretch;
 }
 
 .seat-board-card {
+  height: 156rpx;
   min-height: 156rpx;
   padding: 8rpx 8rpx 10rpx;
   border-radius: 20rpx;
@@ -2187,24 +2190,33 @@ page {
 }
 
 .seat-board-card__name {
+  width: 100%;
   font-size: 24rpx;
   font-weight: 700;
   color: #2e2416;
   text-align: center;
   line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .seat-board-card__empty-avatar {
-  width: 66rpx;
-  height: 66rpx;
+  width: 68rpx;
+  height: 68rpx;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   border: 2rpx solid rgba(255, 255, 255, 0.1);
 }
 
 .seat-board-card__empty-text {
+  width: 100%;
   font-size: 24rpx;
   color: rgba(230, 215, 183, 0.82);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .seat-footer {

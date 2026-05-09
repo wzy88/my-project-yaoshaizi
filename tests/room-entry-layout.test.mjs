@@ -457,8 +457,11 @@ test("seating dialog uses a compact 2-column seat card grid", () => {
   assert.doesNotMatch(wxml, /class="seat-grid__row"/);
   assert.match(wxss, /\.seat-grid\s*\{[\s\S]*display:\s*grid/);
   assert.match(wxss, /\.seat-grid\s*\{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(wxss, /\.seat-grid--board\s*\{[\s\S]*grid-auto-rows:\s*156rpx[\s\S]*align-items:\s*stretch/);
+  assert.match(wxss, /\.seat-board-card\s*\{[\s\S]*height:\s*156rpx/);
   assert.match(wxss, /\.seat-board-card\s*\{[\s\S]*min-height:\s*156rpx/);
   assert.match(wxss, /\.seat-board-card\s*\{[\s\S]*flex-direction:\s*column/);
+  assert.match(wxss, /\.seat-board-card__empty-avatar\s*\{[\s\S]*width:\s*68rpx[\s\S]*height:\s*68rpx/);
   assert.match(wxss, /\.seat-board-card__head\s*\{[\s\S]*justify-content:\s*space-between/);
   assert.match(wxss, /\.seat-staging-sidebar\s*\{[\s\S]*flex:\s*0 0 174rpx/);
   assert.match(wxss, /\.seat-sidebar-panel\.is-empty\s*\{[\s\S]*flex:\s*0 0 118rpx/);
