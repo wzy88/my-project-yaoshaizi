@@ -548,7 +548,7 @@ export class RoomEngine {
       if (startMode === "start") {
         this.startGame(actorId);
       } else if (startMode === "restart") {
-        this.restartRound(actorId);
+        this.restartRoundInternal(actorId, { allowOwnerCommitOverride: true });
       }
     } catch (error) {
       this.restoreSnapshot(snapshot);
@@ -604,6 +604,10 @@ export class RoomEngine {
   }
 
   restartRound(actorId: string): void {
+    this.restartRoundInternal(actorId);
+  }
+
+  private restartRoundInternal(actorId: string, options: { allowOwnerCommitOverride?: boolean } = {}): void {
     if (this.phase !== "ended") {
       throw new GameError(ErrorCode.INVALID_PHASE, "仅结算后可再来一局");
     }
@@ -624,9 +628,14 @@ export class RoomEngine {
       throw new GameError(ErrorCode.BAD_REQUEST, "至少2人才能开始");
     }
 
+    const actor = this.players.get(actorId);
+    if (options.allowOwnerCommitOverride && actor?.isOwner) {
+      this.beginRound();
+      return;
+    }
+
     if (actorId !== this.nextRoundStarterId) {
       const starter = this.players.get(this.nextRoundStarterId);
-      const actor = this.players.get(actorId);
       const starterUnavailable = !starter || starter.onlineStatus === "offline" || starter.pendingRemoval;
       const actorIsOwner = Boolean(actor?.isOwner);
       if (!(starterUnavailable && actorIsOwner)) {

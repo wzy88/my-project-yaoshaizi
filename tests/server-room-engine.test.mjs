@@ -310,6 +310,29 @@ test("room engine: owner can commit next-round seating draft and restart from on
   assert.equal(engine.getState().phase, "rolling");
 });
 
+test("room engine: owner commit-and-restart can start immediately after seating even if loser stays on table", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.startGame("P_OWNER");
+
+  engine.finishRolling("P_OWNER");
+  engine.makeCall("P_OWNER", 2, 2);
+  engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
+  assert.equal(engine.getState().phase, "ended");
+
+  engine.commitSeatingAndStart("P_OWNER", {
+    direction: "cw",
+    seatedPlayerIds: [
+      { playerId: "P_OWNER", seatIndex: 1 },
+      { playerId: "P_B", seatIndex: 2 }
+    ],
+    spectatorPlayerIds: []
+  }, "restart");
+
+  const state = engine.getState();
+  assert.equal(state.phase, "rolling");
+  assert.equal(state.players.length, 2);
+});
+
 test("room engine: seating commit with start rolls back when start validation fails", () => {
   const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
   engine.setPlayerOnlineStatus("P_B", "offline");
