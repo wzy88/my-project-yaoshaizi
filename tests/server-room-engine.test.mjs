@@ -333,6 +333,31 @@ test("room engine: seating commit with start rolls back when start validation fa
   assert.equal(state.players.find((player) => player.id === "P_B").seatIndex, 2);
 });
 
+test("room engine: seating commit with restart rolls back when fewer than two seated players remain", () => {
+  const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
+  engine.startGame("P_OWNER");
+
+  engine.finishRolling("P_OWNER");
+  engine.makeCall("P_OWNER", 2, 2);
+  engine.openDice("P_B", engine.getRuleOptionsForCurrentRound());
+
+  assert.throws(
+    () => engine.commitSeatingAndStart("P_OWNER", {
+      direction: "cw",
+      seatedPlayerIds: [
+        { playerId: "P_OWNER", seatIndex: 1 }
+      ],
+      spectatorPlayerIds: ["P_B"]
+    }, "restart"),
+    (err) => err && err.code === ErrorCode.BAD_REQUEST && /至少2人/.test(err.message)
+  );
+
+  const state = engine.getState();
+  assert.equal(state.phase, "ended");
+  assert.equal(state.players.some((player) => player.id === "P_B"), true);
+  assert.equal(state.spectators.some((player) => player.id === "P_B"), false);
+});
+
 test("room engine: auto-filled pending-seat spectator preserves account identity after owner commit", () => {
   const engine = createEngine({ minOpeningCount: 2, wildcardOneEnabled: true });
   engine.startGame("P_OWNER");

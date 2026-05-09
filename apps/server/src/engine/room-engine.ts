@@ -620,6 +620,10 @@ export class RoomEngine {
       throw new GameError(ErrorCode.BAD_REQUEST, "请先完成下一局座位安排");
     }
 
+    if (this.getOnlinePlayers().length < MIN_PLAYERS_TO_START) {
+      throw new GameError(ErrorCode.BAD_REQUEST, "至少2人才能开始");
+    }
+
     if (actorId !== this.nextRoundStarterId) {
       const starter = this.players.get(this.nextRoundStarterId);
       const actor = this.players.get(actorId);

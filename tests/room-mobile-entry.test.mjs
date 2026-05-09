@@ -3512,6 +3512,70 @@ test("room page: owner can reopen seating after settlement", () => {
   }
 });
 
+test("room page: staging seating auto-applies next-round bench and fills pending seats on open", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({
+      phase: "ended",
+      selfIsOwner: true,
+      playersRaw: [
+        {
+          id: "owner-a",
+          nickname: "房主",
+          avatar: "",
+          isOwner: true,
+          onlineStatus: "online",
+          turnStatus: "active",
+          seatIndex: 1,
+          diceCupStatus: "open",
+          rollLocked: true,
+          pendingBench: false
+        },
+        {
+          id: "guest-b",
+          nickname: "二号位玩家",
+          avatar: "",
+          isOwner: false,
+          onlineStatus: "online",
+          turnStatus: "idle",
+          seatIndex: 5,
+          diceCupStatus: "open",
+          rollLocked: true,
+          pendingBench: true
+        }
+      ],
+      waitingPlayersRaw: [
+        {
+          id: "wait-c",
+          nickname: "待上桌玩家",
+          avatar: "",
+          onlineStatus: "online",
+          seatIntent: "pendingSeat",
+          joinedAt: 1
+        }
+      ]
+    });
+
+    page.openSeatingPanel();
+
+    assert.equal(page.data.seatingMode, "staging");
+    assert.deepEqual(page.data.seatingDraftPlayers.map((item) => item.id), ["owner-a", "wait-c"]);
+    assert.equal(page.data.seatingDraftPlayers.find((item) => item.id === "wait-c").seatIndex, 2);
+    assert.deepEqual(page.data.seatingDraftSpectators.map((item) => item.id), ["guest-b"]);
+    assert.equal(page.data.seatingDraftSpectators[0].seatIntent, "spectating");
+    assert.equal(page.data.seatRows.find((item) => item.seatIndex === 5).occupied, false);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: seating direction change keeps haptic but stays audio silent", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -4494,6 +4558,95 @@ test("room page: settlement lets the owner continue when the loser is offline", 
 
     assert.equal(page.data.settlementVisible, true);
     assert.equal(page.data.settlementCanContinue, true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: settlement continue permission recomputes from later ended room state", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.startSettlementCountdown = () => {
+      page.setData({ settlementContinueSec: 2 });
+    };
+    page.clearSettlementCountdown = () => {
+      page.setData({ settlementContinueSec: 0 });
+    };
+    page.setData({ playerId: "loser" });
+    page.data.playersRaw = [
+      { id: "owner", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "idle", seatIndex: 1, diceCupStatus: "open", rollLocked: true },
+      { id: "loser", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "open", rollLocked: true }
+    ];
+
+    const openResult = {
+      round: 2,
+      openerId: "owner",
+      targets: [
+        {
+          targetId: "loser",
+          declared: { count: 6, point: 4 },
+          actual: 4,
+          winnerId: "owner"
+        }
+      ],
+      serverTs: Date.now()
+    };
+
+    page.showSettlementPanel(openResult, {
+      round: 2,
+      roomId: "778899",
+      players: [
+        { playerId: "owner", dice: [4, 4, 2, 3, 6] },
+        { playerId: "loser", dice: [1, 2, 3, 5, 6] }
+      ],
+      openResult,
+      serverTs: Date.now()
+    });
+
+    assert.equal(page.data.settlementVisible, true);
+    assert.equal(page.data.settlementCanContinue, true);
+    assert.equal(page.data.settlementContinueSec, 2);
+
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "778899",
+        phase: "ended",
+        round: 2,
+        currentPlayerId: "owner",
+        ownerSeatingRequired: true,
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        },
+        players: [
+          { id: "owner", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "active", seatIndex: 1, diceCupStatus: "open", rollLocked: true, pendingBench: false },
+          { id: "loser", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "open", rollLocked: true, pendingBench: true }
+        ],
+        waitingPlayers: [
+          { id: "W1", nickname: "待上桌", avatar: "", onlineStatus: "online", seatIntent: "pendingSeat" }
+        ],
+        networkHealth: "good",
+        version: 6,
+        serverTs: Date.now()
+      }
+    }));
+
+    assert.equal(page.data.settlementVisible, true);
+    assert.equal(page.data.settlementCanContinue, false);
+    assert.equal(page.data.settlementContinueSec, 0);
+    assert.equal(page.data.primaryActionText, "等待房主安排");
   } finally {
     cleanup();
   }
@@ -5635,6 +5788,93 @@ test("room page: live seating actions update the next-round tags immediately aft
     assert.equal(page.data.seatingLivePlayers.find((item) => item.id === "P2").actionText, "保持在桌");
     assert.equal(page.data.seatingLivePendingCount, 1);
     assert.equal(toasts.at(-1), "已设为下局旁观");
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: seating commit submits pending-bench players as spectators before restart", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sent = [];
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.haptic = () => {};
+    page.playPrimaryAwareSfx = () => {};
+    page.setData({
+      phase: "ended",
+      selfIsOwner: true,
+      seatingMode: "staging",
+      seatingDraftDirection: "cw",
+      seatingDraftPlayers: [
+        { id: "P1", nickname: "房主", avatar: "", isOwner: true, seatIndex: 1, pendingBench: false },
+        { id: "P2", nickname: "玩家二", avatar: "", isOwner: false, seatIndex: 5, pendingBench: true }
+      ],
+      seatingDraftSpectators: [
+        { id: "W1", nickname: "等待者", avatar: "", onlineStatus: "online", seatIntent: "pendingSeat" }
+      ]
+    });
+
+    page.submitSeatingCommit();
+
+    assert.deepEqual(sent, [{
+      event: "room:seating:commit",
+      payload: {
+        direction: "cw",
+        seatedPlayerIds: [
+          { playerId: "P1", seatIndex: 1 },
+          { playerId: "W1", seatIndex: 2 }
+        ],
+        spectatorPlayerIds: ["P2"],
+        startMode: "restart"
+      }
+    }]);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: seating commit blocks restart when fewer than two seated players remain", () => {
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    const sent = [];
+    page.sendEvent = (event, payload) => {
+      sent.push({ event, payload });
+    };
+    page.setData({
+      phase: "ended",
+      selfIsOwner: true,
+      seatingVisible: true,
+      seatingMode: "staging",
+      seatingDraftDirection: "cw",
+      seatingDraftPlayers: [
+        { id: "P1", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", seatIndex: 1, pendingBench: false }
+      ],
+      seatingDraftSpectators: [
+        { id: "P2", nickname: "玩家二", avatar: "", onlineStatus: "online", seatIntent: "spectating" }
+      ]
+    });
+
+    page.submitSeatingCommit();
+
+    assert.deepEqual(sent, []);
+    assert.equal(page.data.seatingVisible, true);
+    assert.equal(toasts.at(-1), "至少安排2位桌上玩家");
   } finally {
     cleanup();
   }

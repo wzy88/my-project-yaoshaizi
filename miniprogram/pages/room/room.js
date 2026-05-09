@@ -555,6 +555,25 @@ function buildSettlementViewModel({ openResult, roundSummary, playersRaw, selfPl
   };
 }
 
+function canContinueFromSettlement({ model, playersRaw, selfPlayerId, ownerSeatingRequired }) {
+  if (!model || !model.loserId) {
+    return false;
+  }
+
+  const selfId = String(selfPlayerId || "");
+  const players = Array.isArray(playersRaw) ? playersRaw : [];
+  const self = players.find((player) => String(player.id || "") === selfId);
+  const loser = players.find((player) => String(player.id || "") === String(model.loserId || ""));
+  const loserUnavailable = !loser || loser.onlineStatus === "offline";
+
+  if (ownerSeatingRequired) {
+    return Boolean(self && self.isOwner);
+  }
+
+  return selfId === String(model.loserId)
+    || (Boolean(self && self.isOwner) && loserUnavailable);
+}
+
 function normalizeRoomId(roomId) {
   const digits = String(roomId || "").trim();
   return /^\d{6}$/.test(digits) ? digits : "";
@@ -1084,6 +1103,73 @@ function cloneDraftSpectators(spectatorsRaw) {
       }
       return String(a && a.nickname || "").localeCompare(String(b && b.nickname || ""));
     });
+}
+
+function buildStagingDraftState(playersRaw, spectatorsRaw, maxSeats = 8) {
+  const draftPlayers = [];
+  const draftSpectators = cloneDraftSpectators(spectatorsRaw);
+
+  cloneDraftPlayers(playersRaw).forEach((player) => {
+    if (player && player.pendingBench && !player.isOwner) {
+      draftSpectators.push({
+        id: player.id,
+        accountId: player.accountId,
+        accountDisplayId: player.accountDisplayId,
+        nickname: player.nickname,
+        avatar: player.avatar,
+        onlineStatus: player.onlineStatus,
+        seatIntent: "spectating",
+        joinedAt: Date.now()
+      });
+      return;
+    }
+
+    draftPlayers.push({
+      ...player,
+      pendingBench: false
+    });
+  });
+
+  const stabilizedSpectators = cloneDraftSpectators(draftSpectators);
+  const pendingSeatSpectators = stabilizedSpectators.filter((player) => player.seatIntent === "pendingSeat");
+  const passiveSpectators = stabilizedSpectators.filter((player) => player.seatIntent !== "pendingSeat");
+  const usedSeats = new Set(
+    draftPlayers
+      .map((player) => Number(player && player.seatIndex))
+      .filter((seatIndex) => Number.isInteger(seatIndex) && seatIndex >= 1 && seatIndex <= maxSeats)
+  );
+
+  pendingSeatSpectators.forEach((spectator) => {
+    let seatIndex = 0;
+    for (let nextSeat = 1; nextSeat <= maxSeats; nextSeat += 1) {
+      if (!usedSeats.has(nextSeat)) {
+        seatIndex = nextSeat;
+        break;
+      }
+    }
+
+    if (!seatIndex) {
+      passiveSpectators.push(spectator);
+      return;
+    }
+
+    usedSeats.add(seatIndex);
+    draftPlayers.push({
+      id: spectator.id,
+      accountId: spectator.accountId,
+      accountDisplayId: spectator.accountDisplayId,
+      nickname: spectator.nickname,
+      avatar: spectator.avatar,
+      onlineStatus: spectator.onlineStatus,
+      seatIndex,
+      pendingBench: false
+    });
+  });
+
+  return {
+    players: cloneDraftPlayers(draftPlayers),
+    spectators: cloneDraftSpectators(passiveSpectators)
+  };
 }
 
 function findFirstEmptySeatIndex(playersRaw, maxSeats = 8) {
@@ -4071,19 +4157,14 @@ Page({
     }
 
     const selfId = String(this.data.playerId || "");
-    const playersRaw = this.data.playersRaw || [];
-    const self = playersRaw.find((player) => String(player.id || "") === selfId);
-    const loser = playersRaw.find((player) => String(player.id || "") === String(model.loserId || ""));
     const winner = model.rows.find((row) => row.kind === "winner") || null;
     const winnerId = winner ? String(winner.playerId || "") : "";
-    const loserUnavailable = Boolean(model.loserId) && (!loser || loser.onlineStatus === "offline");
-    const requiresOwnerSeating = Boolean(this.data.ownerSeatingRequired);
-    const settlementCanContinue = requiresOwnerSeating
-      ? Boolean(self && self.isOwner)
-      : Boolean(model.loserId) && (
-        selfId === String(model.loserId)
-        || (Boolean(self && self.isOwner) && loserUnavailable)
-      );
+    const settlementCanContinue = canContinueFromSettlement({
+      model,
+      playersRaw: this.data.playersRaw,
+      selfPlayerId: selfId,
+      ownerSeatingRequired: this.data.ownerSeatingRequired
+    });
     let settlementSfxKind = "";
     if (selfId && selfId === String(model.loserId || "")) {
       settlementSfxKind = "loseAlert";
@@ -4492,8 +4573,9 @@ Page({
     const pickedSeatIndex = picked && Number.isInteger(picked.seatIndex) ? picked.seatIndex : 0;
 
     if (isStagingMode) {
-      const seatingDraftPlayers = cloneDraftPlayers(this.data.playersRaw);
-      const seatingDraftSpectators = cloneDraftSpectators(this.data.waitingPlayersRaw);
+      const stagingDraft = buildStagingDraftState(this.data.playersRaw, this.data.waitingPlayersRaw);
+      const seatingDraftPlayers = stagingDraft.players;
+      const seatingDraftSpectators = stagingDraft.spectators;
       this.setData({
         seatingVisible: true,
         seatingMode: "staging",
@@ -4526,8 +4608,9 @@ Page({
     if (this.data.seatingMode !== "staging" || !this.data.selfIsOwner || (phase !== "ready" && phase !== "ended")) {
       return;
     }
-    const seatingDraftPlayers = cloneDraftPlayers(this.data.playersRaw);
-    const seatingDraftSpectators = cloneDraftSpectators(this.data.waitingPlayersRaw);
+    const stagingDraft = buildStagingDraftState(this.data.playersRaw, this.data.waitingPlayersRaw);
+    const seatingDraftPlayers = stagingDraft.players;
+    const seatingDraftSpectators = stagingDraft.spectators;
     this.haptic("light");
     this.setData({
       seatingDraftPlayers,
@@ -4837,7 +4920,8 @@ Page({
       return;
     }
 
-    const seatedPlayerIds = cloneDraftPlayers(this.data.seatingDraftPlayers).map((player) => ({
+    const stagingDraft = buildStagingDraftState(this.data.seatingDraftPlayers, this.data.seatingDraftSpectators);
+    const seatedPlayerIds = stagingDraft.players.map((player) => ({
       playerId: player.id,
       seatIndex: Number(player.seatIndex) || 0
     }));
@@ -4846,8 +4930,15 @@ Page({
       return;
     }
 
-    const spectatorPlayerIds = cloneDraftSpectators(this.data.seatingDraftSpectators).map((player) => player.id);
+    const spectatorPlayerIds = stagingDraft.spectators.map((player) => player.id);
     const startMode = this.data.phase === "ended" ? "restart" : "start";
+    const onlineSeatedCount = stagingDraft.players.filter((player) => (
+      String(player && player.onlineStatus || "online") !== "offline"
+    )).length;
+    if (startMode !== "none" && onlineSeatedCount < 2) {
+      wx.showToast({ title: "至少安排2位桌上玩家", icon: "none" });
+      return;
+    }
     this.haptic("light");
     this.playPrimaryAwareSfx("call");
     this.sendEvent("room:seating:commit", {
@@ -5926,6 +6017,40 @@ Page({
             : `${seatingSelectedSeatIndex}号 空`)
           : "未选择";
 
+        const latestSettlementRound = Number(this.latestOpenResult && this.latestOpenResult.round || 0);
+        const latestSummaryRound = Number(this.latestRoundSummary && this.latestRoundSummary.round || 0);
+        const activeSettlementModel = settlementVisible
+          ? buildSettlementViewModel({
+            openResult: this.latestOpenResult,
+            roundSummary: latestSummaryRound === latestSettlementRound ? this.latestRoundSummary : null,
+            playersRaw,
+            selfPlayerId: this.data.playerId,
+            roomThemeId
+          })
+          : null;
+        const settlementCanContinue = settlementVisible
+          ? canContinueFromSettlement({
+            model: activeSettlementModel,
+            playersRaw,
+            selfPlayerId: this.data.playerId,
+            ownerSeatingRequired: effectiveOwnerSeatingRequired
+          })
+          : false;
+        const previousSettlementCanContinue = Boolean(this.data.settlementCanContinue);
+        const nextSettlementContinueSec = settlementVisible
+          ? (settlementCanContinue ? this.data.settlementContinueSec : 0)
+          : 0;
+
+        if (settlementVisible) {
+          if (settlementCanContinue && !previousSettlementCanContinue) {
+            this.startSettlementCountdown(2);
+          } else if (!settlementCanContinue && previousSettlementCanContinue) {
+            this.clearSettlementCountdown();
+          }
+        } else if (previousSettlementCanContinue || this.data.settlementContinueSec) {
+          this.clearSettlementCountdown();
+        }
+
         this.setData({
           roomId,
           displayRoomId: formatRoomIdDisplay(roomId),
@@ -5990,13 +6115,13 @@ Page({
           secondaryActionKind: secondaryAction.secondaryActionKind,
           secondaryActionEnabled: secondaryAction.secondaryActionEnabled,
           settlementVisible,
-          settlementSummaryText: settlementVisible ? this.data.settlementSummaryText : "",
-          settlementDeclaredText: settlementVisible ? this.data.settlementDeclaredText : "",
-          settlementActualText: settlementVisible ? this.data.settlementActualText : "",
-          settlementPointAsset: settlementVisible ? this.data.settlementPointAsset : "",
-          settlementRows: settlementVisible ? this.data.settlementRows : [],
-          settlementCanContinue: settlementVisible ? this.data.settlementCanContinue : false,
-          settlementContinueSec: settlementVisible ? this.data.settlementContinueSec : 0,
+          settlementSummaryText: activeSettlementModel ? activeSettlementModel.summaryText : "",
+          settlementDeclaredText: activeSettlementModel ? activeSettlementModel.declaredText : "",
+          settlementActualText: activeSettlementModel ? activeSettlementModel.actualText : "",
+          settlementPointAsset: activeSettlementModel ? activeSettlementModel.pointAsset : "",
+          settlementRows: activeSettlementModel ? activeSettlementModel.rows : [],
+          settlementCanContinue,
+          settlementContinueSec: nextSettlementContinueSec,
           recentSettlementAvailable: Boolean(this.latestOpenResult),
           privateDice: (selfIsWaiting || roundChanged) ? [] : this.data.privateDice,
           callTimeline,
@@ -6191,7 +6316,17 @@ Page({
           if (actionEvent === "room:join" && payload.code === "ROOM_NOT_FOUND") {
             wx.showToast({ title: "房间不存在或房间号有误", icon: "none", duration: 5000 });
           } else if (actionEvent === "room:seating:commit" && payload.code === "SEAT_CONFLICT") {
+            this.setData({ seatingVisible: true, seatingMode: "staging" });
+            this.syncSeatingDraftView(this.data.seatingDraftPlayers, 0, this.data.seatingDraftSpectators);
             wx.showToast({ title: "座位冲突，请重新调整", icon: "none" });
+          } else if (
+            actionEvent === "room:seating:commit"
+            && payload.code === "BAD_REQUEST"
+            && /至少2人/.test(reason)
+          ) {
+            this.setData({ seatingVisible: true, seatingMode: "staging" });
+            this.syncSeatingDraftView(this.data.seatingDraftPlayers, 0, this.data.seatingDraftSpectators);
+            wx.showToast({ title: "至少安排2位桌上玩家", icon: "none" });
           } else {
             wx.showToast({ title: reason, icon: "none" });
           }
