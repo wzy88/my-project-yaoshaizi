@@ -43,6 +43,11 @@
     "backgroundColor": "#100d0c",
     "backgroundTextStyle": "light"
   },
+  "permission": {
+    "scope.record": {
+      "desc": "用于叫牌阶段按住说话识别骰子点数"
+    }
+  },
   "tabBar": {
     "custom": true,
     "list": [

@@ -1086,6 +1086,97 @@ page {
   color: rgba(240, 201, 102, 0.8);
 }
 
+.settlement-seating-card {
+  flex: 0 0 auto;
+  padding: 22rpx 22rpx;
+  margin-bottom: 16rpx;
+  border-radius: 24rpx;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(240, 201, 102, 0.26) 0%, rgba(240, 201, 102, 0) 46%),
+    radial-gradient(circle at 100% 20%, rgba(111, 185, 153, 0.22) 0%, rgba(111, 185, 153, 0) 48%),
+    linear-gradient(180deg, rgba(42, 48, 39, 0.96) 0%, rgba(21, 23, 24, 0.96) 100%);
+  border: 2rpx solid rgba(240, 201, 102, 0.44);
+  box-shadow:
+    inset 0 1rpx 0 rgba(255, 247, 211, 0.16),
+    0 0 0 2rpx rgba(111, 185, 153, 0.12),
+    0 16rpx 34rpx rgba(0, 0, 0, 0.28);
+}
+
+.settlement-seating-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.settlement-seating-card__label {
+  flex: 0 0 auto;
+  height: 34rpx;
+  padding: 0 14rpx;
+  border-radius: 999rpx;
+  font-size: 19rpx;
+  font-weight: 800;
+  line-height: 34rpx;
+  color: #18261f;
+  background: linear-gradient(180deg, #79d6a9 0%, #4ea77b 100%);
+  box-shadow: 0 6rpx 14rpx rgba(42, 190, 112, 0.24);
+}
+
+.settlement-seating-card__title {
+  min-width: 0;
+  font-size: 27rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: right;
+  color: #fff4cf;
+}
+
+.settlement-seating-card__desc {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 800;
+  line-height: 1.46;
+  color: rgba(247, 243, 232, 0.94);
+}
+
+.settlement-seating-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 12rpx;
+}
+
+.settlement-seating-chip {
+  max-width: 100%;
+  padding: 7rpx 14rpx;
+  border-radius: 999rpx;
+  font-size: 20rpx;
+  font-weight: 800;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1rpx solid rgba(255, 255, 255, 0.1);
+}
+
+.settlement-seating-chip--bench {
+  color: #ffe3e3;
+  background: rgba(190, 74, 74, 0.18);
+  border-color: rgba(255, 132, 132, 0.24);
+}
+
+.settlement-seating-chip--seat {
+  color: #dffbed;
+  background: rgba(35, 181, 111, 0.16);
+  border-color: rgba(111, 185, 153, 0.3);
+}
+
+.settlement-seating-chip--more {
+  color: rgba(245, 237, 214, 0.88);
+  background: rgba(240, 201, 102, 0.12);
+  border-color: rgba(240, 201, 102, 0.2);
+}
+
 .settlement-scroll {
   flex: 1;
   min-height: 0;
@@ -1100,10 +1191,12 @@ page {
 }
 
 .settlement-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 44rpx minmax(118rpx, 1fr) auto minmax(70rpx, auto);
   align-items: center;
-  gap: 10rpx;
-  padding: 12rpx 14rpx;
+  column-gap: 10rpx;
+  row-gap: 8rpx;
+  padding: 10rpx 12rpx;
   border-radius: 20rpx;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.018) 100%);
@@ -1111,7 +1204,7 @@ page {
   box-shadow:
     inset 0 1rpx 0 rgba(255, 255, 255, 0.05),
     0 10rpx 22rpx rgba(0, 0, 0, 0.16);
-  flex-wrap: wrap;
+  overflow: hidden;
 }
 
 .settlement-row--winner {
@@ -1131,14 +1224,14 @@ page {
 .settlement-row__left {
   display: flex;
   align-items: center;
-  gap: 12rpx;
+  gap: 8rpx;
   min-width: 0;
-  flex: 1;
+  overflow: hidden;
 }
 
 .settlement-row__tag {
   width: 44rpx;
-  min-height: 60rpx;
+  min-height: 56rpx;
   border-radius: 14rpx;
   display: flex;
   align-items: center;
@@ -1159,9 +1252,10 @@ page {
 }
 
 .settlement-avatar {
-  width: 52rpx;
-  height: 52rpx;
-  border-radius: 26rpx;
+  flex: 0 0 auto;
+  width: 46rpx;
+  height: 46rpx;
+  border-radius: 23rpx;
   overflow: hidden;
   background: rgba(18, 12, 30, 0.9);
   border: 1rpx solid rgba(255, 255, 255, 0.12);
@@ -1185,16 +1279,17 @@ page {
   display: flex;
   align-items: center;
   min-width: 0;
+  overflow: hidden;
 }
 
 .settlement-name {
-  max-width: 132rpx;
-  font-size: 24rpx;
+  max-width: 118rpx;
+  font-size: 23rpx;
   font-weight: 700;
   color: #f7f3e8;
   line-height: 1.15;
   overflow: hidden;
-  text-overflow: clip;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1214,14 +1309,18 @@ page {
 .settlement-dice-list {
   display: flex;
   align-items: center;
-  gap: 7rpx;
+  justify-content: flex-end;
+  gap: 5rpx;
+  min-width: 0;
+  overflow: visible;
 }
 
 .settlement-die-wrap {
   position: relative;
-  width: 46rpx;
-  height: 46rpx;
-  border-radius: 13rpx;
+  flex: 0 0 auto;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 12rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1256,29 +1355,29 @@ page {
 }
 
 .settlement-die {
-  width: 42rpx;
-  height: 42rpx;
+  width: 36rpx;
+  height: 36rpx;
   filter: drop-shadow(0 2rpx 4rpx rgba(0, 0, 0, 0.22));
 }
 
 .settlement-dice-bonus {
   flex: 0 0 auto;
-  min-width: 36rpx;
-  height: 28rpx;
-  padding: 0 8rpx;
+  min-width: 32rpx;
+  height: 26rpx;
+  padding: 0 7rpx;
   border-radius: 999rpx;
   background: rgba(240, 192, 48, 0.18);
   border: 1rpx solid rgba(240, 192, 48, 0.52);
   color: #f0c030;
-  font-size: 18rpx;
+  font-size: 17rpx;
   font-weight: 900;
-  line-height: 28rpx;
+  line-height: 26rpx;
   text-align: center;
 }
 
 .settlement-count-note {
   width: 100%;
-  padding-left: 70rpx;
+  padding-left: 0;
   box-sizing: border-box;
   color: rgba(210, 226, 245, 0.68);
   font-size: 17rpx;
@@ -10224,30 +10323,38 @@ button.room-topbar__shortcut::after {
 
 .settlement-row {
   align-items: center;
-  gap: 14rpx;
 }
 
 .settlement-row__meta {
-  min-width: 104rpx;
+  min-width: 70rpx;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 8rpx;
+  overflow: hidden;
 }
 
 .settlement-feature-tag {
+  max-width: 104rpx;
   padding: 4rpx 14rpx;
   border-radius: 999rpx;
   font-size: 18rpx;
   font-weight: 800;
-  letter-spacing: 0.6rpx;
   background: rgba(255, 255, 255, 0.08);
   color: rgba(255, 246, 223, 0.92);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settlement-count-note {
   font-size: 18rpx;
   text-align: right;
+  width: auto;
+  max-width: 104rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .drawer-card--latest {

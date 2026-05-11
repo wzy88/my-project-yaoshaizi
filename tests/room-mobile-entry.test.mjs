@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
+const fs = require("node:fs");
 const roomModulePath = require.resolve("../miniprogram/pages/room/room.js");
+const roomWxmlPath = roomModulePath.replace(/room\.js$/, "room.wxml");
+const roomWxssPath = roomModulePath.replace(/room\.js$/, "room.wxss");
+const appJson = require("../miniprogram/app.json");
 const { DEFAULT_PROFILE_AVATAR_ASSETS } = require("../miniprogram/utils/profile-defaults.js");
 const { buildLocalRoomThemeManifest } = require("../miniprogram/utils/room-theme-loader.js");
 const {
@@ -4727,6 +4731,172 @@ test("room page: owner can continue from settlement when next-round seating is r
   }
 });
 
+test("room page: settlement explains pending next-round seating plans to non-owners", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.setData({ playerId: "loser" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "778899",
+        phase: "ended",
+        round: 2,
+        currentPlayerId: "owner",
+        ownerSeatingRequired: true,
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        },
+        players: [
+          { id: "owner", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "active", seatIndex: 1, diceCupStatus: "open", rollLocked: true, pendingBench: false },
+          { id: "loser", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "open", rollLocked: true, pendingBench: true }
+        ],
+        waitingPlayers: [
+          { id: "W1", nickname: "待上桌", avatar: "", onlineStatus: "online", seatIntent: "pendingSeat" }
+        ],
+        networkHealth: "good",
+        version: 6,
+        serverTs: Date.now()
+      }
+    }));
+
+    const openResult = {
+      round: 2,
+      openerId: "owner",
+      targets: [
+        {
+          targetId: "loser",
+          declared: { count: 6, point: 4 },
+          actual: 4,
+          winnerId: "owner"
+        }
+      ],
+      serverTs: Date.now()
+    };
+
+    page.showSettlementPanel(openResult, {
+      round: 2,
+      roomId: "778899",
+      players: [
+        { playerId: "owner", dice: [4, 4, 2, 3, 6] },
+        { playerId: "loser", dice: [1, 2, 3, 5, 6] }
+      ],
+      openResult,
+      serverTs: Date.now()
+    });
+
+    assert.equal(page.data.settlementSeatingVisible, true);
+    assert.equal(page.data.settlementSeatingTitle, "等待房主安排");
+    assert.equal(page.data.settlementSeatingDesc, "你已被安排下局旁观，请等待房主完成座位安排。");
+    assert.deepEqual(page.data.settlementSeatingChips.map((item) => item.text), ["输家 下局旁观", "待上桌 下局上桌"]);
+    assert.equal(page.data.settlementCanContinue, false);
+  } finally {
+    cleanup();
+  }
+});
+
+test("room page: settlement seating notice is visually prominent and result rows use fixed columns", () => {
+  const roomWxml = fs.readFileSync(roomWxmlPath, "utf8");
+  const roomWxss = fs.readFileSync(roomWxssPath, "utf8");
+
+  assert.match(roomWxml, /settlement-seating-card__label">座位变更<\/text>/);
+  assert.match(roomWxss, /\.settlement-seating-card\s*\{[\s\S]*border:\s*2rpx solid rgba\(240,\s*201,\s*102,\s*0\.44\)/);
+  assert.match(roomWxss, /\.settlement-seating-card__desc\s*\{[\s\S]*font-weight:\s*800/);
+  assert.match(roomWxss, /\.settlement-row\s*\{[\s\S]*display:\s*grid[\s\S]*grid-template-columns:\s*44rpx minmax\(118rpx,\s*1fr\) auto minmax\(70rpx,\s*auto\)/);
+  assert.match(roomWxss, /\.settlement-name\s*\{[\s\S]*max-width:\s*118rpx[\s\S]*text-overflow:\s*ellipsis/);
+  assert.match(roomWxss, /\.settlement-die-wrap\s*\{[\s\S]*width:\s*40rpx[\s\S]*height:\s*40rpx/);
+  assert.match(roomWxss, /\.settlement-row__meta\s*\{[\s\S]*min-width:\s*70rpx/);
+});
+
+test("room page: owner settlement CTA names seating when next-round arrangement is required", () => {
+  const { page, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws"
+  });
+
+  try {
+    page.startSettlementCountdown = () => {
+      page.setData({ settlementContinueSec: 2 });
+    };
+    page.setData({ playerId: "owner" });
+    page.handleServerPacket(JSON.stringify({
+      event: "room:state",
+      payload: {
+        roomId: "778899",
+        phase: "ended",
+        round: 2,
+        currentPlayerId: "owner",
+        ownerSeatingRequired: true,
+        config: {
+          direction: "cw",
+          wildcardOneEnabled: true,
+          openMode: "single",
+          dicePerPlayer: 5,
+          minOpeningCount: 1,
+          testMode: false
+        },
+        players: [
+          { id: "owner", nickname: "房主", avatar: "", isOwner: true, onlineStatus: "online", turnStatus: "active", seatIndex: 1, diceCupStatus: "open", rollLocked: true, pendingBench: false },
+          { id: "loser", nickname: "输家", avatar: "", isOwner: false, onlineStatus: "online", turnStatus: "idle", seatIndex: 2, diceCupStatus: "open", rollLocked: true, pendingBench: true }
+        ],
+        waitingPlayers: [
+          { id: "W1", nickname: "待上桌", avatar: "", onlineStatus: "online", seatIntent: "pendingSeat" }
+        ],
+        networkHealth: "good",
+        version: 6,
+        serverTs: Date.now()
+      }
+    }));
+
+    const openResult = {
+      round: 2,
+      openerId: "owner",
+      targets: [
+        {
+          targetId: "loser",
+          declared: { count: 6, point: 4 },
+          actual: 4,
+          winnerId: "owner"
+        }
+      ],
+      serverTs: Date.now()
+    };
+
+    page.showSettlementPanel(openResult, {
+      round: 2,
+      roomId: "778899",
+      players: [
+        { playerId: "owner", dice: [4, 4, 2, 3, 6] },
+        { playerId: "loser", dice: [1, 2, 3, 5, 6] }
+      ],
+      openResult,
+      serverTs: Date.now()
+    });
+
+    assert.equal(page.data.settlementSeatingVisible, true);
+    assert.equal(page.data.settlementSeatingTitle, "下一局座位安排");
+    assert.equal(page.data.settlementSeatingDesc, "下局旁观 1 人，待上桌 1 人；完成安排后开始下一局。");
+    assert.equal(page.data.settlementContinueText, "安排座位");
+    assert.equal(page.data.settlementCanContinue, true);
+  } finally {
+    cleanup();
+  }
+});
+
 test("room page: pending next-round plans do not turn the losing player into a spectator before commit", () => {
   const { page, cleanup } = instantiateRoomPage({
     storage: {
@@ -5333,6 +5503,72 @@ test("room page: failed voice recognition releases the voice touch lock for retr
     await page.onVoiceTouchStart();
     assert.equal(recorderStartCount, 2);
     assert.equal(page.data.recording, true);
+  } finally {
+    cleanup();
+  }
+});
+
+test("miniapp app config declares microphone permission usage", () => {
+  assert.equal(
+    typeof appJson.permission?.["scope.record"]?.desc,
+    "string"
+  );
+  assert.match(appJson.permission["scope.record"].desc, /叫牌|语音|麦克风|录音/);
+});
+
+test("room page: recorder falls back to aac when mp3 start fails on device", async () => {
+  const recorderHandlers = {};
+  const startFormats = [];
+  const { page, toasts, cleanup } = instantiateRoomPage({
+    storage: {
+      [LEGAL_ACCEPT_KEY]: { accepted: true },
+      [NICKNAME_KEY]: "手机玩家"
+    },
+    appWsUrl: "ws://192.168.1.23:3000/ws",
+    apiAvailability: {
+      getRecorderManager() {
+        return {
+          onStart(handler) {
+            recorderHandlers.start = handler;
+          },
+          onStop(handler) {
+            recorderHandlers.stop = handler;
+          },
+          onError(handler) {
+            recorderHandlers.error = handler;
+          },
+          start(options = {}) {
+            startFormats.push(options.format);
+            if (options.format === "mp3") {
+              recorderHandlers.error?.({ errMsg: "startRecord:fail create recorder failed" });
+              return;
+            }
+            recorderHandlers.start?.();
+          },
+          stop() {}
+        };
+      }
+    }
+  });
+
+  try {
+    page.connectSocket = () => {};
+    page.onLoad({});
+    page.setData({
+      phase: "calling",
+      currentPlayerId: "player-a",
+      playerId: "player-a",
+      selfIsWaiting: false,
+      connected: true,
+      legalAccepted: true
+    });
+
+    await page.onVoiceTouchStart();
+
+    assert.deepEqual(startFormats, ["mp3", "aac"]);
+    assert.equal(page.data.recording, true);
+    assert.equal(page.voiceRecordFormat, "aac");
+    assert.equal(toasts.includes("录音失败"), false);
   } finally {
     cleanup();
   }

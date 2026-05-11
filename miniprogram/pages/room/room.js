@@ -68,6 +68,12 @@ const ROOM_STAGE_MIN_SCALE = 0.9;
 const DEFAULT_CALL_VOICE_TIP_TEXT = "按住说话，松开发送";
 const MAX_CALL_VOICE_DURATION_MS = 5000;
 const VOICE_RECOGNITION_WAIT_MS = 3000;
+const PRIMARY_VOICE_RECORD_FORMAT = "mp3";
+const FALLBACK_VOICE_RECORD_FORMAT = "aac";
+const VOICE_RECORD_MIME_TYPES = Object.freeze({
+  mp3: "audio/mpeg",
+  aac: "audio/aac"
+});
 const ROOM_RULE_SECTIONS = [
   {
     title: "基础玩法",
@@ -1283,6 +1289,85 @@ function countPendingLivePlans(playersRaw, spectatorsRaw) {
   return pendingBenchCount + pendingSeatCount;
 }
 
+function buildSettlementSeatingStatus({
+  phase,
+  selfIsOwner,
+  ownerSeatingRequired,
+  playersRaw,
+  spectatorsRaw,
+  selfPlayerId
+}) {
+  const normalizedPhase = String(phase || "ready");
+  const players = Array.isArray(playersRaw) ? playersRaw : [];
+  const spectators = Array.isArray(spectatorsRaw) ? spectatorsRaw : [];
+  const pendingBenchPlayers = players.filter((player) => Boolean(player && player.pendingBench));
+  const pendingSeatSpectators = spectators.filter((player) => player && player.seatIntent === "pendingSeat");
+  const hasPendingPlan = pendingBenchPlayers.length > 0 || pendingSeatSpectators.length > 0;
+  const required = Boolean(ownerSeatingRequired) || (normalizedPhase === "ended" && hasPendingPlan);
+
+  if (normalizedPhase !== "ended" || !required) {
+    return {
+      visible: false,
+      title: "",
+      desc: "",
+      chips: [],
+      continueText: "继续"
+    };
+  }
+
+  const selfId = String(selfPlayerId || "");
+  const selfBench = pendingBenchPlayers.some((player) => String(player && player.id || "") === selfId);
+  const selfSpectator = spectators.find((player) => String(player && player.id || "") === selfId) || null;
+  const selfPendingSeat = Boolean(selfSpectator && selfSpectator.seatIntent === "pendingSeat");
+  const selfSpectating = Boolean(selfSpectator && selfSpectator.seatIntent !== "pendingSeat");
+  const makeName = (player) => (safeDecodeComponent(player && player.nickname).trim() || "玩家").slice(0, 6);
+  const chips = [
+    ...pendingBenchPlayers.slice(0, 3).map((player) => ({
+      id: `bench-${String(player && player.id || "")}`,
+      text: `${makeName(player)} 下局旁观`,
+      tone: "bench"
+    })),
+    ...pendingSeatSpectators.slice(0, 3).map((player) => ({
+      id: `seat-${String(player && player.id || "")}`,
+      text: `${makeName(player)} 下局上桌`,
+      tone: "seat"
+    }))
+  ];
+  const hiddenCount = Math.max(0, pendingBenchPlayers.length + pendingSeatSpectators.length - chips.length);
+  if (hiddenCount > 0) {
+    chips.push({
+      id: "more",
+      text: `还有 ${hiddenCount} 项安排`,
+      tone: "more"
+    });
+  }
+
+  let desc = "";
+  if (selfBench) {
+    desc = "你已被安排下局旁观，请等待房主完成座位安排。";
+  } else if (selfPendingSeat) {
+    desc = "你已被安排下局上桌，请等待房主确认座位。";
+  } else if (selfSpectating) {
+    desc = "你当前旁观，等待房主完成下一局安排。";
+  } else if (selfIsOwner) {
+    desc = hasPendingPlan
+      ? `下局旁观 ${pendingBenchPlayers.length} 人，待上桌 ${pendingSeatSpectators.length} 人；完成安排后开始下一局。`
+      : "请确认下一局桌上玩家和旁观名单。";
+  } else {
+    desc = hasPendingPlan
+      ? `房主正在安排下一局：${pendingBenchPlayers.length} 人下局旁观，${pendingSeatSpectators.length} 人待上桌。`
+      : "房主正在安排下一局座位，请稍等。";
+  }
+
+  return {
+    visible: true,
+    title: selfIsOwner ? "下一局座位安排" : "等待房主安排",
+    desc,
+    chips,
+    continueText: selfIsOwner ? "安排座位" : "继续"
+  };
+}
+
 function buildObserverStatusText(phase, seatIntent, ownerSeatingRequired) {
   if (seatIntent === "pendingSeat") {
     if ((phase === "ready" || phase === "ended") && ownerSeatingRequired) {
@@ -1463,6 +1548,14 @@ function readFileBase64(filePath) {
       fail: reject
     });
   });
+}
+
+function normalizeVoiceRecordFormat(format) {
+  return format === FALLBACK_VOICE_RECORD_FORMAT ? FALLBACK_VOICE_RECORD_FORMAT : PRIMARY_VOICE_RECORD_FORMAT;
+}
+
+function getVoiceRecordMimeType(format) {
+  return VOICE_RECORD_MIME_TYPES[normalizeVoiceRecordFormat(format)] || VOICE_RECORD_MIME_TYPES[PRIMARY_VOICE_RECORD_FORMAT];
 }
 
 function writeBase64ToFile(filePath, base64) {
@@ -1903,6 +1996,11 @@ Page({
     settlementRows: [],
     settlementCanContinue: false,
     settlementContinueSec: 0,
+    settlementContinueText: "继续",
+    settlementSeatingVisible: false,
+    settlementSeatingTitle: "",
+    settlementSeatingDesc: "",
+    settlementSeatingChips: [],
     recentSettlementAvailable: false,
     lastCallKey: "",
     callTimeline: [],
@@ -2117,6 +2215,8 @@ Page({
     this.asrManager = null;
     this.asrText = "";
     this.asrFinalText = "";
+    this.voiceRecordFormat = PRIMARY_VOICE_RECORD_FORMAT;
+    this.voiceRecordFallbackTried = false;
     this.audioContext = null;
     this.sfxContext = null;
     this.sfxStopTimer = null;
@@ -2248,11 +2348,12 @@ Page({
           }
 
           const clientRequestId = `voice_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
-          const fileName = `voice_${Date.now()}.mp3`;
+          const recordFormat = normalizeVoiceRecordFormat(this.voiceRecordFormat);
+          const fileName = `voice_${Date.now()}.${recordFormat}`;
           const transcriptPromise = this.waitForVoiceTranscript(clientRequestId);
           this.sendEvent("voice:upload", {
             fileName,
-            mimeType: "audio/mpeg",
+            mimeType: getVoiceRecordMimeType(recordFormat),
             durationMs,
             base64,
             clientRequestId
@@ -2341,13 +2442,26 @@ Page({
         }
       });
 
-      this.recorderManager.onError(() => {
+      this.recorderManager.onError((error) => {
         this.voiceStopLocked = false;
         this.setData({
           recording: false,
           voiceRecognizing: false,
           voiceTipText: "录音失败，请重试"
         });
+        const shouldFallbackToAac = this.voiceRecordFormat === PRIMARY_VOICE_RECORD_FORMAT
+          && !this.voiceRecordFallbackTried
+          && Date.now() - Number(this.voiceStartTs || 0) < 1200;
+        if (shouldFallbackToAac) {
+          this.voiceRecordFallbackTried = true;
+          this.startVoiceRecorder(FALLBACK_VOICE_RECORD_FORMAT);
+          return;
+        }
+        this.debugClientEvent("voice:record-error", {
+          format: this.voiceRecordFormat,
+          errMsg: error && error.errMsg ? String(error.errMsg) : "",
+          message: error && error.message ? String(error.message) : ""
+        }, { ui: false });
         wx.showToast({ title: "录音失败", icon: "none" });
       });
     }
@@ -4165,6 +4279,14 @@ Page({
       selfPlayerId: selfId,
       ownerSeatingRequired: this.data.ownerSeatingRequired
     });
+    const settlementSeatingStatus = buildSettlementSeatingStatus({
+      phase: this.data.phase,
+      selfIsOwner: this.data.selfIsOwner,
+      ownerSeatingRequired: this.data.ownerSeatingRequired,
+      playersRaw: this.data.playersRaw,
+      spectatorsRaw: this.data.waitingPlayersRaw,
+      selfPlayerId: selfId
+    });
     let settlementSfxKind = "";
     if (selfId && selfId === String(model.loserId || "")) {
       settlementSfxKind = "loseAlert";
@@ -4189,6 +4311,11 @@ Page({
       settlementRows: model.rows,
       settlementCanContinue,
       settlementContinueSec: settlementCanContinue ? this.data.settlementContinueSec : 0,
+      settlementContinueText: settlementSeatingStatus.continueText,
+      settlementSeatingVisible: settlementSeatingStatus.visible,
+      settlementSeatingTitle: settlementSeatingStatus.title,
+      settlementSeatingDesc: settlementSeatingStatus.desc,
+      settlementSeatingChips: settlementSeatingStatus.chips,
       recentSettlementAvailable: true
     });
   },
@@ -4204,6 +4331,11 @@ Page({
       settlementRows: [],
       settlementCanContinue: false,
       settlementContinueSec: 0,
+      settlementContinueText: "继续",
+      settlementSeatingVisible: false,
+      settlementSeatingTitle: "",
+      settlementSeatingDesc: "",
+      settlementSeatingChips: [],
       recentSettlementAvailable: Boolean(this.latestOpenResult)
     });
   },
@@ -4235,6 +4367,11 @@ Page({
       settlementRows: [],
       settlementCanContinue: false,
       settlementContinueSec: 0,
+      settlementContinueText: "继续",
+      settlementSeatingVisible: false,
+      settlementSeatingTitle: "",
+      settlementSeatingDesc: "",
+      settlementSeatingChips: [],
       privateDice: [],
       roomSelfDiceFaces: buildSelfDiceDisplayItems(this.data.roomThemeId),
       selfHasDice: false,
@@ -4413,6 +4550,33 @@ Page({
     return this.pendingVoiceTranscriptPromise;
   },
 
+  startVoiceRecorder(format = PRIMARY_VOICE_RECORD_FORMAT) {
+    const recordFormat = normalizeVoiceRecordFormat(format);
+    this.voiceRecordFormat = recordFormat;
+
+    try {
+      this.recorderManager.start({
+        duration: MAX_CALL_VOICE_DURATION_MS,
+        sampleRate: 16000,
+        numberOfChannels: 1,
+        encodeBitRate: 48000,
+        format: recordFormat
+      });
+    } catch (error) {
+      if (recordFormat === PRIMARY_VOICE_RECORD_FORMAT && !this.voiceRecordFallbackTried) {
+        this.voiceRecordFallbackTried = true;
+        this.startVoiceRecorder(FALLBACK_VOICE_RECORD_FORMAT);
+        return;
+      }
+      this.debugClientEvent("voice:record-start-error", {
+        format: recordFormat,
+        errMsg: error && error.errMsg ? String(error.errMsg) : "",
+        message: error && error.message ? String(error.message) : ""
+      }, { ui: false });
+      wx.showToast({ title: "录音启动失败", icon: "none" });
+    }
+  },
+
   async onVoiceTouchStart() {
     if (this.data.recording || this.voiceStopLocked || this.data.voiceRecognizing) {
       return;
@@ -4450,6 +4614,8 @@ Page({
 
     this.voiceStartTs = Date.now();
     this.voiceStopLocked = false;
+    this.voiceRecordFallbackTried = false;
+    this.voiceRecordFormat = PRIMARY_VOICE_RECORD_FORMAT;
     this.asrText = "";
     this.asrFinalText = "";
 
@@ -4464,17 +4630,7 @@ Page({
       }
     }
 
-    try {
-      this.recorderManager.start({
-        duration: MAX_CALL_VOICE_DURATION_MS,
-        sampleRate: 16000,
-        numberOfChannels: 1,
-        encodeBitRate: 48000,
-        format: "mp3"
-      });
-    } catch (error) {
-      wx.showToast({ title: "录音启动失败", icon: "none" });
-    }
+    this.startVoiceRecorder(PRIMARY_VOICE_RECORD_FORMAT);
   },
 
   onVoiceTouchEnd() {
@@ -4889,6 +5045,14 @@ Page({
       (phase === "ready" || phase === "ended") && waitingPlayerCount > 0
     );
     const liveRows = buildOwnerLiveRows(playersRaw, waitingPlayersRaw);
+    const settlementSeatingStatus = buildSettlementSeatingStatus({
+      phase,
+      selfIsOwner: this.data.selfIsOwner,
+      ownerSeatingRequired,
+      playersRaw,
+      spectatorsRaw: waitingPlayersRaw,
+      selfPlayerId: this.data.playerId
+    });
 
     this.setData({
       playersRaw,
@@ -4900,7 +5064,12 @@ Page({
       seatingLivePlayers: liveRows.players,
       seatingLiveSpectators: buildSeatingSpectatorChips(waitingPlayersRaw, "live"),
       seatingLivePendingCount: countPendingLivePlans(playersRaw, waitingPlayersRaw),
-      seatingObserverStatusText: buildObserverStatusText(phase, selfSpectatorIntent, ownerSeatingRequired)
+      seatingObserverStatusText: buildObserverStatusText(phase, selfSpectatorIntent, ownerSeatingRequired),
+      settlementContinueText: settlementSeatingStatus.continueText,
+      settlementSeatingVisible: settlementSeatingStatus.visible,
+      settlementSeatingTitle: settlementSeatingStatus.title,
+      settlementSeatingDesc: settlementSeatingStatus.desc,
+      settlementSeatingChips: settlementSeatingStatus.chips
     });
 
     return toastTitle;
@@ -6036,6 +6205,22 @@ Page({
             ownerSeatingRequired: effectiveOwnerSeatingRequired
           })
           : false;
+        const settlementSeatingStatus = settlementVisible
+          ? buildSettlementSeatingStatus({
+            phase,
+            selfIsOwner,
+            ownerSeatingRequired: effectiveOwnerSeatingRequired,
+            playersRaw,
+            spectatorsRaw: waitingPlayersRaw,
+            selfPlayerId: this.data.playerId
+          })
+          : {
+            visible: false,
+            title: "",
+            desc: "",
+            chips: [],
+            continueText: "继续"
+          };
         const previousSettlementCanContinue = Boolean(this.data.settlementCanContinue);
         const nextSettlementContinueSec = settlementVisible
           ? (settlementCanContinue ? this.data.settlementContinueSec : 0)
@@ -6122,6 +6307,11 @@ Page({
           settlementRows: activeSettlementModel ? activeSettlementModel.rows : [],
           settlementCanContinue,
           settlementContinueSec: nextSettlementContinueSec,
+          settlementContinueText: settlementSeatingStatus.continueText,
+          settlementSeatingVisible: settlementSeatingStatus.visible,
+          settlementSeatingTitle: settlementSeatingStatus.title,
+          settlementSeatingDesc: settlementSeatingStatus.desc,
+          settlementSeatingChips: settlementSeatingStatus.chips,
           recentSettlementAvailable: Boolean(this.latestOpenResult),
           privateDice: (selfIsWaiting || roundChanged) ? [] : this.data.privateDice,
           callTimeline,
@@ -7085,6 +7275,11 @@ Page({
       settlementRows: [],
       settlementCanContinue: false,
       settlementContinueSec: 0,
+      settlementContinueText: "继续",
+      settlementSeatingVisible: false,
+      settlementSeatingTitle: "",
+      settlementSeatingDesc: "",
+      settlementSeatingChips: [],
       recentSettlementAvailable: false,
       lastCallKey: "",
       callTimeline: [],
@@ -7312,6 +7507,11 @@ Page({
       settlementRows: [],
       settlementCanContinue: false,
       settlementContinueSec: 0,
+      settlementContinueText: "继续",
+      settlementSeatingVisible: false,
+      settlementSeatingTitle: "",
+      settlementSeatingDesc: "",
+      settlementSeatingChips: [],
       recentSettlementAvailable: false,
       callCount: "3",
       callPoint: "6",
